@@ -2661,6 +2661,15 @@ function pickMpUser(id) {
 
 
 
+// ══════════════════════════════════════════════════════════════════
+//  GOOGLE SIGN-IN  +  JOIN FLOW
+// ══════════════════════════════════════════════════════════════════
+
+let googleIdToken   = null;   // raw JWT from Google
+let googleProfile   = null;   // { sub, email, name, picture }
+let currentMember   = null;   // member object after successful join
+let modalStep       = 1;
+
 // ── INIT ───
 restoreSession();   // must run before loadData so admin check works in renderLB
 buildPeriodSelector();
@@ -2675,18 +2684,6 @@ loadData('thismonth');
 
 // Schedule hourly refresh at the top of each clock hour
 scheduleHourlyRefresh();
-
-// Also update the auto-refresh for remove/height actions to use persistClear
-
-
-// ══════════════════════════════════════════════════════════════════
-//  GOOGLE SIGN-IN  +  JOIN FLOW
-// ══════════════════════════════════════════════════════════════════
-
-let googleIdToken   = null;   // raw JWT from Google
-let googleProfile   = null;   // { sub, email, name, picture }
-let currentMember   = null;   // member object after successful join
-let modalStep       = 1;
 
 // ── Restore session from localStorage ────────────────────────────
 function restoreSession() {
