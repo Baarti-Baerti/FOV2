@@ -1476,7 +1476,7 @@ function normaliseUser(raw, idx) {
     monthly:      raw.monthly || [],
     challengeKm:  raw.challengeKm ?? null,
     durationSec:  raw.durationSec  || 0,
-    provider:     raw.provider || 'garmin',
+    provider:     raw.provider || 'strava',
     picture:      raw.picture || '',
   };
 }
@@ -2645,13 +2645,7 @@ function updateHeaderChip(member) {
 function openJoinModal() {
   clearModalMsg();
   goToStep(0);
-  if (currentMember) {
-    document.getElementById('nameInput').value = currentMember.name || '';
-  } else {
-    document.getElementById('nameInput').value = '';
-    document.getElementById('garminEmailInput').value = '';
-    document.getElementById('garminPasswordInput').value = '';
-  }
+  document.getElementById('nameInput').value = currentMember?.name || '';
   document.getElementById('joinModal').classList.add('open');
 }
 
@@ -2746,101 +2740,7 @@ function chooseProvider(provider) {
 }
 
 // ── Submit join (Garmin) ──────────────────────────────────────────
-let _pendingMfaToken = null;  // holds mfa_token between step 1 and MFA step
-
-async function submitJoin() {
-  const name           = document.getElementById('nameInput').value.trim();
-  const garminEmail    = document.getElementById('garminEmailInput').value.trim();
-  const garminPassword = document.getElementById('garminPasswordInput').value.trim();
-
-  if (!name) { showModalMsg('Please enter your name.', 'error'); return; }
-  if (!garminEmail || !garminPassword) {
-    showModalMsg('Please enter your Garmin Connect email and password.', 'error');
-    return;
-  }
-
-  setJoinLoading(true);
-  clearModalMsg();
-
-  try {
-    const res = await fetch(`${API_BASE}/api/members/join`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, garmin_email: garminEmail, garmin_password: garminPassword }),
-    });
-    const data = await res.json();
-
-    // 2FA required
-    if (res.status === 202 && data.needs_mfa) {
-      _pendingMfaToken = data.mfa_token;
-      setJoinLoading(false);
-      goToStep('mfa');
-      setTimeout(() => document.getElementById('mfaCodeInput').focus(), 100);
-      return;
-    }
-
-    if (!res.ok) { showModalMsg(data.error || `Error ${res.status}`, 'error'); setJoinLoading(false); return; }
-
-    const member = data.member;
-    saveSession(member);
-    Object.keys(dataCache).forEach(k => delete dataCache[k]);
-    await loadData(currentPeriod);
-    showSuccessScreen(member, data.rejoined, 'garmin');
-    goToStep(3);
-  } catch(err) {
-    showModalMsg(`Could not reach the server. (${err.message})`, 'error');
-  } finally {
-    setJoinLoading(false);
-  }
-}
-
-async function submitMfa() {
-  const otp = document.getElementById('mfaCodeInput').value.trim();
-  if (!otp) { showModalMsg('Please enter the verification code.', 'error'); return; }
-  if (!_pendingMfaToken) { showModalMsg('Session expired — please start again.', 'error'); goToStep(1); return; }
-
-  const btn  = document.getElementById('mfaBtn');
-  const text = document.getElementById('mfaBtnText');
-  btn.disabled = true;
-  text.textContent = 'Verifying…';
-  clearModalMsg();
-
-  try {
-    const res = await fetch(`${API_BASE}/api/members/join/mfa`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mfa_token: _pendingMfaToken, otp_code: otp }),
-    });
-    const data = await res.json();
-
-    if (res.status === 410) {
-      // Session expired on server
-      _pendingMfaToken = null;
-      showModalMsg('Verification session expired — please log in again.', 'error');
-      goToStep(1);
-      return;
-    }
-    if (!res.ok) {
-      showModalMsg(data.error || `Error ${res.status}`, 'error');
-      document.getElementById('mfaCodeInput').value = '';
-      document.getElementById('mfaCodeInput').focus();
-      return;
-    }
-
-    _pendingMfaToken = null;
-    const member = data.member;
-    saveSession(member);
-    Object.keys(dataCache).forEach(k => delete dataCache[k]);
-    await loadData(currentPeriod);
-    showSuccessScreen(member, data.rejoined, 'garmin');
-    goToStep(3);
-  } catch(err) {
-    showModalMsg(`Could not reach the server. (${err.message})`, 'error');
-  } finally {
-    btn.disabled = false;
-    text.textContent = 'Verify & Join 🦦';
-  }
-}
+// (Garmin login removed — Strava only)
 
 // ── Handle Strava callback redirect ──────────────────────────────
 (function handleStravaCallback() {
@@ -2874,7 +2774,7 @@ async function submitMfa() {
   }
 })();
 
-function showSuccessScreen(member, rejoined = false, provider = 'garmin') {
+function showSuccessScreen(member, rejoined = false, provider = 'strava') {
   const providerLabel = provider === 'strava' ? 'Strava' : 'Garmin';
   document.getElementById('successTitle').textContent =
     rejoined ? `Welcome back, ${member.name.split(' ')[0]}!` : `You're in Fette Otter! 🦦`;
@@ -2893,14 +2793,6 @@ function showSuccessScreen(member, rejoined = false, provider = 'garmin') {
   document.getElementById('step3').style.display = 'block';
 }
 
-function setJoinLoading(loading) {
-  const btn  = document.getElementById('joinBtn');
-  const text = document.getElementById('joinBtnText');
-  btn.disabled = loading;
-  text.innerHTML = loading
-    ? '<div class="spinner"></div> Connecting to Garmin…'
-    : 'Join Fette Otter 🦦';
-}
 
 function showModalMsg(msg, type = 'info') {
   const el = document.getElementById('modalMsg');
