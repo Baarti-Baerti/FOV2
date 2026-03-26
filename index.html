@@ -1303,78 +1303,35 @@
     <div class="modal-header">
       <span class="modal-header-icon">🦦</span>
       <h2>Join Fette Otter</h2>
-      <p id="modalHeaderSub">Choose how to connect your fitness data</p>
+      <p id="modalHeaderSub">Connect your Strava account to join</p>
       <button class="modal-close" onclick="closeJoinModal()">✕</button>
     </div>
     <div class="modal-body">
 
       <div class="modal-msg" id="modalMsg"></div>
 
-      <!-- ── STEP 0: Provider choice ── -->
+
+
+      <!-- ── STEP 0: Name + Strava join ── -->
       <div id="step0">
         <div class="field">
           <label>Your name</label>
-          <input type="text" id="nameInput" placeholder="e.g. Alex Chen">
+          <input type="text" id="nameInput" placeholder="e.g. Alex Chen" onkeydown="if(event.key==='Enter') chooseProvider('strava')">
         </div>
-        <p style="font-size:1.02rem;color:var(--muted);font-weight:700;text-align:center;margin:18px 0 12px;text-transform:uppercase;letter-spacing:.06em">Connect via</p>
-        <div style="display:flex;flex-direction:column;gap:12px">
-          <button class="btn-provider btn-garmin" onclick="chooseProvider('garmin')">
-            <span style="font-size:1.3rem">⌚</span>
+        <div style="margin-top:20px">
+          <button class="btn-provider btn-strava" onclick="chooseProvider('strava')" style="width:100%;justify-content:center;gap:14px">
+            <span style="font-size:1.5rem">🟠</span>
             <div>
-              <div style="font-weight:900;font-size:1.06rem">Garmin Connect</div>
-              <div style="font-size:.84rem;opacity:.8">Use your Garmin email & password</div>
-            </div>
-          </button>
-          <button class="btn-provider btn-strava" onclick="chooseProvider('strava')">
-            <span style="font-size:1.3rem">🟠</span>
-            <div>
-              <div style="font-weight:900;font-size:1.06rem">Strava</div>
-              <div style="font-size:.84rem;opacity:.8">Redirect to Strava to authorise</div>
+              <div style="font-weight:900;font-size:1.06rem">Connect with Strava</div>
+              <div style="font-size:.84rem;opacity:.8">You'll be redirected to Strava to authorise</div>
             </div>
           </button>
         </div>
       </div>
 
-      <!-- ── STEP 1: Garmin credentials ── -->
-      <div id="step1" style="display:none">
-        <button onclick="goToStep(0)" style="background:none;border:none;color:var(--muted);font-size:.93rem;font-weight:700;cursor:pointer;margin-bottom:14px;padding:0">← Back</button>
-        <p style="font-size:.98rem;color:var(--text2);font-weight:600;margin-bottom:18px;line-height:1.5">
-          Enter your Garmin Connect credentials to join the leaderboard.
-        </p>
-        <div class="field">
-          <label>Garmin Connect email</label>
-          <input type="email" id="garminEmailInput" placeholder="you@example.com">
-        </div>
-        <div class="field">
-          <label>Garmin Connect password</label>
-          <input type="password" id="garminPasswordInput" placeholder="Your Garmin password">
-          <div class="field-hint">🔒 Sent directly to Garmin — never stored on our servers</div>
-        </div>
-        <button class="btn-primary" id="joinBtn" onclick="submitJoin()">
-          <span id="joinBtnText">Join Fette Otter 🦦</span>
-        </button>
-      </div>
-
-      <!-- ── STEP 1b: Garmin 2FA code ── -->
-      <div id="stepMfa" style="display:none">
-        <div style="text-align:center;margin-bottom:20px">
-          <div style="font-size:2rem;margin-bottom:8px">🔐</div>
-          <p style="font-weight:900;font-size:1rem;margin-bottom:6px">Two-factor authentication</p>
-          <p style="font-size:1.06rem;color:var(--muted);line-height:1.5">Garmin sent a verification code to your email or authenticator app. Enter it below.</p>
-        </div>
-        <div class="field">
-          <label>Verification code</label>
-          <input type="text" id="mfaCodeInput" placeholder="123456" maxlength="8"
-            style="letter-spacing:.2em;font-size:1.2rem;font-weight:900;text-align:center"
-            oninput="this.value=this.value.replace(/\D/g,'')"
-            onkeydown="if(event.key==='Enter') submitMfa()">
-          <div class="field-hint">Check your email or authenticator app for the code</div>
-        </div>
-        <button class="btn-primary" id="mfaBtn" onclick="submitMfa()">
-          <span id="mfaBtnText">Verify & Join 🦦</span>
-        </button>
-        <button onclick="goToStep(1);clearModalMsg()" style="background:none;border:none;color:var(--muted);font-size:.93rem;font-weight:700;cursor:pointer;margin-top:10px;width:100%;text-align:center;padding:4px">← Back to login</button>
-      </div>
+      <!-- hidden stubs so goToStep() doesn't break -->
+      <div id="step1"   style="display:none"></div>
+      <div id="stepMfa" style="display:none"></div>
 
       <!-- ── STEP 2: Strava pending (redirecting…) ── -->
       <div id="step2" style="display:none;text-align:center;padding:20px 0">
@@ -2748,19 +2705,13 @@ function chooseProvider(provider) {
     return;
   }
   clearModalMsg();
-  if (provider === 'garmin') {
-    document.getElementById('joinBtnText').textContent =
-      currentMember?.provider !== 'strava' ? 'Join Fette Otter 🦦' : 'Connect Garmin';
-    goToStep(1);
-  } else {
-    // Strava — redirect to backend OAuth
-    goToStep(2);
-    const params = new URLSearchParams({ name });
-    if (currentMember?.id) params.set('user_id', currentMember.id);
-    setTimeout(() => {
-      window.location.href = `${API_BASE}/api/strava/auth?${params}`;
-    }, 600);
-  }
+  // Strava only — redirect to backend OAuth
+  goToStep(2);
+  const params = new URLSearchParams({ name });
+  if (currentMember?.id) params.set('user_id', currentMember.id);
+  setTimeout(() => {
+    window.location.href = `${API_BASE}/api/strava/auth?${params}`;
+  }, 600);
 }
 
 // ── Submit join (Garmin) ──────────────────────────────────────────
