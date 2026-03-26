@@ -1,0 +1,2918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fette Otter Runners Challenge</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Nunito+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async></script>
+<style>
+  :root {
+    --bg:        #f0f4ff;
+    --bg2:       #e8eeff;
+    --surface:   #ffffff;
+    --surface2:  #f5f7ff;
+    --border:    #e2e8f8;
+    --shadow:    0 4px 20px rgba(99,102,241,0.08);
+    --shadow-lg: 0 8px 32px rgba(99,102,241,0.13);
+
+    /* Accent palette — cheerful & cohesive */
+    --pink:      #f472b6;
+    --violet:    #818cf8;
+    --sky:       #38bdf8;
+    --mint:      #34d399;
+    --amber:     #fbbf24;
+    --coral:     #fb7185;
+
+    --text:      #1e1b4b;
+    --text2:     #4c4a7a;
+    --muted:     #94a3b8;
+
+    --radius:    20px;
+    --radius-sm: 12px;
+    --radius-xs: 8px;
+  }
+
+  html { font-size: 18px; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Nunito Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Soft floating blob background */
+  body::before, body::after {
+    content: '';
+    position: fixed;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 0;
+    filter: blur(80px);
+    opacity: 0.35;
+  }
+  body::before {
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, #c7d2fe, #ddd6fe);
+    top: -200px; right: -100px;
+  }
+  body::after {
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, #bae6fd, #d9f99d);
+    bottom: -100px; left: -100px;
+  }
+
+  .everything { position: relative; z-index: 1; }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 36px;
+    background: rgba(255,255,255,0.82);
+    backdrop-filter: blur(16px);
+    border-bottom: 1.5px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 16px rgba(99,102,241,0.07);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .logo-bubble {
+    width: 44px; height: 44px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #818cf8, #c084fc);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.55rem;
+    box-shadow: 0 4px 12px rgba(129,140,248,0.4);
+  }
+  .logo-text {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 900;
+    font-size: 1.55rem;
+    color: var(--text);
+    line-height: 1;
+  }
+  .logo-sub {
+    font-size: 0.93rem;
+    color: var(--muted);
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    margin-top: 1px;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .live-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #dcfce7;
+    color: #16a34a;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 0.84rem;
+    padding: 5px 12px;
+    border-radius: 20px;
+  }
+  .live-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #22c55e;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.5)} }
+
+  #clock {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 0.98rem;
+    color: var(--text2);
+    background: var(--surface2);
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+  }
+
+  /* Week selector */
+  .week-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+  .week-group {
+    display: flex;
+    gap: 3px;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: 24px;
+    padding: 4px;
+  }
+  .week-group-label {
+    font-family: 'Nunito', sans-serif;
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    padding: 0 4px;
+    align-self: center;
+  }
+  .week-btn {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 0.84rem;
+    padding: 5px 14px;
+    border-radius: 20px;
+    border: none;
+    cursor: pointer;
+    background: transparent;
+    color: var(--muted);
+    transition: all 0.2s;
+  }
+  .week-btn.active {
+    background: var(--violet);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(129,140,248,0.4);
+  }
+
+  /* ── NAV TABS ── */
+  .nav-tabs {
+    display: flex;
+    gap: 6px;
+    padding: 14px 36px 0;
+    background: rgba(255,255,255,0.6);
+  }
+  .nav-tab {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 1.06rem;
+    padding: 10px 22px;
+    border: none;
+    border-radius: 16px 16px 0 0;
+    cursor: pointer;
+    background: var(--surface2);
+    color: var(--muted);
+    transition: all 0.2s;
+    border: 1.5px solid var(--border);
+    border-bottom: none;
+  }
+  .nav-tab:hover { color: var(--text2); background: var(--border); }
+  .nav-tab.active {
+    background: var(--surface);
+    color: var(--violet);
+    box-shadow: 0 -2px 12px rgba(129,140,248,0.12);
+    border-color: var(--border);
+  }
+
+  /* ── PAGE ── */
+  .page { display: none; }
+  .page.active {
+    display: block;
+    background: var(--surface);
+    border-radius: 0 20px 20px 20px;
+    margin: 0 36px 36px;
+    border: 1.5px solid var(--border);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+  }
+
+  /* ── HERO STATS ── */
+  .hero {
+    display: grid;
+    grid-template-columns: repeat(4,1fr);
+    gap: 0;
+    border-bottom: 1.5px solid var(--border);
+  }
+  .stat-card {
+    padding: 28px 24px;
+    position: relative;
+    overflow: hidden;
+    border-right: 1.5px solid var(--border);
+    transition: background 0.2s;
+  }
+  .stat-card:last-child { border-right: none; }
+  .stat-card:hover { background: var(--surface2); }
+  .stat-card-icon {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.32rem;
+    margin-bottom: 14px;
+  }
+  .stat-card.s-violet .stat-card-icon { background: #ede9fe; }
+  .stat-card.s-pink   .stat-card-icon { background: #fce7f3; }
+  .stat-card.s-sky    .stat-card-icon { background: #e0f2fe; }
+  .stat-card.s-mint   .stat-card-icon { background: #d1fae5; }
+  .stat-label {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 0.93rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .stat-value {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 900;
+    font-size: 2.85rem;
+    line-height: 1;
+  }
+  .stat-card.s-violet .stat-value { color: #7c3aed; }
+  .stat-card.s-pink   .stat-value { color: #db2777; }
+  .stat-card.s-sky    .stat-value { color: #0284c7; }
+  .stat-card.s-mint   .stat-value { color: #059669; }
+  .stat-sub { font-size: 1.02rem; color: var(--muted); margin-top: 4px; font-weight: 500; }
+  .stat-delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 1.06rem;
+    padding: 3px 9px;
+    border-radius: 20px;
+    margin-top: 10px;
+  }
+  .delta-up   { background: #dcfce7; color: #16a34a; }
+  .delta-down { background: #fee2e2; color: #dc2626; }
+  .delta-neu  { background: #ede9fe; color: #7c3aed; }
+
+  /* ── PANEL ── */
+  .panel {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .panel-header {
+    padding: 18px 22px;
+    border-bottom: 1.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    background: var(--surface2);
+  }
+  .panel-title {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 1.32rem;
+    color: var(--text);
+  }
+  .panel-badge {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 0.93rem;
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: var(--bg2);
+    color: var(--text2);
+    border: 1.5px solid var(--border);
+  }
+
+  /* ── MAIN GRID ── */
+  .main-grid {
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 20px;
+  }
+
+  /* ── LEADERBOARD ── */
+  .lb-row {
+    display: grid;
+    grid-template-columns: 38px 40px 1fr 76px 76px 76px 76px;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 22px;
+    border-bottom: 1.5px solid var(--border);
+    transition: background 0.15s;
+    cursor: pointer;
+  }
+  .lb-row:hover { background: var(--surface2); }
+  .lb-row.active-user {
+    background: linear-gradient(90deg, #ede9fe33, transparent);
+    border-left: 3px solid var(--violet);
+  }
+  .lb-row:last-child { border-bottom: none; }
+
+  .rank {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 900;
+    font-size: 1.32rem;
+    color: var(--muted);
+    text-align: center;
+  }
+  .rank.top1 { color: #f59e0b; }
+  .rank.top2 { color: #94a3b8; }
+  .rank.top3 { color: #d97706; }
+
+  .avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.38rem; flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+
+  .user-name { font-family: 'Nunito', sans-serif; font-size: 1.02rem; font-weight: 700; }
+  .user-sub { font-size: 1.06rem; color: var(--muted); margin-top: 1px; font-weight: 500; }
+  .lb-metric { text-align: right; }
+  .lb-metric-val { font-family: 'Nunito', sans-serif; font-size: 0.98rem; font-weight: 800; }
+  .lb-metric-lbl { font-size: 0.84rem; color: var(--muted); margin-top: 1px; font-weight: 600; }
+  .bar-wrap { background: var(--bg2); border-radius: 8px; height: 6px; margin-top: 6px; }
+  .bar-fill { height: 100%; border-radius: 8px; transition: width 1s cubic-bezier(.22,1,.36,1); }
+
+  /* ── METRIC TABS ── */
+  .metric-tabs { display:flex; gap:4px; padding:4px; background:var(--bg2); border-radius:20px; border:1.5px solid var(--border); }
+  .mtab {
+    font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 1.06rem;
+    padding: 5px 13px; border-radius: 16px; border: none;
+    cursor: pointer; background: transparent; color: var(--muted);
+    transition: all 0.2s; white-space: nowrap;
+  }
+  .mtab.active { background: var(--violet); color: #fff; box-shadow: 0 2px 8px rgba(129,140,248,0.35); }
+
+  /* ── RIGHT COL ── */
+  .right-col { display: flex; flex-direction: column; gap: 16px; }
+  .user-detail { padding: 22px; }
+  .detail-avatar {
+    width: 60px; height: 60px; border-radius: 18px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.95rem; margin-bottom: 14px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+  }
+  .detail-name { font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 1.55rem; line-height: 1; color: var(--text); }
+  .detail-role { font-size: 0.84rem; color: var(--muted); margin-bottom: 18px; margin-top: 3px; font-weight: 600; }
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .detail-item {
+    background: var(--surface2);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    border: 1.5px solid var(--border);
+  }
+  .detail-item-lbl { font-size: 0.73rem; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; font-weight: 700; }
+  .detail-item-val { font-family: 'Nunito', sans-serif; font-size: 1.55rem; font-weight: 900; line-height: 1; }
+
+  .week-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 5px; margin-top: 16px; }
+  .day-cell {
+    aspect-ratio: 1; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.76rem; color: var(--muted);
+    flex-direction: column; gap: 3px; font-weight: 700;
+  }
+  .day-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* Workout type pills */
+  .workout-types { display: flex; flex-wrap: wrap; gap: 7px; padding: 16px 22px 20px; }
+  .wtype {
+    font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 0.84rem;
+    padding: 5px 13px; border-radius: 20px;
+    border: 1.5px solid var(--border); color: var(--muted);
+    background: var(--surface2); transition: all 0.2s;
+    cursor: default;
+  }
+  .wtype.active-type {
+    border-color: var(--violet); color: var(--violet);
+    background: #ede9fe;
+  }
+
+  /* ── Admin controls ── */
+  .trash-btn {
+    background: none; border: none; cursor: pointer;
+    font-size: .95rem; padding: 4px 6px; border-radius: 6px;
+    opacity: 0; transition: opacity .15s, background .15s;
+    line-height: 1;
+  }
+  tr:hover .trash-btn { opacity: 1; }
+  .trash-btn:hover { background: #fee2e2; }
+  .btn-danger {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: #fff; border: none; border-radius: var(--radius-sm);
+    padding: 11px 20px; font-family: 'Nunito', sans-serif;
+    font-size: .88rem; font-weight: 800; cursor: pointer;
+    transition: opacity .15s;
+  }
+  .btn-danger:hover { opacity: .88; }
+  .btn-secondary {
+    background: var(--surface2); color: var(--text);
+    border: 2px solid var(--border); border-radius: var(--radius-sm);
+    padding: 11px 20px; font-family: 'Nunito', sans-serif;
+    font-size: .88rem; font-weight: 800; cursor: pointer;
+    transition: background .15s;
+  }
+  .btn-secondary:hover { background: var(--border); }
+
+  /* ── Monthly Progress Page ── */
+  .mp-charts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 900px) { .mp-charts { grid-template-columns: 1fr; } }
+  .mp-chart-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 14px 10px; }
+  .mp-chart-title { font-size: .72rem; font-weight: 900; color: var(--text2); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+
+  /* ── Provider badge ── */
+  .pts-table { width:100%; border-collapse:collapse; margin-bottom:28px; }
+  .pts-table th {
+    font-family:'Nunito',sans-serif; font-size:0.72rem; font-weight:800;
+    color:var(--muted); text-transform:uppercase; letter-spacing:.06em;
+    padding:0 10px 10px; text-align:center; white-space:nowrap;
+  }
+  .pts-table th:first-child { text-align:left; padding-left:0; }
+  .pts-table td {
+    padding:8px 10px; font-family:'Nunito',sans-serif;
+    font-size:0.8rem; font-weight:700; text-align:center;
+    border-top:1px solid var(--border);
+  }
+  .pts-table td:first-child { text-align:left; padding-left:0; }
+  .pts-table tr:hover td { background:var(--surface2); }
+
+  .pts-dot { display:inline-block; width:10px; height:10px; border-radius:50%; }
+  .pts-total {
+    font-family:'Nunito',sans-serif; font-size:1rem;
+    font-weight:900; color:var(--violet);
+  }
+  .pts-rule-header {
+    font-size:0.62rem; color:var(--muted); font-weight:700;
+    margin-bottom:4px;
+  }
+
+  /* ── Winners podium ── */
+  .podium-wrap {
+    display:flex; align-items:flex-end; justify-content:center;
+    gap:12px; padding:10px 0 20px;
+  }
+  .podium-place { display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .podium-avatar {
+    width:52px; height:52px; border-radius:16px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:1.6rem; position:relative;
+  }
+  .podium-avatar.p1 { width:64px; height:64px; border-radius:20px; font-size:2rem; }
+  .podium-crown { position:absolute; top:-14px; font-size:1.1rem; }
+  .podium-name {
+    font-family:'Nunito',sans-serif; font-weight:800;
+    font-size:0.78rem; color:var(--text);
+  }
+  .podium-pts {
+    font-family:'Nunito',sans-serif; font-weight:900;
+    font-size:0.72rem; color:var(--muted);
+  }
+  .podium-block {
+    border-radius:12px 12px 0 0;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Nunito',sans-serif; font-weight:900;
+    font-size:1.1rem; color:#fff; width:72px;
+  }
+  .podium-block.p1 { height:80px; background:linear-gradient(135deg,#f59e0b,#fbbf24); width:84px; }
+  .podium-block.p2 { height:56px; background:linear-gradient(135deg,#64748b,#94a3b8); }
+  .podium-block.p3 { height:40px; background:linear-gradient(135deg,#92400e,#b45309); }
+
+  /* ── Leaderboard table ── */
+  .lb-scroll { overflow-x: auto; }
+  .lb-table { width: 100%; border-collapse: collapse; }
+  .lb-table th {
+    font-family: 'Nunito', sans-serif;
+    font-size: 0.84rem; font-weight: 800;
+    color: var(--muted); text-transform: uppercase;
+    letter-spacing: .06em; padding: 0 8px 10px;
+    text-align: center; white-space: nowrap;
+    cursor: pointer; user-select: none;
+    vertical-align: bottom;
+  }
+  .lb-table th:first-child { text-align: left; padding-left: 0; min-width: 160px; }
+  .lb-table th.sort-active { color: var(--violet); }
+  .lb-table td {
+    padding: 8px 8px; font-family: 'Nunito', sans-serif;
+    font-size: 1.02rem; font-weight: 800;
+    text-align: center; white-space: nowrap;
+    border-top: 1px solid var(--border);
+  }
+  .lb-table td:first-child { text-align: left; padding-left: 0; }
+  .lb-table tr { cursor: pointer; transition: background 0.15s; }
+  .lb-table tr:hover td { background: var(--surface2); }
+  .lb-table tr.lb-active td { background: var(--bg2); }
+  .lb-table tr.lb-active td:first-child { border-left: 3px solid var(--violet); padding-left: 5px; }
+  .lb-rank {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; border-radius: 7px;
+    font-size: 0.93rem; font-weight: 900;
+    background: var(--surface2); color: var(--muted);
+    margin-right: 6px; flex-shrink: 0;
+  }
+  .lb-rank.top1 { background: #fef3c7; color: #b45309; }
+  .lb-rank.top2 { background: #f1f5f9; color: #475569; }
+  .lb-rank.top3 { background: #fdf4ff; color: #9333ea; }
+  .lb-user-cell { display: flex; align-items: center; gap: 6px; }
+  .lb-avatar-sm {
+    width: 56px; height: 56px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2rem; flex-shrink: 0;
+  }
+  .lb-name { font-size: 1.06rem; font-weight: 800; color: var(--text); }
+  .lb-device { font-size: 0.84rem; font-weight: 600; color: var(--muted); }
+  .lb-zero { color: #cbd5e1 !important; font-weight: 600 !important; }
+  .lb-sort-col { color: var(--violet) !important; }
+
+  /* ── BOTTOM ROW ── */
+  .bottom-row { padding: 0 24px 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .compare-chart { padding: 20px 22px; }
+  .compare-row {
+    display: grid; grid-template-columns: 76px 1fr 76px;
+    align-items: center; gap: 10px; margin-bottom: 12px;
+  }
+  .compare-row:last-of-type { margin-bottom: 0; }
+  .cname { font-size: 1.02rem; font-weight: 700; color: var(--text2); }
+  .cbar-wrap { background: var(--bg2); border-radius: 8px; height: 8px; overflow: hidden; }
+  .cbar { height: 100%; border-radius: 8px; transition: width 1.2s cubic-bezier(.22,1,.36,1); }
+  .cval { font-size: 0.84rem; color: var(--muted); text-align: right; font-weight: 600; }
+  .rings-container { display:flex; justify-content:space-around; align-items:center; padding:20px 22px; flex-wrap:wrap; gap:14px; }
+  .ring-item { text-align: center; }
+  .ring-svg { display: block; margin: 0 auto 5px; }
+  .ring-name { font-size: 0.87rem; font-weight: 700; color: var(--text2); }
+  .ring-val { font-size: 0.76rem; color: var(--muted); font-weight: 600; }
+
+  /* ══════════════════════════
+     MONTHLY PAGE
+  ══════════════════════════ */
+  .monthly-page { padding: 28px; }
+
+  .month-strip { display:flex; gap:6px; margin-bottom:24px; overflow-x:auto; padding-bottom:4px; }
+  .month-strip::-webkit-scrollbar { height: 4px; }
+  .month-strip::-webkit-scrollbar-track { background: var(--surface2); border-radius: 2px; }
+  .month-strip::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .month-pill {
+    font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 0.84rem;
+    padding: 7px 16px; border-radius: 20px;
+    border: 1.5px solid var(--border); background: var(--surface);
+    color: var(--muted); cursor: pointer; white-space: nowrap;
+    transition: all 0.2s; flex-shrink: 0;
+  }
+  .month-pill:hover { border-color: var(--violet); color: var(--violet); }
+  .month-pill.active { background: var(--violet); color: #fff; border-color: var(--violet); box-shadow: 0 3px 10px rgba(129,140,248,0.35); }
+
+  .monthly-hero { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:22px; }
+  .mhero-card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px;
+    box-shadow: var(--shadow);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .mhero-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+  .mhero-icon {
+    width: 42px; height: 42px; border-radius: 13px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.38rem; margin-bottom: 14px;
+  }
+  .mhero-card.s-violet .mhero-icon { background: #ede9fe; }
+  .mhero-card.s-pink   .mhero-icon { background: #fce7f3; }
+  .mhero-card.s-sky    .mhero-icon { background: #e0f2fe; }
+  .mhero-card.s-mint   .mhero-icon { background: #d1fae5; }
+
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:22px; }
+
+  .chart-area { padding: 18px 22px 14px; }
+  .chart-legend { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  .legend-item { display:flex; align-items:center; gap:5px; font-size:0.65rem; color:var(--muted); font-weight:600; }
+  .legend-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+  .user-month-cards { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; padding:18px; }
+  .user-month-card {
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    transition: all 0.2s; cursor: pointer;
+  }
+  .user-month-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: #c7d2fe; }
+  .user-month-card.selected-card { border-color: var(--violet); background: #faf5ff; box-shadow: 0 0 0 3px rgba(129,140,248,0.2); }
+  .umc-top { display:flex; align-items:center; gap:10px; margin-bottom:13px; }
+  .umc-avatar { width:34px; height:34px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-size:1.1rem; box-shadow:0 2px 8px rgba(0,0,0,0.08); }
+  .umc-name { font-family:'Nunito',sans-serif; font-size:0.85rem; font-weight:800; line-height:1.2; }
+  .umc-role { font-size:0.63rem; color:var(--muted); font-weight:600; }
+  .umc-stats { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+  .umc-stat-val { font-family:'Nunito',sans-serif; font-size:1.2rem; font-weight:900; line-height:1; }
+  .umc-stat-lbl { font-size:0.58rem; color:var(--muted); text-transform:uppercase; font-weight:700; letter-spacing:0.06em; }
+  .umc-bar-wrap { height:4px; background:var(--border); border-radius:4px; margin-top:11px; }
+  .umc-bar { height:100%; border-radius:4px; }
+
+  .month-compare { padding:18px 22px; }
+  .mc-row { margin-bottom:16px; }
+  .mc-row:last-child { margin-bottom:0; }
+  .mc-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:7px; flex-wrap:wrap; gap:4px; }
+  .mc-name { font-size:0.82rem; font-weight:700; }
+  .mc-vals { font-size:0.68rem; color:var(--muted); display:flex; gap:12px; font-weight:600; }
+  .mc-bar-track { background:var(--bg2); border-radius:8px; height:10px; overflow:hidden; }
+  .mc-bar-fill { height:100%; border-radius:8px; transition:width 1s cubic-bezier(.22,1,.36,1); }
+
+  .year-hm-wrap { padding:16px 22px 18px; overflow-x:auto; }
+  .year-hm-grid { display:grid; grid-template-columns:repeat(12,1fr); gap:6px; min-width:580px; }
+  .month-col { cursor:pointer; }
+  .month-col-label { font-size:0.62rem; color:var(--muted); text-align:center; margin-bottom:5px; font-weight:700; }
+  .month-col-bar-wrap { height:80px; display:flex; align-items:flex-end; }
+  .month-col-bar { width:100%; border-radius:6px 6px 0 0; min-height:4px; transition:opacity 0.2s; }
+  .month-col-val { font-size:0.58rem; color:var(--muted); text-align:center; margin-top:4px; font-weight:600; }
+
+  .heatmap-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; padding:16px 22px 20px; }
+  .hm-cell {
+    aspect-ratio:1; border-radius:9px;
+    display:flex; flex-direction:column; align-items:center;
+    justify-content:center; font-size:0.55rem; color:var(--muted); gap:2px;
+    transition:transform 0.15s; cursor:default; font-weight:600;
+  }
+  .hm-cell:hover { transform:scale(1.12); }
+  .hm-day-num { font-size:0.6rem; font-weight:700; }
+
+  .badge-row { display:flex; gap:8px; flex-wrap:wrap; padding:16px 22px 20px; }
+  .badge {
+    display:flex; align-items:center; gap:9px;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: 14px; padding:10px 15px;
+    transition: all 0.2s; cursor:default;
+  }
+  .badge:hover { border-color:#c7d2fe; background:#ede9fe22; transform:translateY(-1px); box-shadow:var(--shadow); }
+  .badge-icon { font-size:1.35rem; }
+  .badge-name { font-family:'Nunito',sans-serif; font-size:0.8rem; font-weight:800; }
+  .badge-desc { font-size:0.63rem; color:var(--muted); margin-top:1px; font-weight:600; }
+
+  .trend-svg { overflow:visible; display:block; }
+  .grid-line { stroke: #e2e8f8; stroke-width:1; }
+  .axis-label { font-family:'Nunito Sans',sans-serif; font-size:10px; fill:#94a3b8; font-weight:600; }
+
+  .fade-in { animation: fadeUp 0.45s ease both; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+
+  /* Divider label */
+  .section-label {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 1.06rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 0 22px 10px;
+    margin-top: 6px;
+    display: block;
+  }
+
+  /* ══ RESPONSIVE — tablet ══ */
+  @media (max-width:1100px){
+    .hero,.monthly-hero { grid-template-columns: repeat(2,1fr); }
+    .main-grid,.two-col,.bottom-row { grid-template-columns: 1fr; }
+    .user-month-cards { grid-template-columns: repeat(2,1fr); }
+    .page { margin: 0 16px 16px; }
+    .monthly-page,.main-grid,.bottom-row { padding: 16px; }
+    header { padding: 14px 20px; }
+    .nav-tabs { padding: 12px 20px 0; }
+    .mp-charts { grid-template-columns: 1fr 1fr; }
+  }
+
+  /* ══ RESPONSIVE — mobile ══ */
+  @media (max-width:640px){
+    html { font-size: 15px; }
+
+    /* Header */
+    header {
+      padding: 10px 14px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .logo-text { font-size: 1.25rem; }
+    .logo-sub  { font-size: 0.72rem; }
+    .logo-bubble { width: 36px; height: 36px; font-size: 1.2rem; }
+    .header-right { gap: 8px; }
+    #clock { display: none; }
+    .live-pill { font-size: 0.72rem; padding: 4px 8px; }
+
+    /* Nav tabs — scrollable row */
+    .nav-tabs {
+      padding: 8px 10px 0;
+      gap: 4px;
+      overflow-x: auto;
+      flex-wrap: nowrap;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .nav-tabs::-webkit-scrollbar { display: none; }
+    .nav-tab {
+      font-size: 0.84rem;
+      padding: 8px 14px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* Page wrapper */
+    .page { margin: 0 8px 12px; border-radius: 0 12px 12px 12px; }
+    .page.active { border-radius: 0 12px 12px 12px; }
+
+    /* Hero stats — 2 col on mobile */
+    .hero {
+      grid-template-columns: 1fr 1fr;
+    }
+    .hero .stat-card { padding: 16px 14px; border-right: none; border-bottom: 1.5px solid var(--border); }
+    .hero .stat-card:nth-child(odd)  { border-right: 1.5px solid var(--border); }
+    .hero .stat-card:nth-child(3),
+    .hero .stat-card:nth-child(4)    { border-bottom: none; }
+    .stat-value { font-size: 2rem; }
+    .stat-card-icon { width: 32px; height: 32px; font-size: 1.1rem; margin-bottom: 10px; }
+
+    /* Period selector — scrollable */
+    .week-selector {
+      overflow-x: auto;
+      flex-wrap: nowrap;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      padding-bottom: 4px;
+      gap: 4px;
+    }
+    .week-selector::-webkit-scrollbar { display: none; }
+    .week-group-label { display: none; }
+    .week-btn { font-size: 0.72rem; padding: 4px 10px; }
+
+    /* Details page */
+    #page-details > div:first-child { padding: 10px 12px 0; }
+    #page-details > div:last-child  { padding: 0 8px 12px; }
+
+    /* Leaderboard table — horizontal scroll */
+    .lb-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .lb-table th { font-size: 0.68rem; padding: 0 6px 8px; }
+    .lb-table td { font-size: 0.84rem; padding: 7px 6px; }
+    .lb-table th:first-child { min-width: 120px; }
+    .lb-name { font-size: 0.88rem; }
+    .lb-avatar-sm { width: 44px; height: 44px; font-size: 1.6rem; border-radius: 11px; }
+    .lb-rank { width: 18px; height: 18px; font-size: 0.78rem; }
+
+    /* Detail callout */
+    .main-grid { padding: 10px; gap: 12px; }
+    .detail-grid { grid-template-columns: 1fr 1fr; }
+    .detail-item-val { font-size: 1.25rem; }
+    .detail-name { font-size: 1.25rem; }
+
+    /* Points table — horizontal scroll */
+    .panel { border-radius: 14px; }
+    #page-points .panel { margin: 10px 8px; }
+    .points-panel { margin: 24px; }
+    #pointsContent { padding: 0 10px 14px !important; overflow-x: auto; }
+    .pts-table th { font-size: 0.62rem; padding: 0 7px 8px; }
+    .pts-table td { font-size: 0.72rem; padding: 7px 7px; }
+
+    /* Bottom row */
+    .bottom-row { padding: 0 8px 12px; gap: 12px; }
+    .compare-chart { padding: 14px; }
+
+    /* Monthly page */
+    .monthly-page { padding: 12px 10px; }
+    .monthly-hero { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+    .mhero-card { padding: 14px; }
+    .mhero-icon { width: 34px; height: 34px; font-size: 1.1rem; margin-bottom: 10px; }
+    .two-col { grid-template-columns: 1fr; gap: 10px; }
+    .mp-charts { grid-template-columns: 1fr; }
+    .user-month-cards { grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px 10px; }
+
+    /* Podium */
+    .podium-wrap { gap: 8px; }
+    .podium-avatar { width: 42px; height: 42px; font-size: 1.3rem; }
+    .podium-avatar.p1 { width: 52px; height: 52px; font-size: 1.6rem; }
+    .podium-block { width: 58px; }
+    .podium-block.p1 { width: 68px; }
+    .podium-name { font-size: 0.68rem; }
+
+    /* Join FAB — smaller on mobile */
+    .join-fab {
+      bottom: 16px; right: 16px;
+      padding: 11px 18px;
+      font-size: 0.88rem;
+    }
+
+    /* Modal */
+    .modal-box { max-width: calc(100vw - 24px); border-radius: 20px; }
+    .modal-header { padding: 22px 20px 18px; }
+    .modal-body { padding: 18px 20px 22px; }
+    .modal-header h2 { font-size: 1.25rem; }
+
+    /* Rings — smaller */
+    .rings-container { padding: 14px; gap: 10px; }
+    .ring-name { font-size: 0.75rem; }
+
+    /* Section label */
+    .section-label { padding: 0 14px 8px; font-size: 0.88rem; }
+
+    /* Panel header */
+    .panel-header { padding: 12px 14px; }
+    .panel-title { font-size: 1.1rem; }
+  }
+
+  /* ══ Extra small — very narrow phones ══ */
+  @media (max-width:380px){
+    html { font-size: 13px; }
+    .hero { grid-template-columns: 1fr 1fr; }
+    .monthly-hero { grid-template-columns: 1fr 1fr; }
+    .user-month-cards { grid-template-columns: 1fr; }
+  }
+
+  /* ── JOIN FAB ── */
+  .join-fab {
+    position: fixed;
+    bottom: 32px; right: 32px;
+    z-index: 500;
+    background: linear-gradient(135deg, #818cf8, #c084fc);
+    color: #fff;
+    border: none; border-radius: 28px;
+    padding: 14px 24px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800; font-size: 1.02rem;
+    cursor: pointer;
+    box-shadow: 0 6px 24px rgba(129,140,248,0.45);
+    display: flex; align-items: center; gap: 8px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    white-space: nowrap;
+  }
+  .join-fab:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 32px rgba(129,140,248,0.55);
+  }
+  .join-fab .fab-icon { font-size: 1.32rem; }
+
+  /* ── MODAL OVERLAY ── */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0; z-index: 600;
+    background: rgba(30,27,75,0.45);
+    backdrop-filter: blur(6px);
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal-box {
+    background: var(--surface);
+    border-radius: 28px;
+    padding: 0;
+    width: 100%; max-width: 440px;
+    box-shadow: 0 24px 64px rgba(30,27,75,0.22);
+    overflow: hidden;
+    animation: modalPop 0.3s cubic-bezier(.34,1.56,.64,1) both;
+  }
+  @keyframes modalPop {
+    from { opacity:0; transform:scale(0.88) translateY(20px); }
+    to   { opacity:1; transform:scale(1) translateY(0); }
+  }
+
+  .modal-header {
+    background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
+    padding: 32px 32px 28px;
+    text-align: center;
+    position: relative;
+  }
+  .modal-header-icon {
+    font-size: 2.8rem;
+    margin-bottom: 10px;
+    display: block;
+  }
+  .modal-header h2 {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 900; font-size: 1.5rem;
+    color: #fff; margin-bottom: 4px;
+  }
+  .modal-header p {
+    font-size: 1.06rem; color: rgba(255,255,255,0.8);
+    font-weight: 600;
+  }
+  .modal-close {
+    position: absolute; top: 14px; right: 16px;
+    background: rgba(255,255,255,0.2);
+    border: none; border-radius: 50%;
+    width: 32px; height: 32px;
+    font-size: 1.32rem; color: #fff;
+    cursor: pointer; display: flex;
+    align-items: center; justify-content: center;
+    transition: background 0.2s;
+  }
+  .modal-close:hover { background: rgba(255,255,255,0.35); }
+
+  .modal-body { padding: 28px 32px 32px; }
+
+  /* Steps */
+  .steps-indicator {
+    display: flex; align-items: center;
+    gap: 0; margin-bottom: 24px;
+  }
+  .step-dot {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Nunito', sans-serif; font-weight: 800;
+    font-size: 0.87rem; flex-shrink: 0;
+    transition: all 0.3s;
+    background: var(--bg2); color: var(--muted);
+    border: 2px solid var(--border);
+  }
+  .step-dot.active { background: var(--violet); color: #fff; border-color: var(--violet); }
+  .step-dot.done   { background: #22c55e; color: #fff; border-color: #22c55e; }
+  .step-line {
+    flex: 1; height: 2px;
+    background: var(--border); transition: background 0.3s;
+  }
+  .step-line.done { background: #22c55e; }
+
+  /* Google profile preview (step 2) */
+  .google-user-card {
+    display: flex; align-items: center; gap: 12px;
+    background: #f0fdf4;
+    border: 1.5px solid #bbf7d0;
+    border-radius: 14px; padding: 12px 16px;
+    margin-bottom: 18px;
+  }
+  .google-user-card img {
+    width: 40px; height: 40px; border-radius: 50%;
+    object-fit: cover;
+  }
+  .google-user-card .guc-name { font-weight: 800; font-size: 1.0rem; }
+  .google-user-card .guc-email { font-size: 0.84rem; color: var(--muted); font-weight: 600; }
+  .guc-check { margin-left:auto; font-size: 1.32rem; }
+
+  /* Form fields */
+  .btn-provider {
+    display: flex; align-items: center; gap: 14px;
+    width: 100%; padding: 16px 20px; border-radius: var(--radius-sm);
+    border: 2px solid var(--border); cursor: pointer;
+    font-family: 'Nunito', sans-serif; text-align: left;
+    transition: all 0.2s; background: var(--surface);
+  }
+  .btn-provider:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+  .btn-garmin { border-color: #0ea5e9; color: #0369a1; }
+  .btn-garmin:hover { background: #f0f9ff; border-color: #0369a1; }
+  .btn-strava { border-color: #f97316; color: #c2410c; }
+  .btn-strava:hover { background: #fff7ed; border-color: #c2410c; }
+
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700; font-size: 0.84rem;
+    color: var(--text2);
+    letter-spacing: 0.04em; text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  .field input {
+    width: 100%; padding: 11px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    font-family: 'Nunito Sans', sans-serif;
+    font-size: 1.02rem; color: var(--text);
+    background: var(--surface2);
+    outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .field input:focus {
+    border-color: var(--violet);
+    box-shadow: 0 0 0 3px rgba(129,140,248,0.15);
+    background: #fff;
+  }
+  .field input::placeholder { color: var(--muted); }
+
+  .field-hint {
+    font-size: 0.93rem; color: var(--muted);
+    font-weight: 600; margin-top: 4px;
+  }
+
+  /* Buttons */
+  .btn-primary {
+    width: 100%; padding: 13px;
+    border: none; border-radius: 14px;
+    background: linear-gradient(135deg, #818cf8, #c084fc);
+    color: #fff; font-family: 'Nunito', sans-serif;
+    font-weight: 800; font-size: 1.02rem;
+    cursor: pointer; transition: all 0.2s;
+    box-shadow: 0 4px 14px rgba(129,140,248,0.35);
+    display: flex; align-items: center;
+    justify-content: center; gap: 8px;
+    margin-top: 8px;
+  }
+  .btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(129,140,248,0.45);
+  }
+  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+  .btn-google {
+    width: 100%; padding: 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    background: #fff; color: var(--text);
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700; font-size: 1.0rem;
+    cursor: pointer; transition: all 0.2s;
+    display: flex; align-items: center;
+    justify-content: center; gap: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .btn-google:hover {
+    border-color: #818cf8;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+  }
+  .btn-google svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+  /* Error/success messages */
+  .modal-msg {
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 1.02rem; font-weight: 700;
+    margin-bottom: 14px;
+    display: none;
+  }
+  .modal-msg.error   { background: #fee2e2; color: #b91c1c; display: block; }
+  .modal-msg.success { background: #dcfce7; color: #15803d; display: block; }
+  .modal-msg.info    { background: #ede9fe; color: #7c3aed; display: block; }
+
+  /* Success screen */
+  .success-screen {
+    text-align: center; padding: 20px 0 8px;
+    display: none;
+  }
+  .success-screen .success-emoji { font-size: 3.5rem; margin-bottom: 12px; display: block; }
+  .success-screen h3 {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 900; font-size: 1.3rem;
+    color: var(--text); margin-bottom: 6px;
+  }
+  .success-screen p { font-size: 1.06rem; color: var(--muted); font-weight: 600; }
+  .new-member-preview {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: 16px; padding: 14px 18px;
+    margin: 18px 0; text-align: left;
+  }
+  .nmp-avatar {
+    width: 44px; height: 44px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.55rem; flex-shrink: 0;
+  }
+  .nmp-name  { font-family:'Nunito',sans-serif; font-weight:800; font-size:0.95rem; }
+  .nmp-role  { font-size:0.7rem; color:var(--muted); font-weight:600; margin-top:1px; }
+
+  .details-selector-bar {
+    padding: 16px 24px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .details-content {
+    padding: 0 24px 24px;
+  }
+
+  @media (max-width: 640px) {
+    .details-selector-bar { padding: 10px 10px 0; }
+    .details-content { padding: 0 8px 12px; }
+  }
+
+  /* Loading spinner */
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Current user chip in header */
+  .current-user-chip {
+    display: none;
+    align-items: center; gap: 8px;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: 24px;
+    padding: 5px 14px 5px 6px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700; font-size: 1.02rem;
+    color: var(--text2);
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .current-user-chip:hover { border-color: var(--violet); }
+  .current-user-chip.visible { display: flex; }
+  .chip-avatar {
+    width: 26px; height: 26px; border-radius: 50%;
+    object-fit: cover;
+  }
+  .chip-avatar-emoji {
+    width: 26px; height: 26px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.02rem;
+  }
+</style>
+</head>
+<body>
+<div class="everything">
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-bubble" style="overflow:hidden;padding:0">
+      <!-- Fat Otter SVG -->
+      <svg viewBox="0 0 44 44" width="44" height="44" xmlns="http://www.w3.org/2000/svg">
+        <!-- gradient background -->
+        <defs>
+          <radialGradient id="bg" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#a78bfa"/>
+            <stop offset="100%" stop-color="#7c3aed"/>
+          </radialGradient>
+        </defs>
+        <rect width="44" height="44" rx="14" fill="url(#bg)"/>
+        <!-- body - round chubby otter -->
+        <ellipse cx="22" cy="28" rx="13" ry="11" fill="#c4853a"/>
+        <!-- belly -->
+        <ellipse cx="22" cy="29" rx="8" ry="7" fill="#e8b87a"/>
+        <!-- head -->
+        <circle cx="22" cy="17" r="10" fill="#c4853a"/>
+        <!-- face light area -->
+        <ellipse cx="22" cy="19" rx="6" ry="5" fill="#e8b87a"/>
+        <!-- ears -->
+        <circle cx="13" cy="10" r="3.5" fill="#c4853a"/>
+        <circle cx="31" cy="10" r="3.5" fill="#c4853a"/>
+        <circle cx="13" cy="10" r="2" fill="#a06028"/>
+        <circle cx="31" cy="10" r="2" fill="#a06028"/>
+        <!-- eyes -->
+        <circle cx="18.5" cy="16" r="2.2" fill="#1a0a00"/>
+        <circle cx="25.5" cy="16" r="2.2" fill="#1a0a00"/>
+        <circle cx="19.2" cy="15.3" r="0.7" fill="#fff"/>
+        <circle cx="26.2" cy="15.3" r="0.7" fill="#fff"/>
+        <!-- nose -->
+        <ellipse cx="22" cy="19.5" rx="2" ry="1.3" fill="#5a2d0a"/>
+        <!-- mouth smile -->
+        <path d="M19.5 21.5 Q22 23.5 24.5 21.5" stroke="#5a2d0a" stroke-width="1" fill="none" stroke-linecap="round"/>
+        <!-- whiskers -->
+        <line x1="24" y1="19.5" x2="30" y2="18.5" stroke="#5a2d0a" stroke-width="0.6" stroke-linecap="round"/>
+        <line x1="24" y1="20.5" x2="30" y2="20.5" stroke="#5a2d0a" stroke-width="0.6" stroke-linecap="round"/>
+        <line x1="20" y1="19.5" x2="14" y2="18.5" stroke="#5a2d0a" stroke-width="0.6" stroke-linecap="round"/>
+        <line x1="20" y1="20.5" x2="14" y2="20.5" stroke="#5a2d0a" stroke-width="0.6" stroke-linecap="round"/>
+        <!-- arms/flippers -->
+        <ellipse cx="10" cy="29" rx="4" ry="2.5" fill="#c4853a" transform="rotate(-20 10 29)"/>
+        <ellipse cx="34" cy="29" rx="4" ry="2.5" fill="#c4853a" transform="rotate(20 34 29)"/>
+        <!-- feet -->
+        <ellipse cx="17" cy="38" rx="4.5" ry="2" fill="#a06028"/>
+        <ellipse cx="27" cy="38" rx="4.5" ry="2" fill="#a06028"/>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-text">Fette Otter</div>
+      <div class="logo-sub">RUNNERS CHALLENGE</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <!-- Signed-in user chip (shown after joining) -->
+    <div class="current-user-chip" id="currentUserChip" onclick="openMyProfile()" title="Your profile">
+      <span id="chipAvatarWrap"></span>
+      <span id="chipName"></span>
+      <span style="color:var(--muted);font-size:1.06rem">▾</span>
+    </div>
+    <div class="live-pill"><div class="live-dot"></div>Live Sync</div>
+    <div id="clock">--:--:--</div>
+  </div>
+</header>
+
+<!-- NAV TABS -->
+<div class="nav-tabs">
+  <button class="nav-tab active" onclick="switchPage('points',this)">🏅 Points</button>
+  <button class="nav-tab" onclick="switchPage('details',this)">📊 Details</button>
+  <button class="nav-tab" onclick="switchPage('monthly',this)">📈 Monthly Progress</button>
+</div>
+
+<!-- ══ POINTS PAGE ══ -->
+<div class="page active" id="page-points">
+  <div class="panel points-panel" id="pointsPanel">
+    <div class="panel-header">
+      <span class="panel-title">🏅 Points</span>
+      <span class="panel-badge" id="pointsBadge">YTD</span>
+    </div>
+    <div id="pointsContent" style="padding:0 22px 20px"></div>
+  </div>
+</div><!-- end page-points -->
+
+<!-- ══ MONTHLY PROGRESS PAGE ══ -->
+<div class="page" id="page-monthly">
+  <div class="monthly-page">
+    <div id="mpUserRow" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px;align-items:center"></div>
+    <div class="mp-charts" id="mpCharts"></div>
+  </div>
+</div><!-- end page-monthly -->
+
+<!-- ══ DETAILS PAGE ══ -->
+<div class="page" id="page-details">
+  <div class="details-selector-bar">
+    <div class="week-selector" id="weekSelector"></div>
+  </div>
+  <div class="details-content">
+    <!-- Leaderboard full width -->
+    <div class="panel" style="margin-bottom:20px">
+      <div class="panel-header">
+        <span class="panel-title">🏆 Leaderboard</span>
+      </div>
+      <div id="leaderboard"></div>
+    </div>
+    <!-- User detail callout below -->
+    <div class="user-detail panel" id="userDetail"></div>
+  </div>
+</div><!-- end page-details -->
+
+</div><!-- end everything -->
+
+<!-- ── JOIN FAB ── -->
+<button class="join-fab" id="joinFab" onclick="openJoinModal()">
+  <span class="fab-icon">🦦</span> Join Fette Otter
+</button>
+
+<!-- ── JOIN MODAL ── -->
+<div class="modal-overlay" id="joinModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-header-icon">🦦</span>
+      <h2>Join Fette Otter</h2>
+      <p id="modalHeaderSub">Choose how to connect your fitness data</p>
+      <button class="modal-close" onclick="closeJoinModal()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="modal-msg" id="modalMsg"></div>
+
+      <!-- ── STEP 0: Provider choice ── -->
+      <div id="step0">
+        <div class="field">
+          <label>Your name</label>
+          <input type="text" id="nameInput" placeholder="e.g. Alex Chen">
+        </div>
+        <p style="font-size:1.02rem;color:var(--muted);font-weight:700;text-align:center;margin:18px 0 12px;text-transform:uppercase;letter-spacing:.06em">Connect via</p>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <button class="btn-provider btn-garmin" onclick="chooseProvider('garmin')">
+            <span style="font-size:1.3rem">⌚</span>
+            <div>
+              <div style="font-weight:900;font-size:1.06rem">Garmin Connect</div>
+              <div style="font-size:.84rem;opacity:.8">Use your Garmin email & password</div>
+            </div>
+          </button>
+          <button class="btn-provider btn-strava" onclick="chooseProvider('strava')">
+            <span style="font-size:1.3rem">🟠</span>
+            <div>
+              <div style="font-weight:900;font-size:1.06rem">Strava</div>
+              <div style="font-size:.84rem;opacity:.8">Redirect to Strava to authorise</div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── STEP 1: Garmin credentials ── -->
+      <div id="step1" style="display:none">
+        <button onclick="goToStep(0)" style="background:none;border:none;color:var(--muted);font-size:.93rem;font-weight:700;cursor:pointer;margin-bottom:14px;padding:0">← Back</button>
+        <p style="font-size:.98rem;color:var(--text2);font-weight:600;margin-bottom:18px;line-height:1.5">
+          Enter your Garmin Connect credentials to join the leaderboard.
+        </p>
+        <div class="field">
+          <label>Garmin Connect email</label>
+          <input type="email" id="garminEmailInput" placeholder="you@example.com">
+        </div>
+        <div class="field">
+          <label>Garmin Connect password</label>
+          <input type="password" id="garminPasswordInput" placeholder="Your Garmin password">
+          <div class="field-hint">🔒 Sent directly to Garmin — never stored on our servers</div>
+        </div>
+        <button class="btn-primary" id="joinBtn" onclick="submitJoin()">
+          <span id="joinBtnText">Join Fette Otter 🦦</span>
+        </button>
+      </div>
+
+      <!-- ── STEP 1b: Garmin 2FA code ── -->
+      <div id="stepMfa" style="display:none">
+        <div style="text-align:center;margin-bottom:20px">
+          <div style="font-size:2rem;margin-bottom:8px">🔐</div>
+          <p style="font-weight:900;font-size:1rem;margin-bottom:6px">Two-factor authentication</p>
+          <p style="font-size:1.06rem;color:var(--muted);line-height:1.5">Garmin sent a verification code to your email or authenticator app. Enter it below.</p>
+        </div>
+        <div class="field">
+          <label>Verification code</label>
+          <input type="text" id="mfaCodeInput" placeholder="123456" maxlength="8"
+            style="letter-spacing:.2em;font-size:1.2rem;font-weight:900;text-align:center"
+            oninput="this.value=this.value.replace(/\D/g,'')"
+            onkeydown="if(event.key==='Enter') submitMfa()">
+          <div class="field-hint">Check your email or authenticator app for the code</div>
+        </div>
+        <button class="btn-primary" id="mfaBtn" onclick="submitMfa()">
+          <span id="mfaBtnText">Verify & Join 🦦</span>
+        </button>
+        <button onclick="goToStep(1);clearModalMsg()" style="background:none;border:none;color:var(--muted);font-size:.93rem;font-weight:700;cursor:pointer;margin-top:10px;width:100%;text-align:center;padding:4px">← Back to login</button>
+      </div>
+
+      <!-- ── STEP 2: Strava pending (redirecting…) ── -->
+      <div id="step2" style="display:none;text-align:center;padding:20px 0">
+        <div style="font-size:2.5rem;margin-bottom:12px">🟠</div>
+        <p style="font-weight:800;font-size:1rem;margin-bottom:8px">Redirecting to Strava…</p>
+        <p style="font-size:.93rem;color:var(--muted)">You'll be sent back here automatically after authorising.</p>
+      </div>
+
+      <!-- ── STEP 3: Success ── -->
+      <div class="success-screen" id="step3" style="display:none">
+        <span class="success-emoji">🎉</span>
+        <h3 id="successTitle">You're in Fette Otter! 🦦</h3>
+        <p id="successMsg">Your data is syncing…</p>
+        <div class="new-member-preview" id="newMemberPreview"></div>
+        <button class="btn-primary" onclick="closeJoinModal()">View Dashboard</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ── Admin remove confirmation dialog ── -->
+<div class="modal-overlay" id="removeModal">
+  <div class="modal-box" style="max-width:380px">
+    <div class="modal-header" style="background:linear-gradient(135deg,#fee2e2,#fecaca)">
+      <span class="modal-header-icon">🗑️</span>
+      <h2 style="color:#991b1b">Remove Member</h2>
+      <p id="removeModalMsg" style="color:#b91c1c">Are you sure?</p>
+      <button class="modal-close" onclick="closeRemoveModal()">✕</button>
+    </div>
+    <div class="modal-body" style="text-align:center;padding:24px 28px 28px">
+      <p style="font-size:1.02rem;color:var(--text2);margin-bottom:22px">
+        This will remove <strong id="removeNameLabel"></strong> from Fette Otter and delete their token. They can rejoin at any time.
+      </p>
+      <div style="display:flex;gap:12px;justify-content:center">
+        <button class="btn-secondary" onclick="closeRemoveModal()" style="flex:1">Cancel</button>
+        <button id="confirmRemoveBtn" class="btn-danger" onclick="executeRemove()" style="flex:1">
+          <span id="removeBtnText">Remove 🗑️</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── HEIGHT MODAL ── -->
+<div class="modal-overlay" id="heightModal">
+  <div class="modal-box" style="max-width:360px">
+    <div class="modal-header" style="background:linear-gradient(135deg,#ede9fe,#ddd6fe)">
+      <span class="modal-header-icon">📏</span>
+      <h2 style="color:#4c1d95">One quick thing…</h2>
+      <p style="color:#6d28d9;font-size:1.06rem">Your height isn't set in Garmin, so we can't calculate your BMI. Enter it once and we'll remember it.</p>
+      <button class="modal-close" onclick="closeHeightModal()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:24px 28px 28px">
+      <div class="field">
+        <label>Your height</label>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input type="number" id="heightCmInput" placeholder="e.g. 178" min="100" max="250"
+            style="flex:1" onkeydown="if(event.key==='Enter') submitHeight()">
+          <span style="font-weight:700;color:var(--muted)">cm</span>
+        </div>
+      </div>
+      <div class="modal-msg" id="heightModalMsg" style="margin-bottom:12px"></div>
+      <div style="display:flex;gap:12px">
+        <button class="btn-secondary" onclick="closeHeightModal()" style="flex:1">Skip</button>
+        <button class="btn-primary" onclick="submitHeight()" style="flex:1" id="heightBtn">Save height</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+// BACKEND CONFIG — update these two lines after deploying
+// ══════════════════════════════════════════════════════════════════
+
+// Your deployed backend URL (Railway / Render / Fly / localhost)
+// Examples:
+//   'https://squad-stats-api-production.up.railway.app'
+//   'https://squad-stats.onrender.com'
+//   'https://squad-stats-api.fly.dev'
+//   'http://localhost:5050'   ← local dev
+const API_BASE = 'https://fov2.up.railway.app';
+
+// Google OAuth Client ID — get from console.cloud.google.com
+// Leave as-is to use demo/offline mode without Google sign-in
+const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
+
+// ── Visual palette assigned per-user (cycles if >8 users) ─────────
+const PALETTE = [
+  {color:'#7c3aed',bg:'#ede9fe',emoji:'🦁'},
+  {color:'#db2777',bg:'#fce7f3',emoji:'🐯'},
+  {color:'#0284c7',bg:'#e0f2fe',emoji:'🦊'},
+  {color:'#b45309',bg:'#fef3c7',emoji:'🐺'},
+  {color:'#059669',bg:'#d1fae5',emoji:'🦅'},
+  {color:'#0e7490',bg:'#cffafe',emoji:'🐬'},
+  {color:'#be185d',bg:'#fdf2f8',emoji:'🦋'},
+  {color:'#d97706',bg:'#fffbeb',emoji:'🐉'},
+];
+
+// ── Mock data — shown when backend is unreachable ─────────────────
+const MOCK_USERS = [
+  {id:1,name:'Alex Chen',   role:'Engineering',calories:4820,workouts:6,km:68.4,actKcal:3210,bmi:22.1,height_m:1.78,activity_types:['Running','Cycling','Hiit'],week_active:[1,1,0,1,1,0,1],week_calories:[720,680,0,810,650,0,960],garmin_device:'Forerunner 965'},
+  {id:2,name:'Sam Rivera',  role:'Design',     calories:4210,workouts:5,km:52.1,actKcal:2780,bmi:23.4,height_m:1.65,activity_types:['Yoga','Running','Strength'],week_active:[1,0,1,1,0,1,1],week_calories:[600,0,750,820,0,700,340],garmin_device:'Venu 3'},
+  {id:3,name:'Jordan Park', role:'Product',    calories:3980,workouts:5,km:91.3,actKcal:2540,bmi:21.7,height_m:1.82,activity_types:['Cycling','Swimming','Running'],week_active:[1,1,0,0,1,1,1],week_calories:[580,690,0,0,810,750,1150],garmin_device:'Fenix 7'},
+  {id:4,name:'Taylor Kim',  role:'Marketing',  calories:3640,workouts:4,km:44.8,actKcal:2190,bmi:24.8,height_m:1.70,activity_types:['Running','Walking','Yoga'],week_active:[0,1,1,0,1,0,1],week_calories:[0,820,760,0,920,0,1140],garmin_device:'Instinct 2'},
+  {id:5,name:'Morgan Wu',   role:'Data',       calories:3290,workouts:4,km:38.2,actKcal:1980,bmi:25.3,height_m:1.68,activity_types:['Hiit','Strength'],week_active:[1,0,0,1,1,0,1],week_calories:[780,0,0,920,870,0,720],garmin_device:'Vivoactive 5'},
+  {id:6,name:'Casey Patel', role:'Backend',    calories:2980,workouts:3,km:62.7,actKcal:1740,bmi:22.9,height_m:1.75,activity_types:['Swimming','Cycling'],week_active:[0,1,0,1,0,1,0],week_calories:[0,950,0,1100,0,930,0],garmin_device:'Swim 2'},
+  {id:7,name:'Drew Santos', role:'Frontend',   calories:2740,workouts:3,km:29.6,actKcal:1580,bmi:26.1,height_m:1.72,activity_types:['Walking','Running'],week_active:[1,0,1,0,0,1,1],week_calories:[620,0,710,0,0,810,600],garmin_device:'Forerunner 55'},
+  {id:8,name:'Quinn Lee',   role:'DevOps',     calories:2100,workouts:2,km:18.3,actKcal:1120,bmi:27.6,height_m:1.60,activity_types:['Yoga','Walking'],week_active:[0,0,1,0,1,0,1],week_calories:[0,0,680,0,720,0,700],garmin_device:'Lily 2'},
+];
+
+// ── Normalise API or mock user into a common shape ────────────────
+function normaliseUser(raw, idx) {
+  const p = PALETTE[idx % PALETTE.length];
+  return {
+    id:           raw.id || idx + 1,
+    name:         raw.name || raw.display_name || `User ${idx+1}`,
+    role:         raw.role || '',
+    emoji:        raw.emoji || p.emoji,
+    color:        raw.color || p.color,
+    bg:           raw.bg    || p.bg,
+    calories:     raw.calories     || raw.total_kcal || 0,
+    workouts:     raw.workouts     || 0,
+    km:           raw.km           || 0,
+    runKm:        raw.runKm        || 0,
+    cycleKm:      raw.cycleKm      || 0,
+    virtualKm:    raw.virtualKm    || 0,
+    swimKm:       raw.swimKm       || 0,
+    skiKm:        raw.skiKm        || 0,
+    walkKm:       raw.walkKm       || 0,
+    otherKm:      raw.otherKm      || 0,
+    actKcal:      raw.actKcal      || raw.active_kcal || 0,
+    steps:        raw.steps        || 0,
+    bmi:          raw.bmi          || null,
+    height_m:     raw.height_m     || null,
+    types:        raw.types        || raw.activity_types || [],
+    week:         raw.week         || raw.week_active  || [],
+    weekCalories: raw.weekCalories || raw.week_calories || [],
+    garminDevice: raw.garminDevice || raw.garmin_device || '',
+    kmByType:     raw.kmByType || {},
+    monthly:      raw.monthly || [],
+    challengeKm:  raw.challengeKm ?? null,
+    durationSec:  raw.durationSec  || 0,
+    provider:     raw.provider || 'garmin',
+    picture:      raw.picture || '',
+  };
+}
+
+// ── Shared state ──────────────────────────────────────────────────
+let users = [];
+let selUser = null, curMetric = 'convKm', selMonth = 0, selMoUser = null;
+let usingLiveData = false;
+
+const DAYS = ['M','T','W','T','F','S','S'];
+
+// ── Status banner ─────────────────────────────────────────────────
+function showBanner(msg, type='info') {
+  let el = document.getElementById('data-banner');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'data-banner';
+    el.style.cssText = 'font-family:Nunito,sans-serif;font-size:0.93rem;font-weight:700;padding:8px 16px;text-align:center;position:sticky;top:0;z-index:200;';
+    document.querySelector('.everything').prepend(el);
+  }
+  const styles = {
+    info:    'background:#ede9fe;color:#7c3aed;',
+    live:    'background:#dcfce7;color:#15803d;',
+    warning: 'background:#fef9c3;color:#854d0e;',
+    error:   'background:#fee2e2;color:#b91c1c;',
+  };
+  el.style.cssText += styles[type] || styles.info;
+  el.textContent = msg;
+}
+
+// ─── CLOCK ───────────────────────────────────────────────────────
+setInterval(()=>{document.getElementById('clock').textContent=new Date().toLocaleTimeString('en-US',{hour12:false});},1000);
+document.getElementById('clock').textContent=new Date().toLocaleTimeString('en-US',{hour12:false});
+
+// ── Mock monthly data generator ───────────────────────────────────
+function mkRng(seed){let s=seed>>>0;return()=>{s=Math.imul(1664525,s)+1013904223>>>0;return s/0x100000000;}}
+function genMonthly(u) {
+  const rng = mkRng(u.id * 91337);
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth() + 1; // 1-12
+  return Array.from({length:12}, (_,mi) => {
+    const month = mi + 1; // 1-12
+    const hasData = month <= currentMonth;
+    // Seasonal variation peaks in summer months
+    const season = 0.82 + 0.32 * Math.sin((mi / 11) * Math.PI);
+    const noise  = 0.78 + rng() * 0.44;
+    const scale  = hasData ? season * noise : 0;
+    const cal    = hasData ? Math.round(u.calories * 4.3 * scale) : 0;
+    const sess   = hasData ? Math.max(6, Math.round(u.workouts * 4.3 * scale)) : 0;
+    const km     = hasData ? Math.round(u.km * 4.3 * scale * 10) / 10 : 0;
+    const actKcal= hasData ? Math.round(u.actKcal * 4.3 * scale) : 0;
+    const bmi    = u.bmi ? Math.round(u.bmi * (0.97 + rng() * 0.06) * 10) / 10 : null;
+    // Distribute km across activity types
+    const runKm    = hasData ? Math.round(km * 0.55 * 10) / 10 : 0;
+    const cycleKm  = hasData ? Math.round(km * 0.25 * 10) / 10 : 0;
+    const virtualKm= hasData ? Math.round(km * 0.10 * 10) / 10 : 0;
+    const swimKm   = hasData ? Math.round(km * 0.05 * 10) / 10 : 0;
+    const walkKm   = hasData ? Math.round(km * 0.05 * 10) / 10 : 0;
+    const days   = Array.from({length:28}, () => {
+      return hasData && rng() < (sess/28) ? Math.round(rng()*600+280) : 0;
+    });
+    return { year: currentYear, month,
+             label: new Date(currentYear, mi, 1).toLocaleString('en',{month:'short'}),
+             cal, sess, km, runKm, cycleKm, virtualKm, swimKm, walkKm,
+             actKcal, bmi, days };
+  });
+}
+
+// ──────────────────────────────────────────────────────────────────
+//  DATA LOADING — try backend, fall back to mock
+// ──────────────────────────────────────────────────────────────────
+// ── Data cache ────────────────────────────────────────────────────
+const dataCache = {};   // { thismonth: [...], lastmonth: [...], ytd: [...] }
+let currentPeriod = 'thismonth';
+
+// ──────────────────────────────────────────────────────────────────
+//  DATA LOADING — fetch all periods in parallel, cache results
+// ──────────────────────────────────────────────────────────────────
+async function loadData(period = 'thismonth') {
+  currentPeriod = period;
+
+  const cached = dataCache[period];
+  const cacheAge = cached ? (Date.now() - (cached._ts || 0)) : Infinity;
+  if (cached && cacheAge < 10 * 60 * 1000) {
+    applyData(cached.data, period, true);
+    return;
+  }
+
+  showBanner('⏳ Loading data…', 'info');
+
+  const periods = ['thismonth', 'lastmonth', 'ytd'];
+  try {
+    const results = await Promise.all(periods.map(p => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 30000);
+      return fetch(`${API_BASE}/api/team?range=${p}&_=${Date.now()}`, { signal: controller.signal, cache: 'no-store' })
+        .then(r => { clearTimeout(timer); return r.ok ? r.json() : Promise.reject(`HTTP ${r.status}`); })
+        .catch(e => { clearTimeout(timer); console.warn(`Period ${p} failed:`, e); return null; });
+    }));
+
+    let anySuccess = false;
+    const ts = Date.now();
+    periods.forEach((p, i) => {
+      if (results[i] && Array.isArray(results[i])) {
+        dataCache[p] = { data: results[i], _ts: ts };
+        anySuccess = true;
+      }
+    });
+
+    if (!anySuccess) throw new Error('All period fetches failed');
+    const entry = dataCache[period] || dataCache['thismonth'];
+    applyData(entry ? entry.data : [], period, true);
+
+  } catch(e) {
+    console.error('Backend error:', e);
+    try {
+      const h = await fetch(`${API_BASE}/api/health`);
+      showBanner(h.ok ? '⚠️ Backend reachable but data fetch failed — check Railway logs' : '⚠️ Backend error — check Railway logs', 'warning');
+    } catch(e2) {
+      showBanner(`⚠️ Cannot reach backend — check CORS or Railway URL`, 'warning');
+    }
+    periods.forEach(p => { delete dataCache[p]; });
+    applyMockData(period);
+  }
+}
+
+function applyData(team, period, isLive) {
+  if (!team || !team.length) {
+    if (isLive) {
+      users = MOCK_USERS.map((u, i) => normaliseUser(u, i));
+      users.forEach(u => { u.monthly = genMonthly(u); });
+      showBanner('✅ Backend connected · No members yet — click "Join Fette Otter" to add yourself!', 'live');
+    }
+  } else {
+    users = team.map((u, i) => normaliseUser(u, i));
+    // Only fill missing monthly with mock — never overwrite real data from backend
+    users.forEach(u => {
+      if (!u.monthly || u.monthly.length === 0) u.monthly = genMonthly(u);
+    });
+    usingLiveData = true;
+    const liveCount = team.filter(u => !u._stub).length;
+    if (liveCount === team.length) {
+      showBanner(`✅ Live data · ${team.length} athlete${team.length!==1?'s':''} · ${periodLabel(period)}`, 'live');
+    } else {
+      showBanner(`⚡ ${liveCount}/${team.length} athletes live · ${periodLabel(period)}`, 'warning');
+    }
+    // Check if the current user is missing BMI — prompt for height once per session
+    if (currentMember && isLive) {
+      const me = users.find(u => u.id === currentMember.id);
+      const hasBmi = me && me.bmi && me.bmi > 0;
+      const alreadyAsked = sessionStorage.getItem('height_prompted');
+      if (!hasBmi && !alreadyAsked && me?.provider !== 'strava') {
+        sessionStorage.setItem('height_prompted', '1');
+        setTimeout(() => openHeightModal(), 1200);
+      }
+    }
+  }
+  selUser = users[0];
+  if (!selMoUser) selMoUser = users[0];
+  if (users[0]?.monthly?.length) selMonth = users[0].monthly.length - 1;
+  renderAll();
+}
+
+function applyMockData(period) {
+  users = MOCK_USERS.map((u, i) => normaliseUser(u, i));
+  users.forEach(u => { u.monthly = genMonthly(u); });
+  selUser = users[0];
+  if (!selMoUser) selMoUser = users[0];
+  showBanner('⚠️ Backend offline — showing demo data', 'warning');
+  renderAll();
+}
+
+function periodLabel(p) {
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  if (p === 'thismonth') return 'Current Month';
+  if (p === 'lastmonth') return 'Last Month';
+  if (p === 'ytd')       return 'Year to Date';
+  if (p.startsWith('month-')) { const m = parseInt(p.split('-')[1]); return MONTH_NAMES[m-1] || p; }
+  if (p === 'q1') return 'Q1 (Jan–Mar)';
+  if (p === 'q2') return 'Q2 (Apr–Jun)';
+  if (p === 'q3') return 'Q3 (Jul–Sep)';
+  if (p === 'q4') return 'Q4 (Oct–Dec)';
+  return p;
+}
+
+// ── Page switch ───────────────────────────────────────────────────
+function switchPage(p,btn){
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(x=>x.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  btn.classList.add('active');
+  if(p==='monthly') renderMonthly();
+  if(p==='details') { renderLB(); renderDetail(); }
+}
+
+function renderAll(){
+  renderPoints();
+  renderLB(); renderDetail();
+  setTimeout(()=>{
+    document.querySelectorAll('.bar-fill,.cbar,.mc-bar-fill,.umc-bar').forEach(b=>{
+      const w=b.style.width; b.style.width='0';
+      setTimeout(()=>b.style.width=w,80);
+    });
+  },120);
+}
+
+// ════ OVERVIEW ════
+// Converted (points) km — sums m.challengeKm from monthly entries matching the
+// current period. This uses the same backend-computed values as the Points table,
+// including correct walk filtering (>30min, >6.5km/h).
+function userPointsKm(u) {
+  const today = new Date();
+  const cy = today.getFullYear();
+  const cm = today.getMonth() + 1; // 1-12
+  // Determine which month(s) to sum based on current period
+  let monthFilter;
+  if (currentPeriod === 'thismonth') {
+    monthFilter = m => m.year === cy && m.month === cm;
+  } else if (currentPeriod === 'lastmonth') {
+    const lm = cm === 1 ? 12 : cm - 1;
+    const ly = cm === 1 ? cy - 1 : cy;
+    monthFilter = m => m.year === ly && m.month === lm;
+  } else if (currentPeriod.startsWith('month-')) {
+    const mo = parseInt(currentPeriod.split('-')[1]);
+    monthFilter = m => m.year === cy && m.month === mo;
+  } else if (currentPeriod === 'q1') {
+    monthFilter = m => m.year === cy && m.month >= 1 && m.month <= 3;
+  } else if (currentPeriod === 'q2') {
+    monthFilter = m => m.year === cy && m.month >= 4 && m.month <= 6;
+  } else if (currentPeriod === 'q3') {
+    monthFilter = m => m.year === cy && m.month >= 7 && m.month <= 9;
+  } else if (currentPeriod === 'q4') {
+    monthFilter = m => m.year === cy && m.month >= 10 && m.month <= 12;
+  } else {
+    // ytd or anything else — sum all months this year
+    monthFilter = m => m.year === cy;
+  }
+  const monthly = (u.monthly || []).filter(monthFilter);
+  if (monthly.length > 0) {
+    return monthly.reduce((s, m) => s + (m.challengeKm != null ? m.challengeKm : calcChallengeKm(m)), 0);
+  }
+  // Final fallback: no monthly data at all — exclude walk (can't filter without session data)
+  return (u.runKm||0) + (u.cycleKm||0)/5 + (u.virtualKm||0)/4 + (u.swimKm||0)*4;
+}
+
+function renderLB(){
+  // ── helpers ──────────────────────────────────────────────────────
+  function fmtDuration(secs) {
+    if (!secs || secs <= 0) return '—';
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    if (h === 0) return `${m}m`;
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  }
+
+  // Sum durationSec from monthly entries matching current period
+  function userDurationSec(u) {
+    const today = new Date();
+    const cy = today.getFullYear(), cm = today.getMonth() + 1;
+    let mf;
+    if (currentPeriod === 'thismonth')      mf = m => m.year===cy && m.month===cm;
+    else if (currentPeriod === 'lastmonth') { const lm=cm===1?12:cm-1,ly=cm===1?cy-1:cy; mf=m=>m.year===ly&&m.month===lm; }
+    else if (currentPeriod.startsWith('month-')) { const mo=parseInt(currentPeriod.split('-')[1]); mf=m=>m.year===cy&&m.month===mo; }
+    else if (currentPeriod==='q1') mf=m=>m.year===cy&&m.month>=1&&m.month<=3;
+    else if (currentPeriod==='q2') mf=m=>m.year===cy&&m.month>=4&&m.month<=6;
+    else if (currentPeriod==='q3') mf=m=>m.year===cy&&m.month>=7&&m.month<=9;
+    else if (currentPeriod==='q4') mf=m=>m.year===cy&&m.month>=10&&m.month<=12;
+    else mf=m=>m.year===cy;
+    return (u.monthly||[]).filter(mf).reduce((s,m)=>s+(m.durationSec||0),0)
+        || u.durationSec || 0;
+  }
+
+  // Days to goal: for a single-month view, return the goalDay from that month's data.
+  // For multi-month periods, return the earliest goalDay found.
+  // For the current in-progress month, if goal not yet reached return null.
+  function userDaysToGoal(u) {
+    const today = new Date();
+    const cy = today.getFullYear(), cm = today.getMonth() + 1;
+    let months;
+    if (currentPeriod === 'thismonth')      months = (u.monthly||[]).filter(m=>m.year===cy&&m.month===cm);
+    else if (currentPeriod === 'lastmonth') { const lm=cm===1?12:cm-1,ly=cm===1?cy-1:cy; months=(u.monthly||[]).filter(m=>m.year===ly&&m.month===lm); }
+    else if (currentPeriod.startsWith('month-')) { const mo=parseInt(currentPeriod.split('-')[1]); months=(u.monthly||[]).filter(m=>m.year===cy&&m.month===mo); }
+    else if (currentPeriod==='q1') months=(u.monthly||[]).filter(m=>m.year===cy&&m.month>=1&&m.month<=3);
+    else if (currentPeriod==='q2') months=(u.monthly||[]).filter(m=>m.year===cy&&m.month>=4&&m.month<=6);
+    else if (currentPeriod==='q3') months=(u.monthly||[]).filter(m=>m.year===cy&&m.month>=7&&m.month<=9);
+    else if (currentPeriod==='q4') months=(u.monthly||[]).filter(m=>m.year===cy&&m.month>=10&&m.month<=12);
+    else months=(u.monthly||[]).filter(m=>m.year===cy);
+    // Average goalDay across all months where the goal was reached
+    const reached = months.filter(m => m.goalDay != null).map(m => m.goalDay);
+    if (reached.length === 0) return null;
+    return Math.round(reached.reduce((s, d) => s + d, 0) / reached.length);
+  }
+
+  const COLS = [
+    { key:'convKm',      label:'Points',       icon:'⭐', fmt: u => userPointsKm(u).toFixed(1),                                                          unit:'km' },
+    { key:'km',          label:'Original',     icon:'📏', fmt: u => fmtKm((u.runKm||0)+(u.cycleKm||0)+(u.virtualKm||0)+(u.swimKm||0)+(u.walkKm||0)),    unit:'km' },
+    { key:'durationSec', label:'Time',         icon:'⏱',  fmt: u => fmtDuration(userDurationSec(u)),                                                      unit:''   },
+    { key:'goalDay',     label:'Days to Goal', icon:'🎯', fmt: u => { const d=userDaysToGoal(u); return d!=null ? `${d}` : '—'; },                        unit:''   },
+    { key:'workouts',    label:'Sessions',     icon:'#️⃣', fmt: u => u.workouts||0,                                                                         unit:''   },
+    { key:'runKm',       label:'Run',          icon:'🏃', fmt: u => fmtKm(u.runKm),                                                                       unit:'km' },
+    { key:'cycleKm',     label:'Bike',         icon:'🚴', fmt: u => fmtKm(u.cycleKm),                                                                     unit:'km' },
+    { key:'virtualKm',   label:'Virtual',      icon:'💻', fmt: u => fmtKm(u.virtualKm),                                                                   unit:'km' },
+    { key:'swimKm',      label:'Swim',         icon:'🏊', fmt: u => fmtKm(u.swimKm),                                                                      unit:'km' },
+    { key:'walkKm',      label:'Walk',         icon:'🚶', fmt: u => fmtKm(u.walkKm),                                                                      unit:'km' },
+    { key:'actKcal',     label:'Active Cal',   icon:'🔥', fmt: u => ((u.actKcal||0)/1000).toFixed(1)+'K',                                                 unit:''   },
+  ];
+  function fmtKm(v){ return (v||0) > 0 ? (v||0).toFixed(1) : '—'; }
+
+  const isAdmin = currentMember?.name === 'Martin';
+  function metricVal(u, key) {
+    if (key === 'convKm')      return userPointsKm(u);
+    if (key === 'km')          return (u.runKm||0) + (u.cycleKm||0) + (u.virtualKm||0) + (u.swimKm||0) + (u.walkKm||0);
+    if (key === 'durationSec') return userDurationSec(u);
+    if (key === 'goalDay')     return userDaysToGoal(u) ?? 999;
+    return u[key]||0;
+  }
+  const sorted = [...users].sort((a,b) => metricVal(b, curMetric) - metricVal(a, curMetric));
+
+  const isMultiMonth = !['thismonth','lastmonth'].includes(currentPeriod) && !currentPeriod.startsWith('month-');
+
+  const thead = `<tr>
+    <th style="text-align:left">Athlete</th>
+    ${COLS.map(c => {
+      const goalLabel = c.key === 'goalDay' && isMultiMonth ? 'Avg Days<br>to Goal' : c.label;
+      const iconLine = c.icon ? `<div style="font-size:1rem;margin-top:2px">${c.icon}</div>` : '';
+      const sort = c.key === curMetric ? `<span style="color:var(--violet)">▾</span>` : '';
+      return `<th class="${c.key===curMetric?'sort-active':''}" onclick="setMetricKey('${c.key}')" style="text-align:center;white-space:normal;line-height:1.25;${c.key==='convKm'?'background:rgba(129,140,248,0.10);color:var(--violet)':''}">
+        ${goalLabel} ${sort}${iconLine}
+      </th>`;
+    }).join('')}
+    ${isAdmin ? '<th style="width:36px"></th>' : ''}
+  </tr>`;
+
+  const tbody = sorted.map((u, i) => {
+    const rc = i===0?'top1':i===1?'top2':i===2?'top3':'';
+    const ac = u.id===selUser?.id ? 'lb-active' : '';
+    const cells = COLS.map(c => {
+      const raw = c.key === 'convKm'
+        ? userPointsKm(u)
+        : c.key === 'km'
+        ? (u.runKm||0) + (u.cycleKm||0) + (u.virtualKm||0) + (u.swimKm||0) + (u.walkKm||0)
+        : c.key === 'durationSec'
+        ? userDurationSec(u)
+        : c.key === 'goalDay'
+        ? (userDaysToGoal(u) ?? 0)
+        : u[c.key]||0;
+      const isZero = c.key === 'goalDay' ? userDaysToGoal(u) == null : raw === 0;
+      const isSort = c.key === curMetric;
+      const cls = isZero ? 'lb-zero' : isSort ? 'lb-sort-col' : '';
+      let title = '';
+      if (c.key === 'convKm') {
+        const parts = [];
+        if (u.runKm    > 0.05) parts.push(`🏃 ${(u.runKm).toFixed(1)}km ÷1`);
+        if (u.cycleKm  > 0.05) parts.push(`🚴 ${(u.cycleKm).toFixed(1)}km ÷5 = ${(u.cycleKm/5).toFixed(1)}`);
+        if (u.virtualKm> 0.05) parts.push(`💻 ${(u.virtualKm).toFixed(1)}km ÷4 = ${(u.virtualKm/4).toFixed(1)}`);
+        if (u.swimKm   > 0.05) parts.push(`🏊 ${(u.swimKm).toFixed(1)}km ×4 = ${(u.swimKm*4).toFixed(1)}`);
+        const qualWalkLB = Math.round((u.challengeKm != null
+          ? Math.max(0, u.challengeKm - (u.runKm||0) - (u.cycleKm||0)/5 - (u.virtualKm||0)/4 - (u.swimKm||0)*4)
+          : 0) * 10) / 10;
+        if (qualWalkLB > 0.05) parts.push(`🚶 ${(qualWalkLB*3).toFixed(1)}km ÷3 = ${qualWalkLB.toFixed(1)}`);
+        title = parts.length ? `title="${parts.join(' | ')}"` : '';
+      }
+      const fmtVal = c.fmt(u);
+      const kmSuffix = c.unit === 'km' && fmtVal !== '—' && !isZero
+        ? `<span style="font-size:0.72rem;color:var(--muted);font-weight:600;margin-left:1px">km</span>`
+        : '';
+      return `<td ${title} class="${cls}" style="text-align:center;${c.key==='convKm' ? `background:rgba(129,140,248,0.07);font-weight:800;color:${isZero?'var(--muted)':'var(--violet)'}` : c.key==='goalDay'&&!isZero ? 'color:var(--text)' : isSort&&!isZero?'color:'+u.color:''}">${fmtVal}${kmSuffix}</td>`;
+    }).join('');
+    const providerBadge = u.provider === 'strava'
+      ? `<span style="font-size:.84rem;background:#fff3e0;color:#c2410c;border-radius:6px;padding:1px 5px;font-weight:800;margin-left:4px">STR</span>`
+      : `<span style="font-size:.84rem;background:#e0f2fe;color:#0369a1;border-radius:6px;padding:1px 5px;font-weight:800;margin-left:4px">GRM</span>`;
+    const trashBtn = isAdmin && u.id !== currentMember?.id
+      ? `<td><button class="trash-btn" onclick="event.stopPropagation();confirmRemove(${u.id},'${u.name.replace(/'/g,"\\'")}')">🗑️</button></td>`
+      : isAdmin ? '<td></td>' : '';
+    return `<tr class="${ac}" onclick="pickUser(${u.id})">
+      <td>
+        <div class="lb-user-cell">
+          <span class="lb-rank ${rc}">${i+1}</span>
+          <div class="lb-avatar-sm" style="background:${u.bg}">${u.picture?`<img src="${u.picture}" style="width:100%;height:100%;border-radius:14px;object-fit:cover">`:u.emoji}</div>
+          <div><div class="lb-name">${u.name}${providerBadge}</div></div>
+        </div>
+      </td>
+      ${cells}
+      ${trashBtn}
+    </tr>`;
+  }).join('');
+
+  document.getElementById('leaderboard').innerHTML =
+    `<div class="lb-scroll"><table class="lb-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
+}
+
+function setMetricKey(k){
+  curMetric = k;
+  renderLB();
+}
+
+function renderDetail(){
+  const u=selUser;
+  const rank=[...users].sort((a,b)=>userPointsKm(b)-userPointsKm(a)).findIndex(x=>x.id===u.id)+1;
+  const dots=u.week.map((a,i)=>{
+    const bg=a?(u.weekCalories[i]>800?u.color:u.color+'99'):'#e2e8f8';
+    return`<div class="day-cell"><div class="day-dot" style="background:${bg}"></div><span>${DAYS[i]}</span></div>`;
+  }).join('');
+
+  // Distance breakdown by activity type
+  const kmByType = u.kmByType || {};
+  const typeEntries = Object.entries(kmByType).sort((a,b)=>b[1]-a[1]);
+  const totalKm = u.km || 0;
+
+  // Show per-activity distance breakdown
+  const summaryRows = [
+    {label:'🏃 Running',      km: u.runKm||0,     color:'#818cf8'},
+    {label:'🚴 Biking',       km: u.cycleKm||0,   color:'#34d399'},
+    {label:'💻 Virtual bike', km: u.virtualKm||0,  color:'#38bdf8'},
+    {label:'🏊 Swimming',     km: u.swimKm||0,    color:'#22d3ee'},
+    {label:'🚶 Walking',      km: u.walkKm||0,    color:'#fbbf24'},
+  ].filter(r => r.km > 0);
+
+  const distBreakdown = summaryRows.length > 0
+    ? summaryRows.map(r => {
+        const pct = totalKm > 0 ? Math.round(r.km/totalKm*100) : 0;
+        return `<div style="margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+            <span style="font-size:.84rem;font-weight:700;color:var(--text2)">${r.label}</span>
+            <span style="font-size:.84rem;font-weight:800;color:${r.color}">${r.km}km <span style="color:var(--muted);font-weight:600">(${pct}%)</span></span>
+          </div>
+          <div style="height:5px;background:var(--border);border-radius:99px;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:${r.color};border-radius:99px;transition:width .6s ease"></div>
+          </div>
+        </div>`;
+      }).join('')
+    : `<div style="font-size:.87rem;color:var(--muted);font-weight:600">${totalKm}km total — no activity data yet</div>`;
+
+  const provBadge = u.provider === 'strava'
+    ? `<span style="font-size:.73rem;background:#fff3e0;color:#c2410c;border-radius:6px;padding:2px 6px;font-weight:800;margin-left:6px;vertical-align:middle">STR</span>`
+    : `<span style="font-size:.73rem;background:#e0f2fe;color:#0369a1;border-radius:6px;padding:2px 6px;font-weight:800;margin-left:6px;vertical-align:middle">GRM</span>`;
+  const deviceLabel = u.provider === 'strava' ? 'Strava' : (u.garminDevice || 'Garmin');
+
+  document.getElementById('userDetail').innerHTML=`
+    <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap">
+      <!-- Left: avatar + name + stats -->
+      <div style="display:flex;gap:18px;align-items:center;flex-shrink:0">
+        <div class="detail-avatar" style="background:${u.bg}">${u.picture ? `<img src="${u.picture}" style="width:100%;height:100%;border-radius:18px;object-fit:cover">` : u.emoji}</div>
+        <div>
+          <div class="detail-name">${u.name}${provBadge}</div>
+          <div class="detail-role">Rank #${rank}</div>
+          <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
+            <div class="detail-item"><div class="detail-item-lbl">Sessions</div><div class="detail-item-val" style="color:${u.color}">${u.workouts}</div></div>
+            <div class="detail-item"><div class="detail-item-lbl">Original</div><div class="detail-item-val">${((u.runKm||0) + (u.cycleKm||0) + (u.virtualKm||0) + (u.swimKm||0) + (u.walkKm||0)).toFixed(1)}<span style="font-size:1.02rem">km</span></div></div>
+            <div class="detail-item"><div class="detail-item-lbl">Points</div><div class="detail-item-val" style="color:var(--violet)">${userPointsKm(u).toFixed(1)}<span style="font-size:1.02rem">km</span></div></div>
+            <div class="detail-item"><div class="detail-item-lbl">Act. Kcal</div><div class="detail-item-val">${(u.actKcal/1000).toFixed(1)}K</div></div>
+            ${u.bmi && u.bmi > 0 ? `<div class="detail-item"><div class="detail-item-lbl">BMI</div><div class="detail-item-val" style="color:${u.bmi<18.5?'#f59e0b':u.bmi<25?'#059669':u.bmi<30?'#f59e0b':'#ef4444'}">${u.bmi.toFixed(1)}</div></div>` : ''}
+            ${u.height_m ? `<div class="detail-item"><div class="detail-item-lbl">Height</div><div class="detail-item-val">${Math.round(u.height_m * 100)}<span style="font-size:1.02rem">cm</span></div></div>` : ''}
+
+          </div>
+        </div>
+      </div>
+      <!-- Middle: distance breakdown -->
+      <div style="flex:1;min-width:200px">
+        <div style="font-size:.76rem;color:var(--muted);margin-bottom:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase">Distance by activity</div>
+        ${distBreakdown}
+      </div>
+      <!-- Right: activity dots -->
+      <div style="flex-shrink:0">
+        <div style="font-size:.76rem;color:var(--muted);margin-bottom:6px;font-weight:700;letter-spacing:.06em;text-transform:uppercase">This period's activity</div>
+        <div class="week-grid">${dots}</div>
+      </div>
+    </div>`;
+}
+
+function renderTypes(){
+  const all=[...new Set(users.flatMap(u=>u.types))].sort();
+  const mine=new Set(selUser.types);
+  document.getElementById('workoutTypes').innerHTML=all.map(t=>`<span class="wtype ${mine.has(t)?'active-type':''}">${t}</span>`).join('');
+}
+
+function renderCalChart(){
+  const sorted=[...users].sort((a,b)=>b.calories-a.calories);
+  const mx=sorted[0].calories;
+  document.getElementById('calorieChart').innerHTML=sorted.map(u=>{
+    const avatar = u.picture
+      ? `<img src="${u.picture}" style="width:18px;height:18px;border-radius:5px;object-fit:cover;vertical-align:middle;margin-right:5px">`
+      : `<span style="margin-right:4px">${u.emoji}</span>`;
+    return `<div class="compare-row">
+      <div class="cname">${avatar}${u.name.split(' ')[0]}</div>
+      <div>
+        <div class="cbar-wrap" style="margin-bottom:3px"><div class="cbar" style="width:${(u.calories/mx*100).toFixed(1)}%;background:${u.color}"></div></div>
+        <div class="cbar-wrap"><div class="cbar" style="width:${(u.actKcal/mx*100).toFixed(1)}%;background:${u.color}55"></div></div>
+      </div>
+      <div class="cval">${u.calories.toLocaleString()}<br><span style="color:${u.color};font-size:.73rem">${u.actKcal.toLocaleString()}</span></div>
+    </div>`;
+  }).join('') +
+    `<div style="display:flex;gap:14px;margin-top:10px;font-size:0.62rem;color:var(--muted);font-weight:600;padding-top:8px;border-top:1px solid var(--border)">
+      <span>■ Total Calories</span><span style="opacity:0.55">■ Activity Kcal</span>
+    </div>`;
+}
+
+function renderRings(){
+  const mxKm=Math.max(...users.map(u=>u.km), 1);
+  const sz=64,st=7,r=(sz-st)/2,circ=2*Math.PI*r;
+  document.getElementById('ringsContainer').innerHTML=users.map(u=>{
+    const off=circ*(1-u.km/mxKm);
+    const nameAvatar = u.picture
+      ? `<img src="${u.picture}" style="width:16px;height:16px;border-radius:4px;object-fit:cover;vertical-align:middle;margin-right:3px">`
+      : `<span style="margin-right:2px">${u.emoji}</span>`;
+    return`<div class="ring-item">
+      <svg class="ring-svg" width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}">
+        <circle cx="${sz/2}" cy="${sz/2}" r="${r}" fill="none" stroke="#e2e8f8" stroke-width="${st}"/>
+        <circle cx="${sz/2}" cy="${sz/2}" r="${r}" fill="none" stroke="${u.color}" stroke-width="${st}"
+          stroke-dasharray="${circ}" stroke-dashoffset="${off}" stroke-linecap="round" transform="rotate(-90 ${sz/2} ${sz/2})"/>
+        <text x="50%" y="44%" text-anchor="middle" dominant-baseline="central" fill="${u.color}" font-family="Nunito" font-size="12" font-weight="900">${u.km}</text>
+        <text x="50%" y="68%" text-anchor="middle" dominant-baseline="central" fill="#94a3b8" font-family="Nunito" font-size="7" font-weight="700">km</text>
+      </svg>
+      <div class="ring-name">${nameAvatar}${u.name.split(' ')[0]}</div>
+      <div class="ring-val">${u.workouts} sessions</div>
+    </div>`;
+  }).join('');
+}
+
+function pickUser(id){ selUser=users.find(u=>u.id===id); renderLB(); renderDetail(); }
+
+// ── Admin: remove member ──────────────────────────────────────────
+let _removeTargetId = null;
+
+function confirmRemove(id, name) {
+  _removeTargetId = id;
+  document.getElementById('removeNameLabel').textContent = name;
+  document.getElementById('removeBtnText').textContent   = 'Remove 🗑️';
+  document.getElementById('confirmRemoveBtn').disabled   = false;
+  document.getElementById('removeModal').classList.add('open');
+}
+
+function closeRemoveModal() {
+  document.getElementById('removeModal').classList.remove('open');
+  _removeTargetId = null;
+}
+
+document.getElementById('removeModal').addEventListener('click', function(e) {
+  if (e.target === this) closeRemoveModal();
+});
+
+async function executeRemove() {
+  if (!_removeTargetId) return;
+  const btn = document.getElementById('confirmRemoveBtn');
+  btn.disabled = true;
+  document.getElementById('removeBtnText').textContent = 'Removing…';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/members/${_removeTargetId}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ admin_name: currentMember?.name }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || `Error ${res.status}`);
+      btn.disabled = false;
+      document.getElementById('removeBtnText').textContent = 'Remove 🗑️';
+      return;
+    }
+    closeRemoveModal();
+    // If removed user was selected, reset selection
+    if (selUser?.id === _removeTargetId) selUser = null;
+    // Invalidate cache and reload
+    Object.keys(dataCache).forEach(k => delete dataCache[k]);
+    await loadData(currentPeriod);
+    showBanner(`✅ Member removed successfully`, 'live');
+  } catch(err) {
+    alert(`Could not reach server: ${err.message}`);
+    btn.disabled = false;
+    document.getElementById('removeBtnText').textContent = 'Remove 🗑️';
+  }
+}
+
+// ════ POINTS ════
+function renderPoints(){
+  const el = document.getElementById('pointsContent');
+  if (!el) return;
+
+  const GOAL = 66.67;
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth() + 1; // 1-12
+  const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  // Build a lookup: userId → { month(1-12): challengeKm } for current year only
+  // challengeKm applies conversion factors: bike/5, virtual bike/4, swim*4,
+  // walking 1:1 only if >30min AND >6.5km/h, running 1:1
+  // Falls back to client-side calculation from per-type km fields if field absent
+
+  function monthlyRunMap(u) {
+    const map = {};
+    (u.monthly || []).forEach(m => {
+      if (m.year === currentYear && m.month >= 1 && m.month <= 12) {
+        map[m.month] = calcChallengeKm(m);
+      }
+    });
+    return map;
+  }
+
+  // Rule A: +1pt for each month this year (including current) where challengeKm >= GOAL
+  const ruleAPoints = {};
+  const ruleAData = {}; // { userId: { month: challengeKm } } for all months up to current
+
+  users.forEach(u => {
+    const runMap = monthlyRunMap(u);
+    let pts = 0;
+    const data = {};
+    for (let m = 1; m <= currentMonth; m++) {
+      const km = runMap[m] || 0;
+      data[m] = km;
+      if (km >= GOAL) pts++;
+    }
+    ruleAPoints[u.id] = pts;
+    ruleAData[u.id] = data;
+  });
+
+  // Rule B: user with most YTD challenge km (current year) = +2pts
+  const ytdRunKm = {};
+  if (dataCache['ytd'] && dataCache['ytd'].data && Array.isArray(dataCache['ytd'].data)) {
+    dataCache['ytd'].data.forEach(u => {
+      const ytdMonthly = u.monthly || [];
+      ytdRunKm[u.id] = ytdMonthly
+        .filter(m => m.year === currentYear)
+        .reduce((s, m) => s + calcChallengeKm(m), 0);
+    });
+  } else {
+    users.forEach(u => {
+      const runMap = monthlyRunMap(u);
+      ytdRunKm[u.id] = Object.values(runMap).reduce((a,b)=>a+b, 0);
+    });
+  }
+  const maxYtdRun = Math.max(...Object.values(ytdRunKm), 0);
+  const ruleBWinners = maxYtdRun > 0
+    ? users.filter(u => (ytdRunKm[u.id]||0) === maxYtdRun).map(u => u.id)
+    : [];
+
+  // Rule C: only the user with STRICTLY most Rule A points gets +2pts.
+  // If two or more users are tied at the top, nobody gets the bonus.
+  const maxRuleA = Math.max(...Object.values(ruleAPoints), 0);
+  const ruleCCandidates = maxRuleA > 0
+    ? users.filter(u => ruleAPoints[u.id] === maxRuleA)
+    : [];
+  const ruleCWinners = ruleCCandidates.length === 1
+    ? ruleCCandidates.map(u => u.id)
+    : [];
+
+  // Rule D: biggest BMI improvement (Jan BMI → most recent month's BMI) = +1pt
+  // Only Garmin users with BMI data in both Jan and at least one later month qualify
+  // Improvement = positive number means BMI went DOWN (good)
+  const ruleDImprovement = {};
+  users.forEach(u => {
+    const janData = (u.monthly || []).find(m => m.year === currentYear && m.month === 1);
+    const janBmi  = janData?.bmi;
+    if (!janBmi || janBmi <= 0) return;
+    // Find latest month with BMI data (excluding Jan)
+    const laterMonths = (u.monthly || [])
+      .filter(m => m.year === currentYear && m.month > 1 && m.bmi && m.bmi > 0)
+      .sort((a, b) => b.month - a.month);
+    if (laterMonths.length === 0) return;
+    const latestBmi = laterMonths[0].bmi;
+    const improvement = janBmi - latestBmi; // positive = improved (BMI went down)
+    ruleDImprovement[u.id] = improvement;
+  });
+  const maxImprovement = Math.max(...Object.values(ruleDImprovement), 0);
+  // Rule D: only award if improvement > 0 AND strictly one winner (no tie)
+  const ruleDCandidates = maxImprovement > 0
+    ? users.filter(u => (ruleDImprovement[u.id] || 0) === maxImprovement)
+    : [];
+  const ruleDWinners = ruleDCandidates.length === 1
+    ? ruleDCandidates.map(u => u.id)
+    : [];
+
+  // Total points
+  const totalPoints = {};
+  users.forEach(u => {
+    totalPoints[u.id] =
+      (ruleAPoints[u.id] || 0) +
+      (ruleBWinners.includes(u.id) ? 2 : 0) +
+      (ruleCWinners.includes(u.id) ? 2 : 0) +
+      (ruleDWinners.includes(u.id) ? 1 : 0);
+  });
+
+  const sorted = [...users].sort((a,b) => (totalPoints[b.id]||0) - (totalPoints[a.id]||0));
+
+  // All 12 months Jan–Dec
+  const allMonths = [1,2,3,4,5,6,7,8,9,10,11,12];
+
+  const thead = `<tr>
+    <th style="text-align:left;min-width:120px">Athlete</th>
+    ${allMonths.map(m => {
+      const isPast   = m < currentMonth;
+      const isCurrent = m === currentMonth;
+      const style = isCurrent ? 'color:var(--violet)' : !isPast ? 'color:#cbd5e1' : '';
+      return `<th style="${style}" title="${MONTH_NAMES[m-1]} ${currentYear}${isCurrent?' (in progress)':!isPast?' (upcoming)':''}">${MONTH_NAMES[m-1]}</th>`;
+    }).join('')}
+    <th style="border-left:2px solid var(--border);color:var(--text2)" title="Total equivalent km this year">Total km</th>
+    <th style="color:#818cf8;border-left:2px solid var(--border)" title="Rule A: +1pt per month ≥${GOAL}km (including current month)">A</th>
+    <th style="color:#34d399" title="Rule B: most YTD run km (+2pts)">B</th>
+    <th style="color:#f472b6" title="Rule C: most Rule A points (+2pts)">C</th>
+    <th style="color:#fb923c" title="Rule D: biggest BMI improvement Jan→latest month (+1pt)">D</th>
+    <th style="border-left:2px solid var(--border)">Total 🏅</th>
+  </tr>`;
+
+  const tbody = sorted.map(u => {
+    const runMap = monthlyRunMap(u);
+    const monthCells = allMonths.map(m => {
+      const isPast    = m < currentMonth;
+      const isCurrent = m === currentMonth;
+      const km = runMap[m];  // challengeKm
+      const mData = (u.monthly||[]).find(md => md.year === currentYear && md.month === m);
+      const bmi = mData?.bmi && mData.bmi > 0 ? mData.bmi : null;
+      const bmiLine = bmi ? `<div style="font-size:.76rem;color:var(--muted);font-weight:600;line-height:1.2;margin-top:2px">${bmi.toFixed(1)}</div>` : '';
+
+      // Build breakdown tooltip — only show activities that contributed to challengeKm
+      const rawParts = [];
+      if ((mData?.runKm||0) > 0.05)     rawParts.push(`🏃 ${mData.runKm.toFixed(1)}km`);
+      if ((mData?.cycleKm||0) > 0.05)   rawParts.push(`🚴 ${mData.cycleKm.toFixed(1)}km÷5`);
+      if ((mData?.virtualKm||0) > 0.05) rawParts.push(`💻 ${mData.virtualKm.toFixed(1)}km÷4`);
+      if ((mData?.swimKm||0) > 0.05)    rawParts.push(`🏊 ${mData.swimKm.toFixed(1)}km×4`);
+      if (mData) {
+        const ckm = mData.challengeKm != null ? mData.challengeKm : calcChallengeKm(mData);
+        const qualW = Math.round(Math.max(0, ckm - (mData.runKm||0) - (mData.cycleKm||0)/5 - (mData.virtualKm||0)/4 - (mData.swimKm||0)*4) * 10) / 10;
+        if (qualW > 0.05) rawParts.push(`🚶 ${(qualW*3).toFixed(1)}km ÷3 = ${qualW.toFixed(1)}`);
+      }
+      const breakdown = rawParts.length ? ' | ' + rawParts.join(', ') : '';
+
+      if (isCurrent) {
+        const val = km != null ? km.toFixed(1) : '…';
+        const col = km >= GOAL ? '#059669' : '#f59e0b';
+        return `<td title="${MONTH_NAMES[m-1]}: ${val} eq.km (in progress, goal ${GOAL}km)${breakdown}" style="font-size:1.02rem;color:${col}">${val}${bmiLine}</td>`;
+      }
+      if (!isPast) {
+        return `<td style="color:#e2e8f8;font-size:1.02rem">·</td>`;
+      }
+      const hit = (km || 0) >= GOAL;
+      const val = km != null ? km.toFixed(1) : '0.0';
+      return `<td title="${MONTH_NAMES[m-1]}: ${val} eq.km${hit?' ✅':' ❌ (need '+GOAL+'km)'}${breakdown}" style="font-size:1.02rem;font-weight:800;color:${hit?'#059669':'#ef4444'}">${val}${bmiLine}</td>`;
+    }).join('');
+
+    const ruleA = ruleAPoints[u.id] || 0;
+    const hasB  = ruleBWinners.includes(u.id);
+    const hasC  = ruleCWinners.includes(u.id);
+    const hasD  = ruleDWinners.includes(u.id);
+    const impD  = ruleDImprovement[u.id];
+    const total = totalPoints[u.id] || 0;
+
+    const janBmiVal  = (u.monthly||[]).find(m => m.year===currentYear && m.month===1)?.bmi;
+    const latestBmiVal = [...(u.monthly||[])]
+      .filter(m => m.year===currentYear && m.month <= currentMonth && m.bmi && m.bmi > 0)
+      .sort((a,b) => b.month - a.month)[0]?.bmi;
+    const bmiSubline = (janBmiVal && janBmiVal > 0)
+      ? `<div style="font-size:.93rem;color:var(--muted);font-weight:700;margin-top:2px">
+           ⚖️ Jan: ${janBmiVal.toFixed(1)}${latestBmiVal && latestBmiVal !== janBmiVal ? ` → <span style="color:${latestBmiVal < janBmiVal ? '#059669' : '#ef4444'}">${latestBmiVal.toFixed(1)}</span>` : ''}
+         </div>`
+      : '';
+
+    return `<tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:7px">
+          <div style="width:56px;height:56px;border-radius:14px;background:${u.bg};display:flex;align-items:center;justify-content:center;font-size:2rem;flex-shrink:0;overflow:hidden">${u.picture?`<img src="${u.picture}" style="width:100%;height:100%;object-fit:cover;border-radius:14px">`:u.emoji}</div>
+          <div>
+            <span style="font-weight:800;font-size:.93rem">${u.name}</span>
+            ${bmiSubline}
+          </div>
+        </div>
+      </td>
+      ${monthCells}
+      <td style="border-left:2px solid var(--border);font-weight:800;color:var(--text2)" title="${(()=>{
+        const cy = currentYear;
+        const months = (u.monthly||[]).filter(m=>m.year===cy);
+        const run   = months.reduce((s,m)=>s+(m.runKm||0),0);
+        const bike  = months.reduce((s,m)=>s+(m.cycleKm||0),0);
+        const virt  = months.reduce((s,m)=>s+(m.virtualKm||0),0);
+        const swim  = months.reduce((s,m)=>s+(m.swimKm||0),0);
+        // Qualifying walk km = challengeKm minus contributions from other sports
+        const qualWalk = Math.round(months.reduce((s,m)=>{
+          const ckm = m.challengeKm != null ? m.challengeKm : calcChallengeKm(m);
+          return s + Math.max(0, ckm - (m.runKm||0) - (m.cycleKm||0)/5 - (m.virtualKm||0)/4 - (m.swimKm||0)*4);
+        },0) * 10) / 10;
+        const parts = [];
+        if (run      > 0.05) parts.push('🏃 '+run.toFixed(1)+'km ÷1');
+        if (bike     > 0.05) parts.push('🚴 '+bike.toFixed(1)+'km ÷5 = '+(bike/5).toFixed(1));
+        if (virt     > 0.05) parts.push('💻 '+virt.toFixed(1)+'km ÷4 = '+(virt/4).toFixed(1));
+        if (swim     > 0.05) parts.push('🏊 '+swim.toFixed(1)+'km ×4 = '+(swim*4).toFixed(1));
+        if (qualWalk > 0.05) parts.push('🚶 '+(qualWalk*3).toFixed(1)+'km ÷3 = '+qualWalk.toFixed(1));
+        return parts.join(' | ');
+      })()}">${Object.values(monthlyRunMap(u)).reduce((a,b)=>a+b,0).toFixed(1)}</td>
+      <td style="color:#818cf8;font-weight:900;border-left:2px solid var(--border)">${ruleA}</td>
+      <td style="color:${hasB?'#34d399':'var(--muted)'};font-weight:${hasB?900:600}">${hasB?'+2':'—'}</td>
+      <td style="color:${hasC?'#f472b6':'var(--muted)'};font-weight:${hasC?900:600}">${hasC?'+2':'—'}</td>
+      <td style="color:${hasD?'#fb923c':'var(--muted)'};font-weight:${hasD?900:600}" title="${impD!=null?'BMI change: '+(impD>0?'−':'+')+Math.abs(impD).toFixed(1):'No BMI data'}">${hasD?'+1':'—'}</td>
+      <td style="border-left:2px solid var(--border)"><span class="pts-total">${total}</span></td>
+    </tr>`;
+  }).join('');
+
+  const legend = `<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:18px;font-size:0.7rem;font-weight:700;color:var(--muted)">
+    <span><span style="color:#059669">green</span> = ≥${GOAL} eq.km (goal hit, +1pt) · <span style="color:#ef4444">red</span> = goal missed · values = equivalent km</span>
+    <span>🏃 run 1:1 · 🚴 bike ÷5 · 💻 virtual ÷4 · 🏊 swim ×4 · 🚶 walk ÷3 if &gt;30min &amp; &gt;6.5km/h</span>
+    <span style="color:#818cf8">A: +1pt / qualifying month</span>
+    <span style="color:#34d399">B: most YTD eq.km = +2pts</span>
+    <span style="color:#f472b6">C: sole leader in Rule A = +2pts (no bonus if tied)</span>
+    <span style="color:#fb923c">D: biggest BMI drop Jan→latest = +1pt (Garmin only, no bonus if tied)</span>
+    <span style="color:var(--violet)">Current month shown in progress, not yet scored · hover cells for raw breakdown</span>
+  </div>`;
+
+  // Podium — top 3
+  const top3 = sorted.slice(0, 3);
+  const podiumOrder = top3.length >= 2 ? [top3[1], top3[0], top3[2]].filter(Boolean) : top3;
+  const podiumClasses  = top3.length >= 2 ? ['p2','p1','p3'] : ['p1','p2','p3'];
+  const podiumHeights  = { p1:'80px', p2:'56px', p3:'40px' };
+  const podiumMedals   = { p1:'🥇', p2:'🥈', p3:'🥉' };
+
+  const podiumHTML = top3.length === 0 ? '' : `
+  <div style="font-size:.76rem;color:var(--muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:16px;text-align:center">🏆 Standings</div>
+  <div class="podium-wrap">
+    ${podiumOrder.map((u, i) => {
+      const cls = podiumClasses[i];
+      const pts = totalPoints[u.id] || 0;
+      const crown = cls === 'p1' ? '<span class="podium-crown">👑</span>' : '';
+      return `<div class="podium-place">
+        <div class="podium-avatar ${cls}" style="background:${u.bg}">${crown}${u.picture?`<img src="${u.picture}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">`:u.emoji}</div>
+        <div class="podium-name">${u.name.split(' ')[0]}</div>
+        <div class="podium-pts">${pts} pts</div>
+        <div class="podium-block ${cls}" style="height:${podiumHeights[cls]}">${podiumMedals[cls]}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+
+  el.innerHTML =
+    podiumHTML +
+    `<div class="lb-scroll"><table class="pts-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>` +
+    legend.replace('margin-bottom:18px', 'margin-top:18px');
+}
+function buildPeriodSelector() {
+  const today = new Date();
+  const cy = today.getFullYear();
+  const cm = today.getMonth() + 1; // 1-12
+  const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const quarters = [
+    { key: 'q1', label: 'Q1', months: [1,2,3] },
+    { key: 'q2', label: 'Q2', months: [4,5,6] },
+    { key: 'q3', label: 'Q3', months: [7,8,9] },
+    { key: 'q4', label: 'Q4', months: [10,11,12] },
+  ].filter(q => q.months[0] <= cm); // only show quarters that have started
+
+  // Build month buttons (Jan → current month)
+  const monthBtns = Array.from({length: cm}, (_, i) => {
+    const m = i + 1;
+    const key = `month-${m}`;
+    return `<button class="week-btn${currentPeriod===key?' active':''}" data-range="${key}" onclick="setWeek(this,'${key}')">${MONTH_NAMES[m-1]}</button>`;
+  }).join('');
+
+  // Build quarter buttons
+  const qBtns = quarters.map(q =>
+    `<button class="week-btn${currentPeriod===q.key?' active':''}" data-range="${q.key}" onclick="setWeek(this,'${q.key}')">${q.label}</button>`
+  ).join('');
+
+  // Build overview buttons
+  const overviewBtns = [
+    { key: 'thismonth', label: 'Current Month' },
+    { key: 'lastmonth', label: 'Last Month' },
+    { key: 'ytd',       label: 'Year to Date' },
+  ].map(o =>
+    `<button class="week-btn${currentPeriod===o.key?' active':''}" data-range="${o.key}" onclick="setWeek(this,'${o.key}')">${o.label}</button>`
+  ).join('');
+
+  document.getElementById('weekSelector').innerHTML =
+    `<span class="week-group-label">Month</span><div class="week-group">${monthBtns}</div>` +
+    (quarters.length ? `<span class="week-group-label">Quarter</span><div class="week-group">${qBtns}</div>` : '') +
+    `<div class="week-group">${overviewBtns}</div>`;
+}
+
+function setWeek(btn, p) {
+  currentPeriod = p;
+  document.querySelectorAll('.week-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  // Synthetic periods (month-N, qN) are computed from ytd data — no backend fetch needed
+  if (p.startsWith('month-') || p.startsWith('q')) {
+    if (dataCache['ytd'] && dataCache['ytd'].data) {
+      applyData(dataCache['ytd'].data, p, true);
+    } else {
+      loadData('ytd').then(() => applyData(dataCache['ytd'].data, p, true));
+    }
+  } else {
+    loadData(p);
+  }
+}
+
+// ════ MONTHLY PROGRESS — SVG line charts, one per metric ════
+// ── Challenge km conversion (global — used by MP_METRICS and renderPoints) ──
+function calcChallengeKm(m) {
+  if (m.challengeKm != null) return m.challengeKm;
+  const run  = m.runKm     || 0;
+  const bike = m.cycleKm   || 0;
+  const virt = m.virtualKm || 0;
+  const swim = m.swimKm    || 0;
+  return run + (bike / 5) + (virt / 4) + (swim * 4);
+}
+
+const MP_METRICS = [
+  { key: 'challengeKm', label: '⭐ Equivalent km',      unit: 'km',   axFmt: v => v.toFixed(0),            valFmt: v => v.toFixed(1)+' km',        field: m => calcChallengeKm(m) || 0,     skipZero: false },
+  { key: 'runKm',       label: '🏃 Running',            unit: 'km',   axFmt: v => v.toFixed(0),            valFmt: v => v.toFixed(1)+' km',        field: m => m.runKm      || 0,           skipZero: false },
+  { key: 'cycleKm',     label: '🚴 Cycling',            unit: 'km',   axFmt: v => v.toFixed(0),            valFmt: v => v.toFixed(1)+' km',        field: m => m.cycleKm    || 0,           skipZero: false },
+  { key: 'virtualKm',   label: '💻 Virtual Bike',       unit: 'km',   axFmt: v => v.toFixed(0),            valFmt: v => v.toFixed(1)+' km',        field: m => m.virtualKm  || 0,           skipZero: false },
+  { key: 'swimKm',      label: '🏊 Swimming',           unit: 'km',   axFmt: v => v.toFixed(0),            valFmt: v => v.toFixed(2)+' km',        field: m => m.swimKm     || 0,           skipZero: false },
+  { key: 'walkKm',      label: '🚶 Walking',            unit: 'km',   axFmt: v => v.toFixed(0),            valFmt: v => v.toFixed(1)+' km',        field: m => m.walkKm     || 0,           skipZero: false },
+  { key: 'sess',        label: '🎯 Sessions',           unit: '',     axFmt: v => v.toFixed(0),            valFmt: v => v.toFixed(0),              field: m => m.sess       || 0,           skipZero: false },
+  { key: 'actKcal',     label: '⚡ Active Calories',    unit: 'kcal', axFmt: v => (v/1000).toFixed(0)+'K', valFmt: v => (v/1000).toFixed(1)+'K',   field: m => m.actKcal    || 0,           skipZero: false },
+  { key: 'bmi',         label: '⚖️ BMI',                unit: '',     axFmt: v => v.toFixed(1),            valFmt: v => v.toFixed(1),              field: m => m.bmi        || null,        skipZero: true  },
+];
+
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function renderMonthly() {
+  if (!users[0] || !users[0].monthly || !users[0].monthly.length) {
+    document.getElementById('mpCharts').innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted);font-weight:700">Loading monthly data…</div>';
+    return;
+  }
+
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1; // 1-12
+
+  // Always Jan–Dec, data only where available (Jan–current month)
+  const allMonths = MONTH_NAMES.map((label, i) => {
+    const mo = i + 1;
+    const dataMonth = users[0].monthly.find(m => m.month === mo && m.year === currentYear);
+    return { label, mo, hasData: mo <= currentMonth, dataMonth };
+  });
+
+  // No separate legend — user identity is shown directly on the chart avatar dots
+
+  const charts = MP_METRICS.map(metric => {
+    const W = 340, H = 170, pL = 36, pR = 10, pT = 16, pB = 22;
+    const iW = W - pL - pR, iH = H - pT - pB;
+    const nM = 12;
+
+    // For BMI: only include users who have at least one non-null value
+    const chartUsers = metric.skipZero
+      ? users.filter(u => u.monthly.some(m => metric.field(m) != null && metric.field(m) > 0))
+      : users;
+
+    if (metric.skipZero && chartUsers.length === 0) {
+      return `<div class="mp-chart-panel">
+        <div class="mp-chart-title">${metric.label}</div>
+        <div style="padding:28px;text-align:center;color:var(--muted);font-size:1.06rem;font-weight:700">
+          No BMI data available — log your weight in Garmin Connect to see this chart
+        </div>
+      </div>`;
+    }
+
+    // Collect values only from data months, ignoring nulls
+    const dataMonthIndices = allMonths.map((m, i) => m.hasData ? i : -1).filter(i => i >= 0);
+    const allVals = chartUsers.flatMap(u =>
+      dataMonthIndices.map(i => {
+        const mo = i + 1;
+        const mData = u.monthly.find(m => m.month === mo && m.year === currentYear);
+        const v = mData ? metric.field(mData) : null;
+        return (v != null && v > 0) ? v : null;
+      }).filter(v => v != null)
+    );
+
+    if (allVals.length === 0) {
+      return `<div class="mp-chart-panel">
+        <div class="mp-chart-title">${metric.label}</div>
+        <div style="padding:28px;text-align:center;color:var(--muted);font-size:1.06rem;font-weight:700">No data yet for this period</div>
+      </div>`;
+    }
+
+    const maxV = Math.max(...allVals);
+    // For BMI: always include the healthy range (18.5–25) in the scale so the band is visible
+    const minV = metric.skipZero
+      ? Math.max(0, Math.min(...allVals, 18.5) - 2)
+      : 0;
+    const adjMaxV = metric.skipZero ? Math.max(maxV, 25) + 1 : maxV;
+    const rangeV = adjMaxV - minV || 1;
+
+    const xPos = i => pL + (i / (nM - 1)) * iW;
+    const yPos = v => pT + iH * (1 - (v - minV) / rangeV);
+
+    let svg = '';
+
+    // BMI healthy band drawn first so it sits behind everything
+    if (metric.skipZero) {
+      const y1 = yPos(25), y2 = yPos(18.5);
+      svg += `<rect x="${pL}" y="${Math.min(y1,y2)}" width="${iW}" height="${Math.abs(y2-y1)}" fill="#22c55e" opacity="0.12"/>`;
+      svg += `<text x="${W - pR - 2}" y="${Math.min(y1,y2) - 2}" text-anchor="end" font-family="Nunito,sans-serif" font-size="7" fill="#22c55e" font-weight="800">Healthy</text>`;
+    }
+
+    // Shade future months
+    const futureStart = xPos(currentMonth);
+    svg += `<rect x="${futureStart}" y="${pT}" width="${W - pR - futureStart}" height="${iH}" fill="#f1f5f9" opacity="0.6"/>`;
+
+    // Grid lines + Y axis labels
+    [0, 0.25, 0.5, 0.75, 1.0].forEach(t => {
+      const v = minV + t * rangeV;
+      const y = yPos(v);
+      svg += `<line x1="${pL}" y1="${y}" x2="${W - pR}" y2="${y}" stroke="#e2e8f8" stroke-width="1"/>`;
+      svg += `<text x="${pL - 5}" y="${y + 4}" text-anchor="end" font-family="Nunito,sans-serif" font-size="7" fill="#94a3b8" font-weight="700">${metric.axFmt(v)}</text>`;
+    });
+
+    // X axis labels
+    MONTH_NAMES.forEach((lbl, i) => {
+      const future = i + 1 > currentMonth;
+      svg += `<text x="${xPos(i)}" y="${H - 4}" text-anchor="middle" font-family="Nunito,sans-serif" font-size="7" fill="${future ? '#cbd5e1' : '#94a3b8'}" font-weight="700">${lbl}</text>`;
+    });
+
+    // Per-user lines + avatar dots
+    // We collect all clip path defs and image elements separately
+    // SVG <image> needs a <clipPath> defined in <defs> for circular cropping
+    let defs = '<defs>';
+    let imageEls = '';
+    const R = 7; // avatar radius in SVG units
+
+    chartUsers.forEach(u => {
+      const vals = allMonths.map((m, i) => {
+        if (!m.hasData) return null;
+        const mData = u.monthly.find(md => md.month === m.mo && md.year === currentYear);
+        const v = mData ? metric.field(mData) : null;
+        return (v != null && v > 0) ? { i, v } : null;
+      }).filter(Boolean);
+
+      if (vals.length === 0) return;
+
+      // Area fill
+      if (!metric.skipZero) {
+        const areaPoints = [
+          `${xPos(vals[0].i)},${pT + iH}`,
+          ...vals.map(({ i, v }) => `${xPos(i)},${yPos(v)}`),
+          `${xPos(vals[vals.length - 1].i)},${pT + iH}`,
+        ].join(' ');
+        svg += `<polygon points="${areaPoints}" fill="${u.color}" opacity="0.07"/>`;
+      }
+
+      // Line
+      const linePoints = vals.map(({ i, v }) => `${xPos(i)},${yPos(v)}`).join(' ');
+      svg += `<polyline points="${linePoints}" fill="none" stroke="${u.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.95"/>`;
+
+      // Avatar dots — one per data month
+      vals.forEach(({ i, v }) => {
+        const cx = xPos(i), cy = yPos(v);
+        const clipId = `clip-${metric.key}-u${u.id}-m${i}`;
+
+        // Outer coloured ring
+        svg += `<circle cx="${cx}" cy="${cy}" r="${R + 1.5}" fill="${u.color}" opacity="0.9"/>`;
+
+        if (u.picture) {
+          // Clip path for circular image
+          defs += `<clipPath id="${clipId}"><circle cx="${cx}" cy="${cy}" r="${R}"/></clipPath>`;
+          imageEls += `<image href="${u.picture}" x="${cx - R}" y="${cy - R}" width="${R * 2}" height="${R * 2}" clip-path="url(#${clipId})" preserveAspectRatio="xMidYMid slice">
+            <title>${u.name.split(' ')[0]} · ${MONTH_NAMES[i]} ${currentYear}: ${metric.valFmt(v)}</title>
+          </image>`;
+        } else {
+          // Fallback: coloured circle with first letter
+          svg += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="${u.bg}"/>`;
+          svg += `<text x="${cx}" y="${cy + 3.5}" text-anchor="middle" font-family="Nunito,sans-serif" font-size="9" font-weight="900" fill="${u.color}">${u.name[0]}</text>`;
+        }
+      });
+    });
+
+    defs += '</defs>';
+    // Prepend defs, append images on top of everything else
+    svg = defs + svg + imageEls;
+
+    const subtitle = metric.skipZero
+      ? `<div style="font-size:.93rem;color:var(--muted);font-weight:700;margin-bottom:10px">Garmin users with weight data only · Green band = healthy range (18.5–25)</div>`
+      : '';
+
+    return `<div class="mp-chart-panel">
+      <div class="mp-chart-title">${metric.label} — ${currentYear}</div>
+      ${subtitle}
+      <div style="overflow-x:auto">
+        <svg width="100%" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="display:block;min-width:200px;overflow:visible">${svg}</svg>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('mpUserRow').innerHTML = '';
+  document.getElementById('mpCharts').innerHTML = charts;
+}
+
+function pickMpUser(id) {
+  selMoUser = id ? users.find(u => u.id === id) : null;
+  renderMonthly();
+}
+
+
+
+// ── INIT ───
+restoreSession();   // must run before loadData so admin check works in renderLB
+buildPeriodSelector();
+loadData('thismonth');
+
+// Auto-refresh every 15 minutes — clear cache first so fresh data is fetched
+setInterval(() => { Object.keys(dataCache).forEach(k => delete dataCache[k]); loadData(currentPeriod); }, 15 * 60 * 1000);
+
+// ══════════════════════════════════════════════════════════════════
+//  GOOGLE SIGN-IN  +  JOIN FLOW
+// ══════════════════════════════════════════════════════════════════
+
+let googleIdToken   = null;   // raw JWT from Google
+let googleProfile   = null;   // { sub, email, name, picture }
+let currentMember   = null;   // member object after successful join
+let modalStep       = 1;
+
+// ── Restore session from localStorage ────────────────────────────
+function restoreSession() {
+  try {
+    const saved = localStorage.getItem('squad_member');
+    if (saved) {
+      currentMember = JSON.parse(saved);
+      updateHeaderChip(currentMember);
+    }
+  } catch(e) { /* ignore */ }
+}
+
+function saveSession(member) {
+  currentMember = member;
+  try { localStorage.setItem('squad_member', JSON.stringify(member)); } catch(e) {}
+  updateHeaderChip(member);
+}
+
+function updateHeaderChip(member) {
+  if (!member) return;
+  const chip   = document.getElementById('currentUserChip');
+  const wrap   = document.getElementById('chipAvatarWrap');
+  const nameEl = document.getElementById('chipName');
+  wrap.innerHTML = `<span class="chip-avatar-emoji" style="background:${member.bg}">${member.emoji}</span>`;
+  nameEl.textContent = member.name.split(' ')[0];
+  chip.classList.add('visible');
+}
+
+// ── Open / close modal ────────────────────────────────────────────
+function openJoinModal() {
+  clearModalMsg();
+  goToStep(0);
+  if (currentMember) {
+    document.getElementById('nameInput').value = currentMember.name || '';
+  } else {
+    document.getElementById('nameInput').value = '';
+    document.getElementById('garminEmailInput').value = '';
+    document.getElementById('garminPasswordInput').value = '';
+  }
+  document.getElementById('joinModal').classList.add('open');
+}
+
+function closeJoinModal() {
+  document.getElementById('joinModal').classList.remove('open');
+  clearModalMsg();
+}
+
+function openMyProfile() { openJoinModal(); }
+
+// ── Height modal ──────────────────────────────────────────────────
+function openHeightModal() {
+  document.getElementById('heightCmInput').value = '';
+  document.getElementById('heightModalMsg').innerHTML = '';
+  document.getElementById('heightModal').classList.add('open');
+  setTimeout(() => document.getElementById('heightCmInput').focus(), 100);
+}
+
+function closeHeightModal() {
+  document.getElementById('heightModal').classList.remove('open');
+}
+
+document.getElementById('heightModal').addEventListener('click', function(e) {
+  if (e.target === this) closeHeightModal();
+});
+
+async function submitHeight() {
+  const cm = parseFloat(document.getElementById('heightCmInput').value);
+  const msg = document.getElementById('heightModalMsg');
+  if (!cm || cm < 100 || cm > 250) {
+    msg.innerHTML = '<span style="color:#b91c1c">Please enter a valid height between 100 and 250 cm.</span>';
+    return;
+  }
+  if (!currentMember?.id) {
+    msg.innerHTML = '<span style="color:#b91c1c">Not logged in.</span>';
+    return;
+  }
+  const btn = document.getElementById('heightBtn');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  try {
+    const res = await fetch(`${API_BASE}/api/members/${currentMember.id}/height`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ admin_name: currentMember.name, height_cm: cm }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    // Clear server cache so height appears immediately
+    await fetch(`${API_BASE}/api/admin/clear-cache`, { method: 'GET' });
+    closeHeightModal();
+    sessionStorage.removeItem('height_prompted');
+    // Reload data so height shows up right away
+    Object.keys(dataCache).forEach(k => delete dataCache[k]);
+    await loadData(currentPeriod);
+    showBanner('📏 Height saved!', 'live');
+  } catch(e) {
+    msg.innerHTML = `<span style="color:#b91c1c">Error: ${e.message}</span>`;
+    btn.disabled = false;
+    btn.textContent = 'Save height';
+  }
+}
+
+document.getElementById('joinModal').addEventListener('click', function(e) {
+  if (e.target === this) closeJoinModal();
+});
+
+// ── Step navigation ───────────────────────────────────────────────
+function goToStep(n) {
+  modalStep = n;
+  document.getElementById('step0').style.display   = n === 0 ? 'block' : 'none';
+  document.getElementById('step1').style.display   = n === 1 ? 'block' : 'none';
+  document.getElementById('stepMfa').style.display = n === 'mfa' ? 'block' : 'none';
+  document.getElementById('step2').style.display   = n === 2 ? 'block' : 'none';
+  document.getElementById('step3').style.display   = n === 3 ? 'block' : 'none';
+}
+
+// ── Provider choice ───────────────────────────────────────────────
+function chooseProvider(provider) {
+  const name = document.getElementById('nameInput').value.trim();
+  if (!name) {
+    showModalMsg('Please enter your name first.', 'error');
+    return;
+  }
+  clearModalMsg();
+  if (provider === 'garmin') {
+    document.getElementById('joinBtnText').textContent =
+      currentMember?.provider !== 'strava' ? 'Join Fette Otter 🦦' : 'Connect Garmin';
+    goToStep(1);
+  } else {
+    // Strava — redirect to backend OAuth
+    goToStep(2);
+    const params = new URLSearchParams({ name });
+    if (currentMember?.id) params.set('user_id', currentMember.id);
+    setTimeout(() => {
+      window.location.href = `${API_BASE}/api/strava/auth?${params}`;
+    }, 600);
+  }
+}
+
+// ── Submit join (Garmin) ──────────────────────────────────────────
+let _pendingMfaToken = null;  // holds mfa_token between step 1 and MFA step
+
+async function submitJoin() {
+  const name           = document.getElementById('nameInput').value.trim();
+  const garminEmail    = document.getElementById('garminEmailInput').value.trim();
+  const garminPassword = document.getElementById('garminPasswordInput').value.trim();
+
+  if (!name) { showModalMsg('Please enter your name.', 'error'); return; }
+  if (!garminEmail || !garminPassword) {
+    showModalMsg('Please enter your Garmin Connect email and password.', 'error');
+    return;
+  }
+
+  setJoinLoading(true);
+  clearModalMsg();
+
+  try {
+    const res = await fetch(`${API_BASE}/api/members/join`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, garmin_email: garminEmail, garmin_password: garminPassword }),
+    });
+    const data = await res.json();
+
+    // 2FA required
+    if (res.status === 202 && data.needs_mfa) {
+      _pendingMfaToken = data.mfa_token;
+      setJoinLoading(false);
+      goToStep('mfa');
+      setTimeout(() => document.getElementById('mfaCodeInput').focus(), 100);
+      return;
+    }
+
+    if (!res.ok) { showModalMsg(data.error || `Error ${res.status}`, 'error'); setJoinLoading(false); return; }
+
+    const member = data.member;
+    saveSession(member);
+    Object.keys(dataCache).forEach(k => delete dataCache[k]);
+    await loadData(currentPeriod);
+    showSuccessScreen(member, data.rejoined, 'garmin');
+    goToStep(3);
+  } catch(err) {
+    showModalMsg(`Could not reach the server. (${err.message})`, 'error');
+  } finally {
+    setJoinLoading(false);
+  }
+}
+
+async function submitMfa() {
+  const otp = document.getElementById('mfaCodeInput').value.trim();
+  if (!otp) { showModalMsg('Please enter the verification code.', 'error'); return; }
+  if (!_pendingMfaToken) { showModalMsg('Session expired — please start again.', 'error'); goToStep(1); return; }
+
+  const btn  = document.getElementById('mfaBtn');
+  const text = document.getElementById('mfaBtnText');
+  btn.disabled = true;
+  text.textContent = 'Verifying…';
+  clearModalMsg();
+
+  try {
+    const res = await fetch(`${API_BASE}/api/members/join/mfa`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mfa_token: _pendingMfaToken, otp_code: otp }),
+    });
+    const data = await res.json();
+
+    if (res.status === 410) {
+      // Session expired on server
+      _pendingMfaToken = null;
+      showModalMsg('Verification session expired — please log in again.', 'error');
+      goToStep(1);
+      return;
+    }
+    if (!res.ok) {
+      showModalMsg(data.error || `Error ${res.status}`, 'error');
+      document.getElementById('mfaCodeInput').value = '';
+      document.getElementById('mfaCodeInput').focus();
+      return;
+    }
+
+    _pendingMfaToken = null;
+    const member = data.member;
+    saveSession(member);
+    Object.keys(dataCache).forEach(k => delete dataCache[k]);
+    await loadData(currentPeriod);
+    showSuccessScreen(member, data.rejoined, 'garmin');
+    goToStep(3);
+  } catch(err) {
+    showModalMsg(`Could not reach the server. (${err.message})`, 'error');
+  } finally {
+    btn.disabled = false;
+    text.textContent = 'Verify & Join 🦦';
+  }
+}
+
+// ── Handle Strava callback redirect ──────────────────────────────
+(function handleStravaCallback() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('strava_ok') === '1') {
+    const memberId   = params.get('member_id');
+    const memberName = params.get('member_name') || 'You';
+    // Clean URL
+    window.history.replaceState({}, '', window.location.pathname);
+    // Fetch member data from backend and store session
+    fetch(`${API_BASE}/api/members`)
+      .then(r => r.json())
+      .then(members => {
+        const member = members.find(m => String(m.id) === String(memberId));
+        if (member) {
+          saveSession(member);
+          Object.keys(dataCache).forEach(k => delete dataCache[k]);
+          loadData(currentPeriod).then(() => {
+            showSuccessScreen(member, false, 'strava');
+            goToStep(3);
+            document.getElementById('joinModal').classList.add('open');
+          });
+        }
+      })
+      .catch(() => {
+        showBanner(`✅ Welcome ${memberName}! Your Strava data is syncing…`, 'live');
+      });
+  } else if (params.get('strava_error')) {
+    window.history.replaceState({}, '', window.location.pathname);
+    showBanner(`⚠️ Strava connection failed: ${params.get('strava_error')}`, 'error');
+  }
+})();
+
+function showSuccessScreen(member, rejoined = false, provider = 'garmin') {
+  const providerLabel = provider === 'strava' ? 'Strava' : 'Garmin';
+  document.getElementById('successTitle').textContent =
+    rejoined ? `Welcome back, ${member.name.split(' ')[0]}!` : `You're in Fette Otter! 🦦`;
+  document.getElementById('successMsg').textContent =
+    rejoined ? 'Your stats are already on the leaderboard.' :
+               `Your ${providerLabel} data is syncing — you'll appear on the leaderboard shortly.`;
+  document.getElementById('newMemberPreview').innerHTML = `
+    <div class="nmp-avatar" style="background:${member.bg}">${member.picture ? `<img src="${member.picture}" style="width:100%;height:100%;border-radius:14px;object-fit:cover">` : member.emoji}</div>
+    <div>
+      <div class="nmp-name">${member.name}</div>
+      <div class="nmp-role">Fette Otter · ${providerLabel}</div>
+    </div>
+    <div style="margin-left:auto;font-size:1.06rem;font-weight:700;color:#059669;background:#d1fae5;padding:3px 10px;border-radius:20px">
+      ${rejoined ? 'Active' : 'Joined!'}
+    </div>`;
+  document.getElementById('step3').style.display = 'block';
+}
+
+function setJoinLoading(loading) {
+  const btn  = document.getElementById('joinBtn');
+  const text = document.getElementById('joinBtnText');
+  btn.disabled = loading;
+  text.innerHTML = loading
+    ? '<div class="spinner"></div> Connecting to Garmin…'
+    : 'Join Fette Otter 🦦';
+}
+
+function showModalMsg(msg, type = 'info') {
+  const el = document.getElementById('modalMsg');
+  el.textContent = msg;
+  el.className   = `modal-msg ${type}`;
+}
+
+function clearModalMsg() {
+  const el = document.getElementById('modalMsg');
+  el.className   = 'modal-msg';
+  el.textContent = '';
+}
+
+// ─────────────────────────────────────────────────────────────────
+</script>
+</body>
+</html>
