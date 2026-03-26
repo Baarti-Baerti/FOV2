@@ -1750,9 +1750,40 @@ function renderLB(){
         || u.durationSec || 0;
   }
 
-  // Days to goal: for a single-month view, return the goalDay from that month's data.
-  // For multi-month periods, return the earliest goalDay found.
-  // For the current in-progress month, if goal not yet reached return null.
+  // Days to goal: on which calendar day did the user first hit 66.67 challenge-km?
+  // Returns null if the goal hasn't been reached yet in the selected period.
+  const MONTHLY_GOAL = 66.67;
+
+  // Calculate challenge-km from a monthly data object (mirrors backend formula)
+  function calcChallengeKmFromMonth(mo) {
+    return (mo.runKm||0) + (mo.cycleKm||0)/5 + (mo.virtualKm||0)/4 + (mo.swimKm||0)*4;
+  }
+
+  // For a single month entry, derive goalDay:
+  // - use backend-provided goalDay if present
+  // - otherwise estimate from challengeKm: if total >= goal, estimate proportionally
+  function goalDayForMonth(mo) {
+    if (mo.goalDay != null) return mo.goalDay;
+    const ckm = mo.challengeKm != null ? mo.challengeKm : calcChallengeKmFromMonth(mo);
+    if (ckm < MONTHLY_GOAL) return null;
+    // Estimate: if we have daily data, walk through it cumulatively
+    if (mo.days && mo.days.length > 0) {
+      // days[] stores per-day calorie values; we don't have per-day km here,
+      // so estimate: distribute challengeKm proportionally across active days
+      const activeDays = mo.days.reduce((acc, v, i) => { if (v > 0) acc.push(i+1); return acc; }, []);
+      if (activeDays.length > 0) {
+        const kmPerSession = ckm / activeDays.length;
+        let cum = 0;
+        for (const day of activeDays) {
+          cum += kmPerSession;
+          if (cum >= MONTHLY_GOAL) return day;
+        }
+      }
+    }
+    // Final fallback: linear interpolation across the month (31 days)
+    return Math.ceil((MONTHLY_GOAL / ckm) * 31);
+  }
+
   function userDaysToGoal(u) {
     const today = new Date();
     const cy = today.getFullYear(), cm = today.getMonth() + 1;
@@ -1765,8 +1796,8 @@ function renderLB(){
     else if (currentPeriod==='q3') months=(u.monthly||[]).filter(m=>m.year===cy&&m.month>=7&&m.month<=9);
     else if (currentPeriod==='q4') months=(u.monthly||[]).filter(m=>m.year===cy&&m.month>=10&&m.month<=12);
     else months=(u.monthly||[]).filter(m=>m.year===cy);
-    // Average goalDay across all months where the goal was reached
-    const reached = months.filter(m => m.goalDay != null).map(m => m.goalDay);
+    // Collect goalDay for each month where the goal was reached
+    const reached = months.map(m => goalDayForMonth(m)).filter(d => d != null);
     if (reached.length === 0) return null;
     return Math.round(reached.reduce((s, d) => s + d, 0) / reached.length);
   }

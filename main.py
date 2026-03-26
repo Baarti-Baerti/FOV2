@@ -178,6 +178,20 @@ def aggregate(acts: list) -> dict:
                 types=sorted(types))
 
 
+MONTHLY_GOAL_KM = 66.67  # challenge goal per month
+
+def challenge_km_for_activity(a: dict) -> float:
+    """Return the challenge-km contribution of a single activity."""
+    cat  = classify(a.get("sport_type") or a.get("type", ""))
+    dist = (a.get("distance", 0) or 0) / 1000  # metres → km
+    if   cat == "run":          return dist
+    elif cat == "ride":         return dist / 5
+    elif cat == "virtual_ride": return dist / 4
+    elif cat == "swim":         return dist * 4
+    elif cat == "walk":         return dist  # backend counts all walk; frontend can apply pace filter
+    return 0.0
+
+
 def monthly_breakdown(acts: list, year: int) -> list:
     buckets = {m: [] for m in range(1, 13)}
     for a in acts:
@@ -186,23 +200,53 @@ def monthly_breakdown(acts: list, year: int) -> list:
             dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
             if dt.year == year: buckets[dt.month].append(a)
         except ValueError: pass
+
     names = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
     result = []
     for m in range(1, 13):
-        s = aggregate(buckets[m])
+        month_acts = buckets[m]
+        s = aggregate(month_acts)
+
+        # Daily calories heatmap (for the activity dots)
         days = [0] * 31
-        for a in buckets[m]:
+        for a in month_acts:
             ts = a.get("start_date_local") or a.get("start_date", "")
             try:
-                dt = datetime.fromisoformat(ts.replace("Z","+00:00"))
+                dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
                 idx = dt.day - 1
-                if 0 <= idx < 31: days[idx] = max(days[idx], a.get("calories", 0) or 0)
+                if 0 <= idx < 31:
+                    days[idx] = max(days[idx], a.get("calories", 0) or 0)
             except (ValueError, IndexError): pass
-        result.append(dict(year=year, month=m, label=names[m-1],
-                           cal=s["calories"], sess=s["workouts"], km=s["km"],
-                           runKm=s["runKm"], cycleKm=s["cycleKm"], virtualKm=s["virtualKm"],
-                           swimKm=s["swimKm"], walkKm=s["walkKm"], actKcal=s["actKcal"],
-                           durationSec=s["durationSec"], challengeKm=s["challengeKm"], days=days))
+
+        # ── goalDay: which calendar day did cumulative challenge-km first hit 66.67? ──
+        # Sort activities chronologically, accumulate challenge-km day by day.
+        goal_day = None
+        if month_acts:
+            dated = []
+            for a in month_acts:
+                ts = a.get("start_date_local") or a.get("start_date", "")
+                try:
+                    dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                    if dt.year == year and dt.month == m:
+                        dated.append((dt.day, challenge_km_for_activity(a)))
+                except ValueError: pass
+            dated.sort(key=lambda x: x[0])
+            cumulative = 0.0
+            for day_num, ckm in dated:
+                cumulative += ckm
+                if cumulative >= MONTHLY_GOAL_KM:
+                    goal_day = day_num
+                    break  # first day the goal is crossed
+
+        result.append(dict(
+            year=year, month=m, label=names[m-1],
+            cal=s["calories"], sess=s["workouts"], km=s["km"],
+            runKm=s["runKm"], cycleKm=s["cycleKm"], virtualKm=s["virtualKm"],
+            swimKm=s["swimKm"], walkKm=s["walkKm"], actKcal=s["actKcal"],
+            durationSec=s["durationSec"], challengeKm=s["challengeKm"],
+            goalDay=goal_day,  # None if goal not yet reached this month
+            days=days,
+        ))
     return result
 
 
