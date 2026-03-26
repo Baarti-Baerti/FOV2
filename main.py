@@ -152,6 +152,29 @@ async def fetch_activities(member: dict, after: int, before: int) -> list:
 # ─────────────────────────────────────────────────────────────
 #  Stats aggregation
 # ─────────────────────────────────────────────────────────────
+MONTHLY_GOAL_KM    = 66.67        # challenge goal per month
+WALK_MIN_SPEED_MS  = 6500 / 3600  # 6.5 km/h in m/s
+WALK_MIN_MOVING_S  = 30 * 60      # 30 minutes in seconds
+
+def challenge_km_for_activity(a: dict) -> float:
+    """Return the challenge-km contribution of a single activity.
+    Walk/Hike: counts at dist/3 only if moving_time >= 30 min AND average_speed >= 6.5 km/h.
+    """
+    cat  = classify(a.get("sport_type") or a.get("type", ""))
+    dist = (a.get("distance", 0) or 0) / 1000  # metres -> km
+    if   cat == "run":          return dist
+    elif cat == "ride":         return dist / 5
+    elif cat == "virtual_ride": return dist / 4
+    elif cat == "swim":         return dist * 4
+    elif cat == "walk":
+        moving_time   = a.get("moving_time",   0) or 0
+        average_speed = a.get("average_speed", 0) or 0
+        if moving_time >= WALK_MIN_MOVING_S and average_speed >= WALK_MIN_SPEED_MS:
+            return dist / 3
+        return 0.0
+    return 0.0
+
+
 def aggregate(acts: list) -> dict:
     run = ride = vride = swim = walk = 0.0
     secs = cals = 0
@@ -171,25 +194,13 @@ def aggregate(acts: list) -> dict:
         elif cat == "walk":         walk  += d
     def km(v): return round(v / 1000, 2)
     rk, ck_, vk, sk, wk = km(run), km(ride), km(vride), km(swim), km(walk)
+    # challengeKm: sum per-activity so walk filter is applied individually
+    ckm = round(sum(challenge_km_for_activity(a) for a in acts), 2)
     return dict(runKm=rk, cycleKm=ck_, virtualKm=vk, swimKm=sk, walkKm=wk,
                 km=round(rk+ck_+vk+sk+wk, 2), durationSec=secs,
                 calories=round(cals), actKcal=round(kcal),
-                workouts=len(acts), challengeKm=round(rk+ck_/5+vk/4+sk*4, 2),
+                workouts=len(acts), challengeKm=ckm,
                 types=sorted(types))
-
-
-MONTHLY_GOAL_KM = 66.67  # challenge goal per month
-
-def challenge_km_for_activity(a: dict) -> float:
-    """Return the challenge-km contribution of a single activity."""
-    cat  = classify(a.get("sport_type") or a.get("type", ""))
-    dist = (a.get("distance", 0) or 0) / 1000  # metres → km
-    if   cat == "run":          return dist
-    elif cat == "ride":         return dist / 5
-    elif cat == "virtual_ride": return dist / 4
-    elif cat == "swim":         return dist * 4
-    elif cat == "walk":         return dist  # backend counts all walk; frontend can apply pace filter
-    return 0.0
 
 
 def monthly_breakdown(acts: list, year: int) -> list:
