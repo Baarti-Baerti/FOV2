@@ -31,7 +31,7 @@ STRAVA_CLIENT_ID     = os.getenv("STRAVA_CLIENT_ID",     "YOUR_CLIENT_ID")
 STRAVA_CLIENT_SECRET = os.getenv("STRAVA_CLIENT_SECRET", "YOUR_CLIENT_SECRET")
 FRONTEND_URL         = os.getenv("FRONTEND_URL",  "http://localhost:5500")
 BACKEND_URL          = os.getenv("BACKEND_URL",   "http://localhost:8000")
-DB_PATH              = os.getenv("DB_PATH",        "fette_otter.json")
+DB_PATH              = os.getenv("DB_PATH",        "/data/fette_otter.json")
 SECRET_KEY           = os.getenv("SECRET_KEY",     secrets.token_hex(32))
 
 STRAVA_AUTH_URL  = "https://www.strava.com/oauth/authorize"
@@ -303,8 +303,17 @@ def fmt_member(m: dict, idx: int, s: dict) -> dict:
 # ─────────────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app):
+    # Ensure the data directory exists (Railway volume or local)
+    db_dir = os.path.dirname(DB_PATH)
+    if db_dir and not os.path.exists(db_dir):
+        os.makedirs(db_dir, exist_ok=True)
+        print(f"[startup] Created data directory: {db_dir}")
     if not os.path.exists(DB_PATH):
         save_db({"members": [], "next_id": 1})
+        print(f"[startup] Created new database at: {DB_PATH}")
+    else:
+        db = load_db()
+        print(f"[startup] Loaded database: {len(db['members'])} member(s) from {DB_PATH}")
     yield
 
 app = FastAPI(title="Fette Otter API", version="1.0.0", lifespan=lifespan)
