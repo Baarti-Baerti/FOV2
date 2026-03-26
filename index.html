@@ -1550,23 +1550,62 @@ function genMonthly(u) {
 //  DATA LOADING — try backend, fall back to mock
 // ──────────────────────────────────────────────────────────────────
 // ── Data cache ────────────────────────────────────────────────────
-const dataCache = {};   // { thismonth: [...], lastmonth: [...], ytd: [...] }
+const dataCache = {};   // in-memory mirror of localStorage
 let currentPeriod = 'thismonth';
 
 // ──────────────────────────────────────────────────────────────────
-//  DATA LOADING — fetch all periods in parallel, cache results
+//  PERSISTENT CACHE  — localStorage so data survives page reloads
 // ──────────────────────────────────────────────────────────────────
-async function loadData(period = 'thismonth') {
+const LS_KEY = 'fo_teamdata_v1';
+
+function persistSave() {
+  try {
+    const payload = {};
+    Object.keys(dataCache).forEach(p => {
+      if (dataCache[p] && dataCache[p].data) {
+        payload[p] = { data: dataCache[p].data, _ts: dataCache[p]._ts };
+      }
+    });
+    localStorage.setItem(LS_KEY, JSON.stringify(payload));
+  } catch(e) { console.warn('Cache save failed:', e); }
+}
+
+function persistLoad() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return false;
+    const payload = JSON.parse(raw);
+    let loaded = false;
+    Object.keys(payload).forEach(p => {
+      if (payload[p] && Array.isArray(payload[p].data)) {
+        dataCache[p] = payload[p];
+        loaded = true;
+      }
+    });
+    return loaded;
+  } catch(e) { return false; }
+}
+
+function persistClear() {
+  Object.keys(dataCache).forEach(k => delete dataCache[k]);
+  try { localStorage.removeItem(LS_KEY); } catch(e) {}
+}
+
+// ──────────────────────────────────────────────────────────────────
+//  DATA LOADING — fetch all periods in parallel, persist results
+// ──────────────────────────────────────────────────────────────────
+async function loadData(period = 'thismonth', forceRefresh = false) {
   currentPeriod = period;
 
-  const cached = dataCache[period];
-  const cacheAge = cached ? (Date.now() - (cached._ts || 0)) : Infinity;
-  if (cached && cacheAge < 10 * 60 * 1000) {
-    applyData(cached.data, period, true);
-    return;
+  // Show persisted data immediately while we fetch fresh data
+  const persisted = dataCache[period];
+  if (persisted && persisted.data && !forceRefresh) {
+    applyData(persisted.data, period, true);
+    const ageMin = Math.round((Date.now() - (persisted._ts || 0)) / 60000);
+    showBanner(`✅ Showing saved data (${ageMin}m ago) — refreshing…`, 'live');
+  } else {
+    showBanner('⏳ Loading data…', 'info');
   }
-
-  showBanner('⏳ Loading data…', 'info');
 
   const periods = ['thismonth', 'lastmonth', 'ytd'];
   try {
@@ -1588,20 +1627,45 @@ async function loadData(period = 'thismonth') {
     });
 
     if (!anySuccess) throw new Error('All period fetches failed');
+
+    // Persist fresh data to localStorage
+    persistSave();
+
     const entry = dataCache[period] || dataCache['thismonth'];
     applyData(entry ? entry.data : [], period, true);
 
   } catch(e) {
     console.error('Backend error:', e);
+    // If we already showed persisted data, just warn softly
+    if (persisted && persisted.data) {
+      showBanner('⚠️ Could not refresh — showing last saved data', 'warning');
+      return;
+    }
     try {
       const h = await fetch(`${API_BASE}/api/health`);
       showBanner(h.ok ? '⚠️ Backend reachable but data fetch failed — check Railway logs' : '⚠️ Backend error — check Railway logs', 'warning');
     } catch(e2) {
-      showBanner(`⚠️ Cannot reach backend — check CORS or Railway URL`, 'warning');
+      showBanner(`⚠️ Cannot reach backend — showing demo data`, 'warning');
     }
-    periods.forEach(p => { delete dataCache[p]; });
     applyMockData(period);
   }
+}
+
+// ──────────────────────────────────────────────────────────────────
+//  HOURLY REFRESH — fires at the top of every clock hour
+// ──────────────────────────────────────────────────────────────────
+function scheduleHourlyRefresh() {
+  const now = new Date();
+  const msUntilNextHour = (60 - now.getMinutes()) * 60000 - now.getSeconds() * 1000 - now.getMilliseconds();
+  setTimeout(() => {
+    persistClear();
+    loadData(currentPeriod, true);
+    // Then repeat every hour exactly
+    setInterval(() => {
+      persistClear();
+      loadData(currentPeriod, true);
+    }, 60 * 60 * 1000);
+  }, msUntilNextHour);
 }
 
 function applyData(team, period, isLive) {
@@ -2073,8 +2137,8 @@ async function executeRemove() {
     // If removed user was selected, reset selection
     if (selUser?.id === _removeTargetId) selUser = null;
     // Invalidate cache and reload
-    Object.keys(dataCache).forEach(k => delete dataCache[k]);
-    await loadData(currentPeriod);
+    persistClear();
+    await loadData(currentPeriod, true);
     showBanner(`✅ Member removed successfully`, 'live');
   } catch(err) {
     alert(`Could not reach server: ${err.message}`);
@@ -2600,10 +2664,20 @@ function pickMpUser(id) {
 // ── INIT ───
 restoreSession();   // must run before loadData so admin check works in renderLB
 buildPeriodSelector();
+
+// Load persisted data instantly so the dashboard isn't blank on reload
+const hadPersistedData = persistLoad();
+if (hadPersistedData && dataCache['thismonth']) {
+  applyData(dataCache['thismonth'].data, 'thismonth', true);
+}
+// Then fetch fresh data from backend
 loadData('thismonth');
 
-// Auto-refresh every 15 minutes — clear cache first so fresh data is fetched
-setInterval(() => { Object.keys(dataCache).forEach(k => delete dataCache[k]); loadData(currentPeriod); }, 15 * 60 * 1000);
+// Schedule hourly refresh at the top of each clock hour
+scheduleHourlyRefresh();
+
+// Also update the auto-refresh for remove/height actions to use persistClear
+
 
 // ══════════════════════════════════════════════════════════════════
 //  GOOGLE SIGN-IN  +  JOIN FLOW
@@ -2698,8 +2772,8 @@ async function submitHeight() {
     closeHeightModal();
     sessionStorage.removeItem('height_prompted');
     // Reload data so height shows up right away
-    Object.keys(dataCache).forEach(k => delete dataCache[k]);
-    await loadData(currentPeriod);
+    persistClear();
+    await loadData(currentPeriod, true);
     showBanner('📏 Height saved!', 'live');
   } catch(e) {
     msg.innerHTML = `<span style="color:#b91c1c">Error: ${e.message}</span>`;
@@ -2757,8 +2831,8 @@ function chooseProvider(provider) {
         const member = members.find(m => String(m.id) === String(memberId));
         if (member) {
           saveSession(member);
-          Object.keys(dataCache).forEach(k => delete dataCache[k]);
-          loadData(currentPeriod).then(() => {
+          persistClear();
+          loadData(currentPeriod, true).then(() => {
             showSuccessScreen(member, false, 'strava');
             goToStep(3);
             document.getElementById('joinModal').classList.add('open');
