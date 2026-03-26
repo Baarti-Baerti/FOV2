@@ -2136,8 +2136,7 @@ async function executeRemove() {
     closeRemoveModal();
     // If removed user was selected, reset selection
     if (selUser?.id === _removeTargetId) selUser = null;
-    // Invalidate cache and reload
-    persistClear();
+    // Reload — fresh fetch will overwrite cache naturally
     await loadData(currentPeriod, true);
     showBanner(`✅ Member removed successfully`, 'live');
   } catch(err) {
@@ -2768,8 +2767,7 @@ async function submitHeight() {
     await fetch(`${API_BASE}/api/admin/clear-cache`, { method: 'GET' });
     closeHeightModal();
     sessionStorage.removeItem('height_prompted');
-    // Reload data so height shows up right away
-    persistClear();
+    // Reload — fresh fetch will overwrite cache naturally
     await loadData(currentPeriod, true);
     showBanner('📏 Height saved!', 'live');
   } catch(e) {
@@ -2821,23 +2819,28 @@ function chooseProvider(provider) {
     const memberName = params.get('member_name') || 'You';
     // Clean URL
     window.history.replaceState({}, '', window.location.pathname);
-    // Fetch member data from backend and store session
+    // Fetch member list to get full member object, save session, then load data
     fetch(`${API_BASE}/api/members`)
       .then(r => r.json())
       .then(members => {
         const member = members.find(m => String(m.id) === String(memberId));
         if (member) {
           saveSession(member);
-          persistClear();
+          // Don't clear cache — just load fresh data and it will overwrite naturally
           loadData(currentPeriod, true).then(() => {
             showSuccessScreen(member, false, 'strava');
             goToStep(3);
             document.getElementById('joinModal').classList.add('open');
           });
+        } else {
+          // Member not found in list yet — show welcome banner and load anyway
+          showBanner(`✅ Welcome ${memberName}! Your Strava data is syncing…`, 'live');
+          loadData(currentPeriod, true);
         }
       })
       .catch(() => {
         showBanner(`✅ Welcome ${memberName}! Your Strava data is syncing…`, 'live');
+        loadData(currentPeriod, true);
       });
   } else if (params.get('strava_error')) {
     window.history.replaceState({}, '', window.location.pathname);
