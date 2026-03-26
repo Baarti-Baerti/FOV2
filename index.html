@@ -1163,7 +1163,8 @@
 <!-- HEADER -->
 <header>
   <div class="logo">
-    <div class="logo-bubble" style="overflow:hidden;padding:0">
+    <div style="position:relative;display:inline-block;flex-shrink:0">
+      <div class="logo-bubble" style="overflow:hidden;padding:0">
       <!-- Fat Otter SVG -->
       <svg viewBox="0 0 44 44" width="44" height="44" xmlns="http://www.w3.org/2000/svg">
         <!-- gradient background -->
@@ -1208,6 +1209,25 @@
         <ellipse cx="17" cy="38" rx="4.5" ry="2" fill="#a06028"/>
         <ellipse cx="27" cy="38" rx="4.5" ry="2" fill="#a06028"/>
       </svg>
+    </div>
+      <!-- V2 badge -->
+      <div style="
+        position:absolute;
+        top:-10px; right:-14px;
+        background: linear-gradient(135deg, #f472b6, #fb923c, #fbbf24);
+        color:#fff;
+        font-family:'Nunito',sans-serif;
+        font-weight:900;
+        font-size:0.82rem;
+        line-height:1;
+        padding:3px 7px 4px;
+        border-radius:8px;
+        box-shadow:0 2px 8px rgba(251,146,60,0.55);
+        letter-spacing:0.03em;
+        transform:rotate(8deg);
+        pointer-events:none;
+        z-index:10;
+      ">V2</div>
     </div>
     <div>
       <div class="logo-text">Fette Otter</div>
