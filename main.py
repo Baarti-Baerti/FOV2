@@ -216,8 +216,16 @@ def aggregate(acts: list) -> dict:
     for a in acts:
         cat = classify(a.get("sport_type") or a.get("type", ""))
         d = a.get("distance", 0) or 0
-        cals += a.get("calories", 0) or 0
-        kcal += (a.get("kilojoules", 0) or 0) * 0.239
+        activity_cals = a.get("calories", 0) or 0
+        activity_kj   = a.get("kilojoules", 0) or 0
+        cals += activity_cals
+        # actKcal: Strava only provides kilojoules for cycling (power meter).
+        # For all other sports, calories IS the active calorie value.
+        # Use calories as primary; fall back to kJ conversion only when calories is 0.
+        if activity_cals > 0:
+            kcal += activity_cals
+        elif activity_kj > 0:
+            kcal += activity_kj * 0.239
         types.add(a.get("sport_type") or a.get("type") or "Unknown")
         if cat in _COUNTED_CATS:
             # Only count time for the 5 tracked activity types
