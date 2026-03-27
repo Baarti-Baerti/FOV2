@@ -175,29 +175,36 @@ def challenge_km_for_activity(a: dict) -> float:
     return 0.0
 
 
+# Categories that count toward durationSec (all others excluded)
+_COUNTED_CATS = {"run", "ride", "virtual_ride", "swim", "walk"}
+
 def aggregate(acts: list) -> dict:
     run = ride = vride = swim = walk = 0.0
-    secs = cals = 0
+    secs = 0      # only time from counted activity types
+    cals = 0
     kcal = 0.0
     types = set()
     for a in acts:
         cat = classify(a.get("sport_type") or a.get("type", ""))
         d = a.get("distance", 0) or 0
-        secs += a.get("elapsed_time", 0) or 0
         cals += a.get("calories", 0) or 0
         kcal += (a.get("kilojoules", 0) or 0) * 0.239
         types.add(a.get("sport_type") or a.get("type") or "Unknown")
+        if cat in _COUNTED_CATS:
+            # Only count time for the 5 tracked activity types
+            secs += a.get("elapsed_time", 0) or 0
         if   cat == "run":          run   += d
         elif cat == "ride":         ride  += d
         elif cat == "virtual_ride": vride += d
         elif cat == "swim":         swim  += d
         elif cat == "walk":         walk  += d
-    def km(v): return round(v / 1000, 2)
+    # Use 3 decimal places for full precision — no rounding until display
+    def km(v): return round(v / 1000, 3)
     rk, ck_, vk, sk, wk = km(run), km(ride), km(vride), km(swim), km(walk)
     # challengeKm: sum per-activity so walk filter is applied individually
-    ckm = round(sum(challenge_km_for_activity(a) for a in acts), 2)
+    ckm = round(sum(challenge_km_for_activity(a) for a in acts), 3)
     return dict(runKm=rk, cycleKm=ck_, virtualKm=vk, swimKm=sk, walkKm=wk,
-                km=round(rk+ck_+vk+sk+wk, 2), durationSec=secs,
+                km=round(rk+ck_+vk+sk+wk, 3), durationSec=secs,
                 calories=round(cals), actKcal=round(kcal),
                 workouts=len(acts), challengeKm=ckm,
                 types=sorted(types))
@@ -254,7 +261,7 @@ def monthly_breakdown(acts: list, year: int) -> list:
             cal=s["calories"], sess=s["workouts"], km=s["km"],
             runKm=s["runKm"], cycleKm=s["cycleKm"], virtualKm=s["virtualKm"],
             swimKm=s["swimKm"], walkKm=s["walkKm"], actKcal=s["actKcal"],
-            durationSec=s["durationSec"], challengeKm=s["challengeKm"],
+            durationSec=s["durationSec"], challengeKm=round(s["challengeKm"], 3),
             goalDay=goal_day,  # None if goal not yet reached this month
             days=days,
         ))

@@ -1867,7 +1867,7 @@ function renderLB(){
   }
 
   const COLS = [
-    { key:'convKm',      label:'Points',       icon:'⭐', fmt: u => userPointsKm(u).toFixed(1),                                                          unit:'km' },
+    { key:'convKm',      label:'Points',       icon:'⭐', fmt: u => userPointsKm(u).toFixed(2),                                                          unit:'km' },
     { key:'km',          label:'Original',     icon:'📏', fmt: u => fmtKm((u.runKm||0)+(u.cycleKm||0)+(u.virtualKm||0)+(u.swimKm||0)+(u.walkKm||0)),    unit:'km' },
     { key:'durationSec', label:'Time',         icon:'⏱',  fmt: u => fmtDuration(userDurationSec(u)),                                                      unit:''   },
     { key:'goalDay',     label:'Days to Goal', icon:'🎯', fmt: u => { const d=userDaysToGoal(u); return d!=null ? `${d}` : '—'; },                        unit:''   },
@@ -1877,9 +1877,9 @@ function renderLB(){
     { key:'virtualKm',   label:'Virtual',      icon:'💻', fmt: u => fmtKm(u.virtualKm),                                                                   unit:'km' },
     { key:'swimKm',      label:'Swim',         icon:'🏊', fmt: u => fmtKm(u.swimKm),                                                                      unit:'km' },
     { key:'walkKm',      label:'Walk',         icon:'🚶', fmt: u => fmtKm(u.walkKm),                                                                      unit:'km' },
-    { key:'actKcal',     label:'Active Cal',   icon:'🔥', fmt: u => ((u.actKcal||0)/1000).toFixed(1)+'K',                                                 unit:''   },
+    { key:'actKcal',     label:'Active Cal',   icon:'🔥', fmt: u => ((u.actKcal||0)/1000).toFixed(2)+'K',                                                 unit:''   },
   ];
-  function fmtKm(v){ return (v||0) > 0 ? (v||0).toFixed(1) : '—'; }
+  function fmtKm(v){ return (v||0) > 0 ? (v||0).toFixed(2) : '—'; }
 
   const isAdmin = currentMember?.name === 'Martin';
   function metricVal(u, key) {
@@ -1925,14 +1925,14 @@ function renderLB(){
       let title = '';
       if (c.key === 'convKm') {
         const parts = [];
-        if (u.runKm    > 0.05) parts.push(`🏃 ${(u.runKm).toFixed(1)}km ÷1`);
-        if (u.cycleKm  > 0.05) parts.push(`🚴 ${(u.cycleKm).toFixed(1)}km ÷5 = ${(u.cycleKm/5).toFixed(1)}`);
-        if (u.virtualKm> 0.05) parts.push(`💻 ${(u.virtualKm).toFixed(1)}km ÷4 = ${(u.virtualKm/4).toFixed(1)}`);
-        if (u.swimKm   > 0.05) parts.push(`🏊 ${(u.swimKm).toFixed(1)}km ×4 = ${(u.swimKm*4).toFixed(1)}`);
+        if (u.runKm    > 0.05) parts.push(`🏃 ${(u.runKm).toFixed(3)}km ÷1`);
+        if (u.cycleKm  > 0.05) parts.push(`🚴 ${(u.cycleKm).toFixed(3)}km ÷5 = ${(u.cycleKm/5).toFixed(3)}`);
+        if (u.virtualKm> 0.05) parts.push(`💻 ${(u.virtualKm).toFixed(3)}km ÷4 = ${(u.virtualKm/4).toFixed(3)}`);
+        if (u.swimKm   > 0.05) parts.push(`🏊 ${(u.swimKm).toFixed(3)}km ×4 = ${(u.swimKm*4).toFixed(3)}`);
         const qualWalkLB = Math.round((u.challengeKm != null
           ? Math.max(0, u.challengeKm - (u.runKm||0) - (u.cycleKm||0)/5 - (u.virtualKm||0)/4 - (u.swimKm||0)*4)
           : 0) * 10) / 10;
-        if (qualWalkLB > 0.05) parts.push(`🚶 ${(qualWalkLB*3).toFixed(1)}km ÷3 = ${qualWalkLB.toFixed(1)}`);
+        if (qualWalkLB > 0.05) parts.push(`🚶 ${(qualWalkLB*3).toFixed(3)}km ÷3 = ${qualWalkLB.toFixed(3)}`);
         title = parts.length ? `title="${parts.join(' | ')}"` : '';
       }
       const fmtVal = c.fmt(u);
@@ -1997,7 +1997,7 @@ function renderDetail(){
         return `<div style="margin-bottom:8px">
           <div style="display:flex;justify-content:space-between;margin-bottom:3px">
             <span style="font-size:.84rem;font-weight:700;color:var(--text2)">${r.label}</span>
-            <span style="font-size:.84rem;font-weight:800;color:${r.color}">${r.km}km <span style="color:var(--muted);font-weight:600">(${pct}%)</span></span>
+            <span style="font-size:.84rem;font-weight:800;color:${r.color}">${(r.km).toFixed(2)}km <span style="color:var(--muted);font-weight:600">(${pct}%)</span></span>
           </div>
           <div style="height:5px;background:var(--border);border-radius:99px;overflow:hidden">
             <div style="height:100%;width:${pct}%;background:${r.color};border-radius:99px;transition:width .6s ease"></div>
@@ -2021,9 +2021,9 @@ function renderDetail(){
           <div class="detail-role">Rank #${rank}</div>
           <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
             <div class="detail-item"><div class="detail-item-lbl">Sessions</div><div class="detail-item-val" style="color:${u.color}">${u.workouts}</div></div>
-            <div class="detail-item"><div class="detail-item-lbl">Original</div><div class="detail-item-val">${((u.runKm||0) + (u.cycleKm||0) + (u.virtualKm||0) + (u.swimKm||0) + (u.walkKm||0)).toFixed(1)}<span style="font-size:1.02rem">km</span></div></div>
-            <div class="detail-item"><div class="detail-item-lbl">Points</div><div class="detail-item-val" style="color:var(--violet)">${userPointsKm(u).toFixed(1)}<span style="font-size:1.02rem">km</span></div></div>
-            <div class="detail-item"><div class="detail-item-lbl">Act. Kcal</div><div class="detail-item-val">${(u.actKcal/1000).toFixed(1)}K</div></div>
+            <div class="detail-item"><div class="detail-item-lbl">Original</div><div class="detail-item-val">${((u.runKm||0) + (u.cycleKm||0) + (u.virtualKm||0) + (u.swimKm||0) + (u.walkKm||0)).toFixed(2)}<span style="font-size:1.02rem">km</span></div></div>
+            <div class="detail-item"><div class="detail-item-lbl">Points</div><div class="detail-item-val" style="color:var(--violet)">${userPointsKm(u).toFixed(2)}<span style="font-size:1.02rem">km</span></div></div>
+            <div class="detail-item"><div class="detail-item-lbl">Act. Kcal</div><div class="detail-item-val">${(u.actKcal/1000).toFixed(2)}K</div></div>
             ${u.bmi && u.bmi > 0 ? `<div class="detail-item"><div class="detail-item-lbl">BMI</div><div class="detail-item-val" style="color:${u.bmi<18.5?'#f59e0b':u.bmi<25?'#059669':u.bmi<30?'#f59e0b':'#ef4444'}">${u.bmi.toFixed(1)}</div></div>` : ''}
             ${u.height_m ? `<div class="detail-item"><div class="detail-item-lbl">Height</div><div class="detail-item-val">${Math.round(u.height_m * 100)}<span style="font-size:1.02rem">cm</span></div></div>` : ''}
 
@@ -2288,19 +2288,19 @@ function renderPoints(){
 
       // Build breakdown tooltip — only show activities that contributed to challengeKm
       const rawParts = [];
-      if ((mData?.runKm||0) > 0.05)     rawParts.push(`🏃 ${mData.runKm.toFixed(1)}km`);
-      if ((mData?.cycleKm||0) > 0.05)   rawParts.push(`🚴 ${mData.cycleKm.toFixed(1)}km÷5`);
-      if ((mData?.virtualKm||0) > 0.05) rawParts.push(`💻 ${mData.virtualKm.toFixed(1)}km÷4`);
-      if ((mData?.swimKm||0) > 0.05)    rawParts.push(`🏊 ${mData.swimKm.toFixed(1)}km×4`);
+      if ((mData?.runKm||0) > 0.05)     rawParts.push(`🏃 ${mData.runKm.toFixed(3)}km`);
+      if ((mData?.cycleKm||0) > 0.05)   rawParts.push(`🚴 ${mData.cycleKm.toFixed(3)}km÷5`);
+      if ((mData?.virtualKm||0) > 0.05) rawParts.push(`💻 ${mData.virtualKm.toFixed(3)}km÷4`);
+      if ((mData?.swimKm||0) > 0.05)    rawParts.push(`🏊 ${mData.swimKm.toFixed(3)}km×4`);
       if (mData) {
         const ckm = mData.challengeKm != null ? mData.challengeKm : calcChallengeKm(mData);
         const qualW = Math.round(Math.max(0, ckm - (mData.runKm||0) - (mData.cycleKm||0)/5 - (mData.virtualKm||0)/4 - (mData.swimKm||0)*4) * 10) / 10;
-        if (qualW > 0.05) rawParts.push(`🚶 ${(qualW*3).toFixed(1)}km ÷3 = ${qualW.toFixed(1)}`);
+        if (qualW > 0.05) rawParts.push(`🚶 ${(qualW*3).toFixed(3)}km ÷3 = ${qualW.toFixed(3)}`);
       }
       const breakdown = rawParts.length ? ' | ' + rawParts.join(', ') : '';
 
       if (isCurrent) {
-        const val = km != null ? km.toFixed(1) : '…';
+        const val = km != null ? km.toFixed(2) : '…';
         const col = km >= GOAL ? '#059669' : '#f59e0b';
         return `<td title="${MONTH_NAMES[m-1]}: ${val} eq.km (in progress, goal ${GOAL}km)${breakdown}" style="font-size:1.02rem;color:${col}">${val}${bmiLine}</td>`;
       }
@@ -2308,7 +2308,7 @@ function renderPoints(){
         return `<td style="color:#e2e8f8;font-size:1.02rem">·</td>`;
       }
       const hit = (km || 0) >= GOAL;
-      const val = km != null ? km.toFixed(1) : '0.0';
+      const val = km != null ? km.toFixed(2) : '0.00';
       return `<td title="${MONTH_NAMES[m-1]}: ${val} eq.km${hit?' ✅':' ❌ (need '+GOAL+'km)'}${breakdown}" style="font-size:1.02rem;font-weight:800;color:${hit?'#059669':'#ef4444'}">${val}${bmiLine}</td>`;
     }).join('');
 
@@ -2353,13 +2353,13 @@ function renderPoints(){
           return s + Math.max(0, ckm - (m.runKm||0) - (m.cycleKm||0)/5 - (m.virtualKm||0)/4 - (m.swimKm||0)*4);
         },0) * 10) / 10;
         const parts = [];
-        if (run      > 0.05) parts.push('🏃 '+run.toFixed(1)+'km ÷1');
-        if (bike     > 0.05) parts.push('🚴 '+bike.toFixed(1)+'km ÷5 = '+(bike/5).toFixed(1));
-        if (virt     > 0.05) parts.push('💻 '+virt.toFixed(1)+'km ÷4 = '+(virt/4).toFixed(1));
-        if (swim     > 0.05) parts.push('🏊 '+swim.toFixed(1)+'km ×4 = '+(swim*4).toFixed(1));
-        if (qualWalk > 0.05) parts.push('🚶 '+(qualWalk*3).toFixed(1)+'km ÷3 = '+qualWalk.toFixed(1));
+        if (run      > 0.05) parts.push('🏃 '+run.toFixed(3)+'km ÷1');
+        if (bike     > 0.05) parts.push('🚴 '+bike.toFixed(3)+'km ÷5 = '+(bike/5).toFixed(3));
+        if (virt     > 0.05) parts.push('💻 '+virt.toFixed(3)+'km ÷4 = '+(virt/4).toFixed(3));
+        if (swim     > 0.05) parts.push('🏊 '+swim.toFixed(3)+'km ×4 = '+(swim*4).toFixed(3));
+        if (qualWalk > 0.05) parts.push('🚶 '+(qualWalk*3).toFixed(3)+'km ÷3 = '+qualWalk.toFixed(3));
         return parts.join(' | ');
-      })()}">${Object.values(monthlyRunMap(u)).reduce((a,b)=>a+b,0).toFixed(1)}</td>
+      })()}">${Object.values(monthlyRunMap(u)).reduce((a,b)=>a+b,0).toFixed(2)}</td>
       <td style="color:#818cf8;font-weight:900;border-left:2px solid var(--border)">${ruleA}</td>
       <td style="color:${hasB?'#34d399':'var(--muted)'};font-weight:${hasB?900:600}">${hasB?'+2':'—'}</td>
       <td style="color:${hasC?'#f472b6':'var(--muted)'};font-weight:${hasC?900:600}">${hasC?'+2':'—'}</td>
@@ -2473,14 +2473,14 @@ function calcChallengeKm(m) {
 }
 
 const MP_METRICS = [
-  { key: 'challengeKm', label: '⭐ Equivalent km',      unit: 'km',   axFmt: v => v.toFixed(0),            valFmt: v => v.toFixed(1)+' km',        field: m => calcChallengeKm(m) || 0,     skipZero: false },
-  { key: 'runKm',       label: '🏃 Running',            unit: 'km',   axFmt: v => v.toFixed(0),            valFmt: v => v.toFixed(1)+' km',        field: m => m.runKm      || 0,           skipZero: false },
-  { key: 'cycleKm',     label: '🚴 Cycling',            unit: 'km',   axFmt: v => v.toFixed(0),            valFmt: v => v.toFixed(1)+' km',        field: m => m.cycleKm    || 0,           skipZero: false },
-  { key: 'virtualKm',   label: '💻 Virtual Bike',       unit: 'km',   axFmt: v => v.toFixed(0),            valFmt: v => v.toFixed(1)+' km',        field: m => m.virtualKm  || 0,           skipZero: false },
+  { key: 'challengeKm', label: '⭐ Equivalent km',      unit: 'km',   axFmt: v => v.toFixed(0),            valFmt: v => v.toFixed(2)+' km',        field: m => calcChallengeKm(m) || 0,     skipZero: false },
+  { key: 'runKm',       label: '🏃 Running',            unit: 'km',   axFmt: v => v.toFixed(0),            valFmt: v => v.toFixed(2)+' km',        field: m => m.runKm      || 0,           skipZero: false },
+  { key: 'cycleKm',     label: '🚴 Cycling',            unit: 'km',   axFmt: v => v.toFixed(0),            valFmt: v => v.toFixed(2)+' km',        field: m => m.cycleKm    || 0,           skipZero: false },
+  { key: 'virtualKm',   label: '💻 Virtual Bike',       unit: 'km',   axFmt: v => v.toFixed(0),            valFmt: v => v.toFixed(2)+' km',        field: m => m.virtualKm  || 0,           skipZero: false },
   { key: 'swimKm',      label: '🏊 Swimming',           unit: 'km',   axFmt: v => v.toFixed(0),            valFmt: v => v.toFixed(2)+' km',        field: m => m.swimKm     || 0,           skipZero: false },
-  { key: 'walkKm',      label: '🚶 Walking',            unit: 'km',   axFmt: v => v.toFixed(0),            valFmt: v => v.toFixed(1)+' km',        field: m => m.walkKm     || 0,           skipZero: false },
+  { key: 'walkKm',      label: '🚶 Walking',            unit: 'km',   axFmt: v => v.toFixed(0),            valFmt: v => v.toFixed(2)+' km',        field: m => m.walkKm     || 0,           skipZero: false },
   { key: 'sess',        label: '🎯 Sessions',           unit: '',     axFmt: v => v.toFixed(0),            valFmt: v => v.toFixed(0),              field: m => m.sess       || 0,           skipZero: false },
-  { key: 'actKcal',     label: '⚡ Active Calories',    unit: 'kcal', axFmt: v => (v/1000).toFixed(0)+'K', valFmt: v => (v/1000).toFixed(1)+'K',   field: m => m.actKcal    || 0,           skipZero: false },
+  { key: 'actKcal',     label: '⚡ Active Calories',    unit: 'kcal', axFmt: v => (v/1000).toFixed(0)+'K', valFmt: v => (v/1000).toFixed(2)+'K',   field: m => m.actKcal    || 0,           skipZero: false },
   { key: 'bmi',         label: '⚖️ BMI',                unit: '',     axFmt: v => v.toFixed(1),            valFmt: v => v.toFixed(1),              field: m => m.bmi        || null,        skipZero: true  },
 ];
 
