@@ -2445,18 +2445,82 @@ function buildPeriodSelector() {
     `<div class="week-group">${overviewBtns}</div>`;
 }
 
+// Re-aggregate top-level user stats (km, runKm, etc.) from monthly data
+// for the given period. This is needed for synthetic periods (month-N, qN)
+// which are not fetched from the backend separately.
+function reAggregateFromMonthly(team, p) {
+  const today = new Date();
+  const cy = today.getFullYear();
+  const cm = today.getMonth() + 1;
+
+  // Build month filter for the period
+  let mf;
+  if (p === 'thismonth')      mf = m => m.year===cy && m.month===cm;
+  else if (p === 'lastmonth') { const lm=cm===1?12:cm-1, ly=cm===1?cy-1:cy; mf=m=>m.year===ly&&m.month===lm; }
+  else if (p.startsWith('month-')) { const mo=parseInt(p.split('-')[1]); mf=m=>m.year===cy&&m.month===mo; }
+  else if (p==='q1') mf=m=>m.year===cy&&m.month>=1&&m.month<=3;
+  else if (p==='q2') mf=m=>m.year===cy&&m.month>=4&&m.month<=6;
+  else if (p==='q3') mf=m=>m.year===cy&&m.month>=7&&m.month<=9;
+  else if (p==='q4') mf=m=>m.year===cy&&m.month>=10&&m.month<=12;
+  else mf=m=>m.year===cy; // ytd
+
+  return team.map(u => {
+    const months = (u.monthly || []).filter(mf);
+    if (!months.length) return u; // no monthly data — keep as-is
+
+    // Sum all fields across matching months
+    const agg = months.reduce((acc, m) => ({
+      runKm:       acc.runKm      + (m.runKm      || 0),
+      cycleKm:     acc.cycleKm    + (m.cycleKm    || 0),
+      virtualKm:   acc.virtualKm  + (m.virtualKm  || 0),
+      swimKm:      acc.swimKm     + (m.swimKm     || 0),
+      walkKm:      acc.walkKm     + (m.walkKm     || 0),
+      calories:    acc.calories   + (m.cal         || 0),
+      actKcal:     acc.actKcal    + (m.actKcal     || 0),
+      workouts:    acc.workouts   + (m.sess        || 0),
+      durationSec: acc.durationSec+ (m.durationSec || 0),
+      challengeKm: acc.challengeKm+ (m.challengeKm != null ? m.challengeKm : calcChallengeKm(m)),
+    }), { runKm:0, cycleKm:0, virtualKm:0, swimKm:0, walkKm:0,
+          calories:0, actKcal:0, workouts:0, durationSec:0, challengeKm:0 });
+
+    agg.km = agg.runKm + agg.cycleKm + agg.virtualKm + agg.swimKm + agg.walkKm;
+
+    // Round to 3dp for consistency
+    Object.keys(agg).forEach(k => {
+      if (typeof agg[k] === 'number') agg[k] = Math.round(agg[k] * 1000) / 1000;
+    });
+
+    return { ...u, ...agg };
+  });
+}
+
 function setWeek(btn, p) {
   currentPeriod = p;
   document.querySelectorAll('.week-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  // Synthetic periods (month-N, qN) are computed from ytd data — no backend fetch needed
+
+  // For synthetic periods (month-N, qN), re-aggregate from cached monthly data
+  // so the leaderboard shows correct per-period stats without a backend fetch
   if (p.startsWith('month-') || p.startsWith('q')) {
-    if (dataCache['ytd'] && dataCache['ytd'].data) {
-      applyData(dataCache['ytd'].data, p, true);
+    const source = dataCache['ytd'] || dataCache['thismonth'];
+    if (source && source.data) {
+      const reaggregated = reAggregateFromMonthly(source.data, p);
+      applyData(reaggregated, p, true);
     } else {
-      loadData('ytd').then(() => applyData(dataCache['ytd'].data, p, true));
+      loadData('ytd').then(() => {
+        const src = dataCache['ytd'] || dataCache['thismonth'];
+        if (src && src.data) applyData(reAggregateFromMonthly(src.data, p), p, true);
+      });
+    }
+  } else if (p === 'thismonth' || p === 'lastmonth') {
+    // These have their own backend cache entries
+    if (dataCache[p] && dataCache[p].data) {
+      applyData(dataCache[p].data, p, true);
+    } else {
+      loadData(p);
     }
   } else {
+    // ytd and anything else
     loadData(p);
   }
 }
