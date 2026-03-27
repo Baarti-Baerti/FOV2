@@ -41,15 +41,44 @@ STRAVA_API_BASE  = "https://www.strava.com/api/v3"
 # ─────────────────────────────────────────────────────────────
 #  Tiny JSON "database"
 # ─────────────────────────────────────────────────────────────
+import threading
+_db_lock = threading.Lock()
+
 def load_db() -> dict:
     if os.path.exists(DB_PATH):
-        with open(DB_PATH) as f:
-            return json.load(f)
+        try:
+            with open(DB_PATH) as f:
+                data = json.load(f)
+            # Validate structure — never return a broken db
+            if isinstance(data, dict) and "members" in data and "next_id" in data:
+                return data
+        except (json.JSONDecodeError, KeyError, TypeError) as e:
+            print(f"[warn] DB read error ({e}) — loading backup or empty db")
+            # Try backup
+            backup = DB_PATH + ".bak"
+            if os.path.exists(backup):
+                try:
+                    with open(backup) as f:
+                        data = json.load(f)
+                    if isinstance(data, dict) and "members" in data:
+                        print("[warn] Restored from backup")
+                        return data
+                except Exception:
+                    pass
     return {"members": [], "next_id": 1}
 
 def save_db(db: dict):
-    with open(DB_PATH, "w") as f:
-        json.dump(db, f, indent=2, default=str)
+    """Atomic write: write to temp file then rename, so the DB is never half-written.
+    Also keeps a .bak copy of the previous version."""
+    with _db_lock:
+        tmp = DB_PATH + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump(db, f, indent=2, default=str)
+        # Keep a backup of the current file before replacing
+        if os.path.exists(DB_PATH):
+            import shutil
+            shutil.copy2(DB_PATH, DB_PATH + ".bak")
+        os.replace(tmp, DB_PATH)
 
 # ─────────────────────────────────────────────────────────────
 #  In-memory stats cache
@@ -377,42 +406,53 @@ async def strava_callback(code: Optional[str]=Query(None),
     picture = athlete.get("profile_medium") or athlete.get("profile", "")
     strava_id = str(athlete.get("id", ""))
 
-    db = load_db()
-    members = db["members"]
-    member = None
-    if user_id:
-        member = next((m for m in members if m["id"] == user_id), None)
-    if not member and strava_id:
-        member = next((m for m in members if m.get("strava_id") == strava_id), None)
+    # Lock the entire read-modify-write so two simultaneous signups never get the same next_id
+    with _db_lock:
+        db = load_db()
+        members = db["members"]
+        member = None
+        if user_id:
+            member = next((m for m in members if m["id"] == user_id), None)
+        if not member and strava_id:
+            member = next((m for m in members if m.get("strava_id") == strava_id), None)
 
-    if member:
-        member.update({"strava_access_token": tokens["access_token"],
-                       "strava_refresh_token": tokens["refresh_token"],
-                       "strava_expires_at": tokens["expires_at"],
-                       "strava_picture": picture, "strava_id": strava_id})
-    else:
-        idx = len(members)
-        first = athlete.get("firstname","")
-        last  = athlete.get("lastname","")
-        full  = f"{first} {last}".strip()
-        member = {
-            "id": db["next_id"],
-            "name": name or full or "Athlete",
-            "strava_id": strava_id,
-            "strava_access_token": tokens["access_token"],
-            "strava_refresh_token": tokens["refresh_token"],
-            "strava_expires_at": tokens["expires_at"],
-            "strava_picture": picture,
-            "emoji": _EMOJIS[idx%len(_EMOJIS)],
-            "color": _COLORS[idx%len(_COLORS)],
-            "bg":    _BG[idx%len(_BG)],
-            "height_m": None,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        }
-        members.append(member)
-        db["next_id"] += 1
+        if member:
+            member.update({"strava_access_token": tokens["access_token"],
+                           "strava_refresh_token": tokens["refresh_token"],
+                           "strava_expires_at": tokens["expires_at"],
+                           "strava_picture": picture, "strava_id": strava_id})
+        else:
+            idx = len(members)
+            first = athlete.get("firstname","")
+            last  = athlete.get("lastname","")
+            full  = f"{first} {last}".strip()
+            member = {
+                "id": db["next_id"],
+                "name": name or full or "Athlete",
+                "strava_id": strava_id,
+                "strava_access_token": tokens["access_token"],
+                "strava_refresh_token": tokens["refresh_token"],
+                "strava_expires_at": tokens["expires_at"],
+                "strava_picture": picture,
+                "emoji": _EMOJIS[idx%len(_EMOJIS)],
+                "color": _COLORS[idx%len(_COLORS)],
+                "bg":    _BG[idx%len(_BG)],
+                "height_m": None,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+            members.append(member)
+            db["next_id"] += 1
+            print(f"[signup] New member #{member['id']}: {member['name']} (strava_id={strava_id}), total members: {len(members)}")
 
-    save_db(db)
+        # save_db internally also locks, but since we're already holding the lock
+        # write directly here to avoid deadlock
+        tmp = DB_PATH + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump(db, f, indent=2, default=str)
+        if os.path.exists(DB_PATH):
+            import shutil
+            shutil.copy2(DB_PATH, DB_PATH + ".bak")
+        os.replace(tmp, DB_PATH)
     cache_bust(member["id"])
     return RedirectResponse(
         f"{FRONTEND_URL}?strava_ok=1&member_id={member['id']}&member_name={member['name']}")
