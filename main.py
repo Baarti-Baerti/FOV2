@@ -518,6 +518,26 @@ async def set_height(mid: int, body: HeightBody):
     save_db(db); cache_bust(mid)
     return {"ok": True, "height_m": m["height_m"]}
 
+# Rename member
+class RenameBody(BaseModel):
+    name: str
+
+@app.post("/api/members/{mid}/rename")
+async def rename_member(mid: int, body: RenameBody):
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(400, "Name cannot be empty")
+    if len(name) > 80:
+        raise HTTPException(400, "Name too long (max 80 chars)")
+    db = load_db()
+    m = next((x for x in db["members"] if x["id"] == mid), None)
+    if not m: raise HTTPException(404, "Member not found")
+    old_name = m["name"]
+    m["name"] = name
+    save_db(db); cache_bust(mid)
+    print(f"[rename] Member #{mid}: '{old_name}' → '{name}'")
+    return {"ok": True, "id": mid, "old_name": old_name, "new_name": name}
+
 # Remove member
 class AdminBody(BaseModel):
     admin_name: Optional[str] = None
