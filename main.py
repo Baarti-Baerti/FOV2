@@ -373,8 +373,8 @@ async def health():
 
 # Strava OAuth — initiate
 @app.get("/api/strava/auth")
-async def strava_auth(name: str = Query(...), user_id: Optional[int] = Query(None)):
-    payload = json.dumps({"name": name, "user_id": user_id})
+async def strava_auth(name: str = Query(...)):
+    payload = json.dumps({"name": name})
     sig     = hmac.new(SECRET_KEY.encode(), payload.encode(), hashlib.sha256).hexdigest()[:16]
     url     = STRAVA_AUTH_URL + "?" + urlencode({
         "client_id": STRAVA_CLIENT_ID,
@@ -399,7 +399,7 @@ async def strava_callback(code: Optional[str]=Query(None),
     except Exception:
         return RedirectResponse(f"{FRONTEND_URL}?strava_error=invalid_state")
 
-    name, user_id = payload.get("name","Athlete"), payload.get("user_id")
+    name = payload.get("name", "Athlete")
 
     async with httpx.AsyncClient(timeout=15) as c:
         r = await c.post(STRAVA_TOKEN_URL, data={
@@ -418,10 +418,10 @@ async def strava_callback(code: Optional[str]=Query(None),
     async with _db_lock:
         db = load_db()
         members = db["members"]
+        # Match only by strava_id — this is the only reliable identifier
+        # (user_id from the frontend is not trusted as it could belong to a different person)
         member = None
-        if user_id:
-            member = next((m for m in members if m["id"] == user_id), None)
-        if not member and strava_id:
+        if strava_id:
             member = next((m for m in members if m.get("strava_id") == strava_id), None)
 
         if member:

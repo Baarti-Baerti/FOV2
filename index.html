@@ -2960,9 +2960,9 @@ function chooseProvider(provider) {
   }
   clearModalMsg();
   // Strava only — redirect to backend OAuth
+  // Do NOT pass user_id — backend identifies returning users by strava_id
   goToStep(2);
   const params = new URLSearchParams({ name });
-  if (currentMember?.id) params.set('user_id', currentMember.id);
   setTimeout(() => {
     window.location.href = `${API_BASE}/api/strava/auth?${params}`;
   }, 600);
