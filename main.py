@@ -41,8 +41,8 @@ STRAVA_API_BASE  = "https://www.strava.com/api/v3"
 # ─────────────────────────────────────────────────────────────
 #  Tiny JSON "database"
 # ─────────────────────────────────────────────────────────────
-import threading
-_db_lock = threading.Lock()
+import asyncio
+_db_lock = asyncio.Lock()
 
 def load_db() -> dict:
     if os.path.exists(DB_PATH):
@@ -70,15 +70,13 @@ def load_db() -> dict:
 def save_db(db: dict):
     """Atomic write: write to temp file then rename, so the DB is never half-written.
     Also keeps a .bak copy of the previous version."""
-    with _db_lock:
-        tmp = DB_PATH + ".tmp"
-        with open(tmp, "w") as f:
-            json.dump(db, f, indent=2, default=str)
-        # Keep a backup of the current file before replacing
-        if os.path.exists(DB_PATH):
-            import shutil
-            shutil.copy2(DB_PATH, DB_PATH + ".bak")
-        os.replace(tmp, DB_PATH)
+    import shutil
+    tmp = DB_PATH + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(db, f, indent=2, default=str)
+    if os.path.exists(DB_PATH):
+        shutil.copy2(DB_PATH, DB_PATH + ".bak")
+    os.replace(tmp, DB_PATH)
 
 # ─────────────────────────────────────────────────────────────
 #  In-memory stats cache
@@ -417,7 +415,7 @@ async def strava_callback(code: Optional[str]=Query(None),
     strava_id = str(athlete.get("id", ""))
 
     # Lock the entire read-modify-write so two simultaneous signups never get the same next_id
-    with _db_lock:
+    async with _db_lock:
         db = load_db()
         members = db["members"]
         member = None
@@ -557,6 +555,20 @@ async def remove_member(mid: int, body: AdminBody = Body(default=AdminBody())):
 @app.get("/api/admin/clear-cache")
 async def clear_cache():
     _cache.clear(); return {"ok": True}
+
+# Debug — inspect raw DB (member names + IDs only, no tokens)
+@app.get("/api/admin/debug-db")
+async def debug_db():
+    db = load_db()
+    return {
+        "next_id": db["next_id"],
+        "member_count": len(db["members"]),
+        "members": [
+            {"id": m["id"], "name": m["name"], "strava_id": m.get("strava_id"),
+             "created_at": m.get("created_at")}
+            for m in db["members"]
+        ]
+    }
 
 if __name__ == "__main__":
     import uvicorn
