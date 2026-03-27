@@ -240,10 +240,12 @@ def aggregate(acts: list) -> dict:
     rk, ck_, vk, sk, wk = km(run), km(ride), km(vride), km(swim), km(walk)
     # challengeKm: sum per-activity so walk filter is applied individually
     ckm = round(sum(challenge_km_for_activity(a) for a in acts), 3)
+    # Only count sessions from the 5 tracked activity types
+    counted_workouts = sum(1 for a in acts if classify(a.get("sport_type") or a.get("type","")) in _COUNTED_CATS)
     return dict(runKm=rk, cycleKm=ck_, virtualKm=vk, swimKm=sk, walkKm=wk,
                 km=round(rk+ck_+vk+sk+wk, 3), durationSec=secs,
                 calories=round(cals), actKcal=round(kcal),
-                workouts=len(acts), challengeKm=ckm,
+                workouts=counted_workouts, challengeKm=ckm,
                 types=sorted(types))
 
 
