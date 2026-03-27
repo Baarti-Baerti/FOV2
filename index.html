@@ -1907,7 +1907,7 @@ function renderLB(){
   ];
   function fmtKm(v){ return (v||0) > 0 ? (v||0).toFixed(2) : '—'; }
 
-  const isAdmin = currentMember?.name === 'Martin';
+  const isAdmin = currentMember?.name === 'Baarti';
   function metricVal(u, key) {
     if (key === 'convKm')      return userPointsKm(u);
     if (key === 'km')          return (u.runKm||0) + (u.cycleKm||0) + (u.virtualKm||0) + (u.swimKm||0) + (u.walkKm||0);
