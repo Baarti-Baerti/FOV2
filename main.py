@@ -174,6 +174,31 @@ async def fetch_activities(member: dict, after: int, before: int) -> list:
             acts.extend(batch)
             if len(batch) < 100: break
             page += 1
+
+    # Strava does not return calories on the list endpoint for some users.
+    # For any counted activity where calories is null, fetch the full activity detail.
+    # Limit to 20 individual fetches to stay within Strava rate limits.
+    missing = [a for a in acts
+               if classify(a.get("sport_type") or a.get("type","")) in _COUNTED_CATS
+               and (a.get("calories") is None or a.get("calories") == 0)
+               and a.get("id")]
+    if missing:
+        fetch_ids = [a["id"] for a in missing[:20]]
+        async with httpx.AsyncClient(timeout=30) as c:
+            for act_id in fetch_ids:
+                try:
+                    r = await c.get(f"{STRAVA_API_BASE}/activities/{act_id}", headers=hdrs)
+                    if r.status_code == 200:
+                        detail = r.json()
+                        # Patch the calories back into the original activity dict
+                        for a in acts:
+                            if a.get("id") == act_id:
+                                if detail.get("calories"):
+                                    a["calories"] = detail["calories"]
+                                break
+                except Exception:
+                    pass  # skip silently if one fetch fails
+
     return acts
 
 # ─────────────────────────────────────────────────────────────
