@@ -558,6 +558,40 @@ async def remove_member(mid: int, body: AdminBody = Body(default=AdminBody())):
 async def clear_cache():
     _cache.clear(); return {"ok": True}
 
+# Debug — inspect raw Strava activity data for a specific member
+@app.get("/api/admin/debug-activities/{mid}")
+async def debug_activities(mid: int, limit: int = 5):
+    db = load_db()
+    m = next((x for x in db["members"] if x["id"] == mid), None)
+    if not m: raise HTTPException(404, "Member not found")
+    try:
+        m = await refresh(m)
+        hdrs = {"Authorization": f"Bearer {m['strava_access_token']}"}
+        async with httpx.AsyncClient(timeout=30) as c:
+            r = await c.get(f"{STRAVA_API_BASE}/athlete/activities", headers=hdrs,
+                            params={"per_page": limit, "page": 1})
+        acts = r.json()
+        return {
+            "member": m["name"],
+            "strava_id": m.get("strava_id"),
+            "activity_count": len(acts),
+            "activities": [
+                {
+                    "name":          a.get("name"),
+                    "sport_type":    a.get("sport_type"),
+                    "date":          a.get("start_date_local"),
+                    "distance_km":   round((a.get("distance") or 0) / 1000, 2),
+                    "calories":      a.get("calories"),
+                    "kilojoules":    a.get("kilojoules"),
+                    "kj_as_kcal":    round((a.get("kilojoules") or 0) * 0.239, 1),
+                    "actKcal_used":  round(max(a.get("calories") or 0, (a.get("kilojoules") or 0) * 0.239), 1),
+                }
+                for a in (acts if isinstance(acts, list) else [])
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
 # Debug — inspect raw DB (member names + IDs only, no tokens)
 @app.get("/api/admin/debug-db")
 async def debug_db():
