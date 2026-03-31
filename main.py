@@ -34,6 +34,10 @@ BACKEND_URL          = os.getenv("BACKEND_URL",   "http://localhost:8000")
 DB_PATH              = os.getenv("DB_PATH",        "/data/fette_otter.json")
 SECRET_KEY           = os.getenv("SECRET_KEY",     secrets.token_hex(32))
 
+# Set STRAVA_PAUSED=true in Railway env vars to block all Strava API calls
+# (use to let rate limits cool down — stored data is still served normally)
+STRAVA_PAUSED = os.getenv("STRAVA_PAUSED", "false").lower() == "true"
+
 STRAVA_AUTH_URL  = "https://www.strava.com/oauth/authorize"
 STRAVA_TOKEN_URL = "https://www.strava.com/oauth/token"
 STRAVA_API_BASE  = "https://www.strava.com/api/v3"
@@ -195,9 +199,7 @@ def save_acts(mid: int, data: dict):
 async def sync_activities(member: dict) -> list:
     """
     Incremental sync: only fetch activities newer than what we already have.
-    On first run fetches the full current year. Subsequently fetches only new.
-    Returns the full activity list for the current year.
-    1 API call per sync (unless user has >100 new activities since last sync).
+    Returns stored activities without fetching if STRAVA_PAUSED=true.
     """
     mid      = member["id"]
     now      = int(time.time())
@@ -206,6 +208,11 @@ async def sync_activities(member: dict) -> list:
 
     stored     = load_acts(mid)
     last_fetch = stored.get("last_fetch", 0)
+
+    # If paused, just return what we have stored
+    if STRAVA_PAUSED:
+        print(f"[sync] PAUSED — skipping Strava fetch for {member['name']}")
+        return stored.get("activities", [])
 
     # First time: fetch from Jan 1. Otherwise: fetch from last sync minus 1hr overlap
     after = yr_start if last_fetch == 0 else max(yr_start, last_fetch - 3600)
@@ -427,6 +434,9 @@ async def hourly_sync_job():
         await asyncio.sleep(secs_until_next_hour)
 
         print(f"[hourly-sync] Starting sync for all members")
+        if STRAVA_PAUSED:
+            print(f"[hourly-sync] PAUSED — skipping")
+            continue
         db = load_db()
         for m in db["members"]:
             try:
@@ -672,6 +682,8 @@ async def clear_cache():
 # Manually trigger a sync for all members (use after deploy)
 @app.get("/api/admin/sync")
 async def manual_sync():
+    if STRAVA_PAUSED:
+        return {"ok": False, "message": "Strava calls are paused — set STRAVA_PAUSED=false to resume"}
     db = load_db()
     results = []
     for m in db["members"]:
