@@ -160,46 +160,115 @@ async def refresh(member: dict) -> dict:
     return member
 
 
-async def fetch_activities(member: dict, after: int, before: int) -> list:
+# ─────────────────────────────────────────────────────────────
+#  Persistent activity store — one JSON file per member
+#  Stored at /data/acts_{member_id}.json
+# ─────────────────────────────────────────────────────────────
+def acts_path(mid: int) -> str:
+    base = os.path.dirname(DB_PATH)
+    return os.path.join(base, f"acts_{mid}.json")
+
+def load_acts(mid: int) -> dict:
+    """Load stored activities for a member. Returns {activities: [], last_fetch: 0}"""
+    p = acts_path(mid)
+    if os.path.exists(p):
+        try:
+            with open(p) as f:
+                data = json.load(f)
+            if isinstance(data, dict) and "activities" in data:
+                return data
+        except Exception:
+            pass
+    return {"activities": [], "last_fetch": 0}
+
+def save_acts(mid: int, data: dict):
+    """Atomically save activities for a member."""
+    import shutil
+    p = acts_path(mid)
+    tmp = p + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(data, f)
+    if os.path.exists(p):
+        shutil.copy2(p, p + ".bak")
+    os.replace(tmp, p)
+
+async def sync_activities(member: dict) -> list:
+    """
+    Incremental sync: only fetch activities newer than what we already have.
+    On first run fetches the full current year. Subsequently fetches only new.
+    Returns the full activity list for the current year.
+    1 API call per sync (unless user has >100 new activities since last sync).
+    """
+    mid  = member["id"]
+    now  = int(time.time())
+    yr   = datetime.now(timezone.utc).year
+    yr_start = int(datetime(yr, 1, 1, tzinfo=timezone.utc).timestamp())
+
+    stored = load_acts(mid)
+    acts   = stored["activities"]
+    last_fetch = stored.get("last_fetch", 0)
+
+    # Determine what to fetch:
+    # - First time (or year rollover): fetch full year from Jan 1
+    # - Otherwise: fetch only activities newer than last_fetch
+    after = max(yr_start, last_fetch - 3600)  # overlap 1hr to catch edits
+    if last_fetch == 0:
+        after = yr_start
+
     member = await refresh(member)
     hdrs = {"Authorization": f"Bearer {member['strava_access_token']}"}
-    acts, page = [], 1
+
+    new_acts = []
+    page = 1
     async with httpx.AsyncClient(timeout=30) as c:
         while True:
             r = await c.get(f"{STRAVA_API_BASE}/athlete/activities", headers=hdrs,
-                            params={"after": after, "before": before, "per_page": 100, "page": page})
-            if r.status_code != 200: break
+                            params={"after": after, "before": now, "per_page": 100, "page": page})
+            if r.status_code == 429:
+                print(f"[warn] Strava rate limit hit for {member['name']}")
+                break
+            if r.status_code != 200:
+                print(f"[warn] Strava API error {r.status_code} for {member['name']}")
+                break
             batch = r.json()
-            if not isinstance(batch, list) or not batch: break
-            acts.extend(batch)
-            if len(batch) < 100: break
+            if not isinstance(batch, list) or not batch:
+                break
+            new_acts.extend(batch)
+            if len(batch) < 100:
+                break
             page += 1
 
-    # Strava does not return calories on the list endpoint for some users.
-    # For any counted activity where calories is null, fetch the full activity detail.
-    # Limit to 20 individual fetches to stay within Strava rate limits.
-    missing = [a for a in acts
-               if classify(a.get("sport_type") or a.get("type","")) in _COUNTED_CATS
-               and (a.get("calories") is None or a.get("calories") == 0)
-               and a.get("id")]
-    if missing:
-        fetch_ids = [a["id"] for a in missing[:20]]
-        async with httpx.AsyncClient(timeout=30) as c:
-            for act_id in fetch_ids:
-                try:
-                    r = await c.get(f"{STRAVA_API_BASE}/activities/{act_id}", headers=hdrs)
-                    if r.status_code == 200:
-                        detail = r.json()
-                        # Patch the calories back into the original activity dict
-                        for a in acts:
-                            if a.get("id") == act_id:
-                                if detail.get("calories"):
-                                    a["calories"] = detail["calories"]
-                                break
-                except Exception:
-                    pass  # skip silently if one fetch fails
+    if new_acts:
+        # Merge new activities into stored, deduplicating by activity ID
+        existing_ids = {a["id"] for a in acts if "id" in a}
+        for a in new_acts:
+            if a.get("id") not in existing_ids:
+                acts.append(a)
+                existing_ids.add(a["id"])
+            else:
+                # Update existing (e.g. edited activity)
+                acts = [a if na.get("id") == a.get("id") else a for a in acts
+                        for na in [a]]
+                # Simpler: just replace matching
+                acts = [na if na.get("id") == a.get("id") else a for a in acts
+                        for na in new_acts if na.get("id") == a.get("id")] or acts
+
+        # Keep only current year activities
+        acts = [a for a in acts if _act_ts(a) >= yr_start]
+        save_acts(mid, {"activities": acts, "last_fetch": now})
 
     return acts
+
+def _act_ts(a: dict) -> int:
+    """Get unix timestamp from activity start date."""
+    ts = a.get("start_date_local") or a.get("start_date", "")
+    try:
+        return int(datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp())
+    except (ValueError, TypeError):
+        return 0
+
+
+
 
 # ─────────────────────────────────────────────────────────────
 #  Stats aggregation
@@ -233,24 +302,11 @@ _COUNTED_CATS = {"run", "ride", "virtual_ride", "swim", "walk"}
 def aggregate(acts: list) -> dict:
     run = ride = vride = swim = walk = 0.0
     secs = 0      # only time from counted activity types
-    cals = 0
-    kcal = 0.0
     types = set()
     for a in acts:
         cat = classify(a.get("sport_type") or a.get("type", ""))
         d = a.get("distance", 0) or 0
-        activity_cals = a.get("calories", 0) or 0
-        activity_kj   = a.get("kilojoules", 0) or 0
-        # kJ → kcal conversion (1 kJ = 0.239 kcal)
-        activity_kj_as_kcal = activity_kj * 0.239
 
-        cals += activity_cals
-
-        # actKcal: pick the best available value per activity.
-        # Strava only populates 'calories' for some users/devices on the list endpoint.
-        # 'kilojoules' is populated for cycling with a power meter.
-        # Take whichever is larger — they should agree, but if one is 0 the other has the value.
-        kcal += max(activity_cals, activity_kj_as_kcal)
         types.add(a.get("sport_type") or a.get("type") or "Unknown")
         if cat in _COUNTED_CATS:
             # Only count time for the 5 tracked activity types
@@ -269,7 +325,6 @@ def aggregate(acts: list) -> dict:
     counted_workouts = sum(1 for a in acts if classify(a.get("sport_type") or a.get("type","")) in _COUNTED_CATS)
     return dict(runKm=rk, cycleKm=ck_, virtualKm=vk, swimKm=sk, walkKm=wk,
                 km=round(rk+ck_+vk+sk+wk, 3), durationSec=secs,
-                calories=round(cals), actKcal=round(kcal),
                 workouts=counted_workouts, challengeKm=ckm,
                 types=sorted(types))
 
@@ -297,7 +352,7 @@ def monthly_breakdown(acts: list, year: int) -> list:
                 dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
                 idx = dt.day - 1
                 if 0 <= idx < 31:
-                    days[idx] = max(days[idx], a.get("calories", 0) or 0)
+                    days[idx] = 1
             except (ValueError, IndexError): pass
 
         # ── goalDay: which calendar day did cumulative challenge-km first hit 66.67? ──
@@ -322,9 +377,9 @@ def monthly_breakdown(acts: list, year: int) -> list:
 
         result.append(dict(
             year=year, month=m, label=names[m-1],
-            cal=s["calories"], sess=s["workouts"], km=s["km"],
+            cal=0, sess=s["workouts"], km=s["km"],
             runKm=s["runKm"], cycleKm=s["cycleKm"], virtualKm=s["virtualKm"],
-            swimKm=s["swimKm"], walkKm=s["walkKm"], actKcal=s["actKcal"],
+            swimKm=s["swimKm"], walkKm=s["walkKm"], actKcal=0,
             durationSec=s["durationSec"], challengeKm=round(s["challengeKm"], 3),
             goalDay=goal_day,  # None if goal not yet reached this month
             days=days,
@@ -342,7 +397,7 @@ def week_bits(acts: list) -> tuple:
             if dt.timestamp() >= cutoff:
                 d = dt.weekday()
                 week[d] = True
-                wcal[d] = max(wcal[d], a.get("calories",0) or 0)
+                wcal[d] = 1
         except (ValueError, IndexError): pass
     return week, wcal
 
@@ -365,13 +420,36 @@ def fmt_member(m: dict, idx: int, s: dict) -> dict:
         bg=m.get("bg")       or _BG[idx%len(_BG)],
         picture=m.get("strava_picture",""), height_m=m.get("height_m"),
         **{k: s.get(k,0) for k in ("km","runKm","cycleKm","virtualKm","swimKm","walkKm",
-                                    "durationSec","calories","actKcal","workouts","challengeKm")},
+                                    "durationSec","workouts","challengeKm")},
         types=s.get("types",[]), monthly=s.get("monthly",[]),
         week=w, weekCalories=wc)
 
 # ─────────────────────────────────────────────────────────────
 #  App
 # ─────────────────────────────────────────────────────────────
+async def hourly_sync_job():
+    """Background task: sync all members once per hour at the top of the hour."""
+    while True:
+        # Wait until the top of the next hour
+        now = datetime.now(timezone.utc)
+        secs_until_next_hour = (60 - now.minute) * 60 - now.second
+        await asyncio.sleep(secs_until_next_hour)
+
+        print(f"[hourly-sync] Starting sync for all members")
+        db = load_db()
+        for m in db["members"]:
+            try:
+                await sync_activities(m)
+                # Bust in-memory cache so next /api/team call reads fresh data
+                cache_bust(m["id"])
+                print(f"[hourly-sync] Synced {m['name']}")
+            except Exception as e:
+                print(f"[hourly-sync] Failed for {m['name']}: {e}")
+            # Small delay between members to avoid bursting Strava API
+            await asyncio.sleep(2)
+        print(f"[hourly-sync] Done")
+
+
 @asynccontextmanager
 async def lifespan(app):
     # Ensure the data directory exists (Railway volume or local)
@@ -385,7 +463,10 @@ async def lifespan(app):
     else:
         db = load_db()
         print(f"[startup] Loaded database: {len(db['members'])} member(s) from {DB_PATH}")
+    # Start hourly background sync
+    task = asyncio.create_task(hourly_sync_job())
     yield
+    task.cancel()
 
 app = FastAPI(title="Fette Otter API", version="1.0.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"],
@@ -495,22 +576,34 @@ async def strava_callback(code: Optional[str]=Query(None),
 # Team stats
 @app.get("/api/team")
 async def get_team(range_: str = Query("thismonth", alias="range")):
-    db = load_db()
+    db   = load_db()
     after, before = date_range(range_)
-    yr = datetime.now(timezone.utc).year
-    yr_after  = int(datetime(yr,1,1,tzinfo=timezone.utc).timestamp())
-    yr_before = int(datetime.now(timezone.utc).timestamp())
+    yr   = datetime.now(timezone.utc).year
+    yr_start = int(datetime(yr, 1, 1, tzinfo=timezone.utc).timestamp())
     result = []
+
     for idx, m in enumerate(db["members"]):
+        # Serve from cache if available — cache is only busted on hourly sync
         cached = cache_get(m["id"], range_)
         if cached:
-            result.append(cached); continue
-        try:
-            period_acts = await fetch_activities(m, after, before)
-            year_acts   = await fetch_activities(m, yr_after, yr_before)
-        except Exception as e:
-            print(f"[warn] {m['name']}: {e}")
-            period_acts = year_acts = []
+            result.append(cached)
+            continue
+
+        # Load stored activities (incremental sync already done by hourly job)
+        # Fall back to a live sync if the store is empty (first ever load)
+        stored = load_acts(m["id"])
+        if not stored["activities"]:
+            try:
+                year_acts = await sync_activities(m)
+            except Exception as e:
+                print(f"[warn] initial sync failed for {m['name']}: {e}")
+                year_acts = []
+        else:
+            year_acts = stored["activities"]
+
+        # Filter to requested period — no API call needed
+        period_acts = [a for a in year_acts if after <= _act_ts(a) <= before]
+
         s = aggregate(period_acts)
         s["monthly"] = monthly_breakdown(year_acts, yr)
         w, wc = week_bits(year_acts)
@@ -518,6 +611,7 @@ async def get_team(range_: str = Query("thismonth", alias="range")):
         entry = fmt_member(m, idx, s)
         cache_set(m["id"], range_, entry)
         result.append(entry)
+
     return result
 
 # Members list
@@ -581,7 +675,23 @@ async def remove_member(mid: int, body: AdminBody = Body(default=AdminBody())):
 # Clear cache
 @app.get("/api/admin/clear-cache")
 async def clear_cache():
-    _cache.clear(); return {"ok": True}
+    _cache.clear()
+    return {"ok": True}
+
+# Manually trigger a sync for all members (use after deploy)
+@app.get("/api/admin/sync")
+async def manual_sync():
+    db = load_db()
+    results = []
+    for m in db["members"]:
+        try:
+            acts = await sync_activities(m)
+            cache_bust(m["id"])
+            results.append({"member": m["name"], "activities": len(acts), "ok": True})
+        except Exception as e:
+            results.append({"member": m["name"], "error": str(e), "ok": False})
+        await asyncio.sleep(2)  # be polite to Strava API
+    return {"synced": len(results), "results": results}
 
 # Debug — inspect raw Strava activity data for a specific member
 @app.get("/api/admin/debug-activities/{mid}")
@@ -606,10 +716,7 @@ async def debug_activities(mid: int, limit: int = 5):
                     "sport_type":    a.get("sport_type"),
                     "date":          a.get("start_date_local"),
                     "distance_km":   round((a.get("distance") or 0) / 1000, 2),
-                    "calories":      a.get("calories"),
-                    "kilojoules":    a.get("kilojoules"),
-                    "kj_as_kcal":    round((a.get("kilojoules") or 0) * 0.239, 1),
-                    "actKcal_used":  round(max(a.get("calories") or 0, (a.get("kilojoules") or 0) * 0.239), 1),
+
                 }
                 for a in (acts if isinstance(acts, list) else [])
             ]
