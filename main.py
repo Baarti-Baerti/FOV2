@@ -715,6 +715,24 @@ async def debug_activities(mid: int, limit: int = 5):
     except Exception as e:
         raise HTTPException(500, str(e))
 
+# Debug — check stored activity files
+@app.get("/api/admin/debug-store")
+async def debug_store():
+    db = load_db()
+    result = []
+    for m in db["members"]:
+        stored = load_acts(m["id"])
+        acts = stored.get("activities", [])
+        result.append({
+            "member": m["name"],
+            "id": m["id"],
+            "stored_count": len(acts),
+            "last_fetch": stored.get("last_fetch", 0),
+            "file_exists": os.path.exists(acts_path(m["id"])),
+            "sample": acts[0] if acts else None,
+        })
+    return result
+
 # Debug — inspect raw DB (member names + IDs only, no tokens)
 @app.get("/api/admin/debug-db")
 async def debug_db():
