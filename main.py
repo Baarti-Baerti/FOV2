@@ -715,6 +715,48 @@ async def debug_activities(mid: int, limit: int = 5):
     except Exception as e:
         raise HTTPException(500, str(e))
 
+# Debug — raw sync result for one member showing timestamps
+@app.get("/api/admin/debug-sync/{mid}")
+async def debug_sync(mid: int):
+    db = load_db()
+    m = next((x for x in db["members"] if x["id"] == mid), None)
+    if not m: raise HTTPException(404, "Not found")
+
+    yr = datetime.now(timezone.utc).year
+    yr_start = int(datetime(yr, 1, 1, tzinfo=timezone.utc).timestamp())
+    now = int(time.time())
+
+    m = await refresh(m)
+    hdrs = {"Authorization": f"Bearer {m['strava_access_token']}"}
+
+    async with httpx.AsyncClient(timeout=30) as c:
+        r = await c.get(f"{STRAVA_API_BASE}/athlete/activities", headers=hdrs,
+                        params={"after": yr_start, "before": now, "per_page": 5, "page": 1})
+    
+    raw = r.json() if r.status_code == 200 else {"error": r.status_code, "body": r.text}
+    
+    samples = []
+    if isinstance(raw, list):
+        for a in raw[:3]:
+            ts = _act_ts(a)
+            samples.append({
+                "name": a.get("name"),
+                "start_date_local": a.get("start_date_local"),
+                "start_date": a.get("start_date"),
+                "_act_ts": ts,
+                "yr_start": yr_start,
+                "passes_filter": ts >= yr_start,
+            })
+
+    return {
+        "member": m["name"],
+        "yr_start": yr_start,
+        "now": now,
+        "http_status": r.status_code,
+        "raw_count": len(raw) if isinstance(raw, list) else 0,
+        "samples": samples,
+    }
+
 # Debug — check stored activity files
 @app.get("/api/admin/debug-store")
 async def debug_store():
