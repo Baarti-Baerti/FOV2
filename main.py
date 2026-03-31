@@ -199,21 +199,16 @@ async def sync_activities(member: dict) -> list:
     Returns the full activity list for the current year.
     1 API call per sync (unless user has >100 new activities since last sync).
     """
-    mid  = member["id"]
-    now  = int(time.time())
-    yr   = datetime.now(timezone.utc).year
+    mid      = member["id"]
+    now      = int(time.time())
+    yr       = datetime.now(timezone.utc).year
     yr_start = int(datetime(yr, 1, 1, tzinfo=timezone.utc).timestamp())
 
-    stored = load_acts(mid)
-    acts   = stored["activities"]
+    stored     = load_acts(mid)
     last_fetch = stored.get("last_fetch", 0)
 
-    # Determine what to fetch:
-    # - First time (or year rollover): fetch full year from Jan 1
-    # - Otherwise: fetch only activities newer than last_fetch
-    after = max(yr_start, last_fetch - 3600)  # overlap 1hr to catch edits
-    if last_fetch == 0:
-        after = yr_start
+    # First time: fetch from Jan 1. Otherwise: fetch from last sync minus 1hr overlap
+    after = yr_start if last_fetch == 0 else max(yr_start, last_fetch - 3600)
 
     member = await refresh(member)
     hdrs = {"Authorization": f"Bearer {member['strava_access_token']}"}
@@ -223,12 +218,13 @@ async def sync_activities(member: dict) -> list:
     async with httpx.AsyncClient(timeout=30) as c:
         while True:
             r = await c.get(f"{STRAVA_API_BASE}/athlete/activities", headers=hdrs,
-                            params={"after": after, "before": now, "per_page": 100, "page": page})
+                            params={"after": after, "before": now,
+                                    "per_page": 100, "page": page})
             if r.status_code == 429:
-                print(f"[warn] Strava rate limit hit for {member['name']}")
+                print(f"[warn] Strava rate limit for {member['name']}")
                 break
             if r.status_code != 200:
-                print(f"[warn] Strava API error {r.status_code} for {member['name']}")
+                print(f"[warn] Strava API {r.status_code} for {member['name']}")
                 break
             batch = r.json()
             if not isinstance(batch, list) or not batch:
@@ -238,26 +234,21 @@ async def sync_activities(member: dict) -> list:
                 break
             page += 1
 
-    if new_acts:
-        # Merge new activities into stored, deduplicating by activity ID
-        existing_ids = {a["id"] for a in acts if "id" in a}
-        for a in new_acts:
-            if a.get("id") not in existing_ids:
-                acts.append(a)
-                existing_ids.add(a["id"])
-            else:
-                # Update existing (e.g. edited activity)
-                acts = [a if na.get("id") == a.get("id") else a for a in acts
-                        for na in [a]]
-                # Simpler: just replace matching
-                acts = [na if na.get("id") == a.get("id") else a for a in acts
-                        for na in new_acts if na.get("id") == a.get("id")] or acts
+    print(f"[sync] {member['name']}: fetched {len(new_acts)} new activities")
 
-        # Keep only current year activities
-        acts = [a for a in acts if _act_ts(a) >= yr_start]
-        save_acts(mid, {"activities": acts, "last_fetch": now})
+    # Merge: build a dict keyed by activity ID so duplicates are overwritten cleanly
+    existing = {a["id"]: a for a in stored.get("activities", []) if "id" in a}
+    for a in new_acts:
+        if "id" in a:
+            existing[a["id"]] = a  # insert or update
 
-    return acts
+    # Keep only current year, sorted newest first
+    all_acts = [a for a in existing.values() if _act_ts(a) >= yr_start]
+    all_acts.sort(key=_act_ts, reverse=True)
+
+    # Always save with updated last_fetch so next sync is incremental
+    save_acts(mid, {"activities": all_acts, "last_fetch": now})
+    return all_acts
 
 def _act_ts(a: dict) -> int:
     """Get unix timestamp from activity start date."""
