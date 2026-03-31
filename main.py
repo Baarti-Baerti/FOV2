@@ -34,9 +34,10 @@ BACKEND_URL          = os.getenv("BACKEND_URL",   "http://localhost:8000")
 DB_PATH              = os.getenv("DB_PATH",        "/data/fette_otter.json")
 SECRET_KEY           = os.getenv("SECRET_KEY",     secrets.token_hex(32))
 
-# Set STRAVA_PAUSED=true in Railway env vars to block all Strava API calls
-# (use to let rate limits cool down — stored data is still served normally)
-STRAVA_PAUSED = os.getenv("STRAVA_PAUSED", "false").lower() == "true"
+def is_strava_paused() -> bool:
+    """Check if Strava syncing is paused (stored in DB so it survives restarts)."""
+    db = load_db()
+    return db.get("strava_paused", False)
 
 STRAVA_AUTH_URL  = "https://www.strava.com/oauth/authorize"
 STRAVA_TOKEN_URL = "https://www.strava.com/oauth/token"
@@ -210,7 +211,7 @@ async def sync_activities(member: dict) -> list:
     last_fetch = stored.get("last_fetch", 0)
 
     # If paused, just return what we have stored
-    if STRAVA_PAUSED:
+    if is_strava_paused():
         print(f"[sync] PAUSED — skipping Strava fetch for {member['name']}")
         return stored.get("activities", [])
 
@@ -434,7 +435,7 @@ async def hourly_sync_job():
         await asyncio.sleep(secs_until_next_hour)
 
         print(f"[hourly-sync] Starting sync for all members")
-        if STRAVA_PAUSED:
+        if is_strava_paused():
             print(f"[hourly-sync] PAUSED — skipping")
             continue
         db = load_db()
@@ -673,6 +674,21 @@ async def remove_member(mid: int, body: AdminBody = Body(default=AdminBody())):
     save_db(db); cache_bust(mid)
     return {"ok": True}
 
+# Toggle Strava sync pause
+@app.post("/api/admin/strava-pause")
+async def toggle_strava_pause():
+    db = load_db()
+    current = db.get("strava_paused", False)
+    db["strava_paused"] = not current
+    save_db(db)
+    state = "paused" if db["strava_paused"] else "active"
+    print(f"[admin] Strava sync {state}")
+    return {"ok": True, "paused": db["strava_paused"], "state": state}
+
+@app.get("/api/admin/strava-status")
+async def strava_status():
+    return {"paused": is_strava_paused()}
+
 # Clear cache
 @app.get("/api/admin/clear-cache")
 async def clear_cache():
@@ -682,8 +698,8 @@ async def clear_cache():
 # Manually trigger a sync for all members (use after deploy)
 @app.get("/api/admin/sync")
 async def manual_sync():
-    if STRAVA_PAUSED:
-        return {"ok": False, "message": "Strava calls are paused — set STRAVA_PAUSED=false to resume"}
+    if is_strava_paused():
+        return {"ok": False, "message": "Strava sync is currently paused — toggle it on first"}
     db = load_db()
     results = []
     for m in db["members"]:

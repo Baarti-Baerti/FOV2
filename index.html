@@ -1235,6 +1235,15 @@
     </div>
   </div>
   <div class="header-right">
+    <!-- Admin: Strava sync toggle (only visible to Baarti) -->
+    <div id="stravaToggleWrap" style="display:none">
+      <button id="stravaToggleBtn" onclick="toggleStravaPause()"
+        style="font-family:'Nunito',sans-serif;font-weight:800;font-size:0.78rem;
+               padding:5px 12px;border-radius:20px;border:2px solid;cursor:pointer;
+               transition:all 0.2s">
+        ⏸ Pause Sync
+      </button>
+    </div>
     <!-- Signed-in user chip (shown after joining) -->
     <div class="current-user-chip" id="currentUserChip" onclick="openMyProfile()" title="Your profile">
       <span id="chipAvatarWrap"></span>
@@ -1460,14 +1469,14 @@ const PALETTE = [
 
 // ── Mock data — shown when backend is unreachable ─────────────────
 const MOCK_USERS = [
-  {id:1,name:'Alex Chen',   role:'Engineering',calories:4820,workouts:6,km:68.4,actKcal:3210,bmi:22.1,height_m:1.78,activity_types:['Running','Cycling','Hiit'],week_active:[1,1,0,1,1,0,1],week_calories:[720,680,0,810,650,0,960],garmin_device:'Forerunner 965'},
-  {id:2,name:'Sam Rivera',  role:'Design',     calories:4210,workouts:5,km:52.1,actKcal:2780,bmi:23.4,height_m:1.65,activity_types:['Yoga','Running','Strength'],week_active:[1,0,1,1,0,1,1],week_calories:[600,0,750,820,0,700,340],garmin_device:'Venu 3'},
-  {id:3,name:'Jordan Park', role:'Product',    calories:3980,workouts:5,km:91.3,actKcal:2540,bmi:21.7,height_m:1.82,activity_types:['Cycling','Swimming','Running'],week_active:[1,1,0,0,1,1,1],week_calories:[580,690,0,0,810,750,1150],garmin_device:'Fenix 7'},
-  {id:4,name:'Taylor Kim',  role:'Marketing',  calories:3640,workouts:4,km:44.8,actKcal:2190,bmi:24.8,height_m:1.70,activity_types:['Running','Walking','Yoga'],week_active:[0,1,1,0,1,0,1],week_calories:[0,820,760,0,920,0,1140],garmin_device:'Instinct 2'},
-  {id:5,name:'Morgan Wu',   role:'Data',       calories:3290,workouts:4,km:38.2,actKcal:1980,bmi:25.3,height_m:1.68,activity_types:['Hiit','Strength'],week_active:[1,0,0,1,1,0,1],week_calories:[780,0,0,920,870,0,720],garmin_device:'Vivoactive 5'},
-  {id:6,name:'Casey Patel', role:'Backend',    calories:2980,workouts:3,km:62.7,actKcal:1740,bmi:22.9,height_m:1.75,activity_types:['Swimming','Cycling'],week_active:[0,1,0,1,0,1,0],week_calories:[0,950,0,1100,0,930,0],garmin_device:'Swim 2'},
-  {id:7,name:'Drew Santos', role:'Frontend',   calories:2740,workouts:3,km:29.6,actKcal:1580,bmi:26.1,height_m:1.72,activity_types:['Walking','Running'],week_active:[1,0,1,0,0,1,1],week_calories:[620,0,710,0,0,810,600],garmin_device:'Forerunner 55'},
-  {id:8,name:'Quinn Lee',   role:'DevOps',     calories:2100,workouts:2,km:18.3,actKcal:1120,bmi:27.6,height_m:1.60,activity_types:['Yoga','Walking'],week_active:[0,0,1,0,1,0,1],week_calories:[0,0,680,0,720,0,700],garmin_device:'Lily 2'},
+  {id:1,name:'Alex Chen',   role:'Engineering',workouts:6,km:68.4,bmi:22.1,height_m:1.78,activity_types:['Running','Cycling','Hiit'],week_active:[1,1,0,1,1,0,1],garmin_device:'Forerunner 965'},
+  {id:2,name:'Sam Rivera',  role:'Design',     calories:4210,workouts:5,km:52.1,bmi:23.4,height_m:1.65,activity_types:['Yoga','Running','Strength'],week_active:[1,0,1,1,0,1,1],garmin_device:'Venu 3'},
+  {id:3,name:'Jordan Park', role:'Product',    calories:3980,workouts:5,km:91.3,bmi:21.7,height_m:1.82,activity_types:['Cycling','Swimming','Running'],week_active:[1,1,0,0,1,1,1],garmin_device:'Fenix 7'},
+  {id:4,name:'Taylor Kim',  role:'Marketing',  calories:3640,workouts:4,km:44.8,bmi:24.8,height_m:1.70,activity_types:['Running','Walking','Yoga'],week_active:[0,1,1,0,1,0,1],garmin_device:'Instinct 2'},
+  {id:5,name:'Morgan Wu',   role:'Data',       calories:3290,workouts:4,km:38.2,bmi:25.3,height_m:1.68,activity_types:['Hiit','Strength'],week_active:[1,0,0,1,1,0,1],garmin_device:'Vivoactive 5'},
+  {id:6,name:'Casey Patel', role:'Backend',    calories:2980,workouts:3,km:62.7,bmi:22.9,height_m:1.75,activity_types:['Swimming','Cycling'],week_active:[0,1,0,1,0,1,0],garmin_device:'Swim 2'},
+  {id:7,name:'Drew Santos', role:'Frontend',   calories:2740,workouts:3,km:29.6,bmi:26.1,height_m:1.72,activity_types:['Walking','Running'],week_active:[1,0,1,0,0,1,1],garmin_device:'Forerunner 55'},
+  {id:8,name:'Quinn Lee',   role:'DevOps',     calories:2100,workouts:2,km:18.3,bmi:27.6,height_m:1.60,activity_types:['Yoga','Walking'],week_active:[0,0,1,0,1,0,1],garmin_device:'Lily 2'},
 ];
 
 // ── Normalise API or mock user into a common shape ────────────────
@@ -1480,7 +1489,6 @@ function normaliseUser(raw, idx) {
     emoji:        raw.emoji || p.emoji,
     color:        raw.color || p.color,
     bg:           raw.bg    || p.bg,
-    calories:     raw.calories     || raw.total_kcal || 0,
     workouts:     raw.workouts     || 0,
     km:           raw.km           || 0,
     runKm:        raw.runKm        || 0,
@@ -1490,13 +1498,12 @@ function normaliseUser(raw, idx) {
     skiKm:        raw.skiKm        || 0,
     walkKm:       raw.walkKm       || 0,
     otherKm:      raw.otherKm      || 0,
-    actKcal:      raw.actKcal      || raw.active_kcal || 0,
     steps:        raw.steps        || 0,
     bmi:          raw.bmi          || null,
     height_m:     raw.height_m     || null,
     types:        raw.types        || raw.activity_types || [],
     week:         raw.week         || raw.week_active  || [],
-    weekCalories: raw.weekCalories || raw.week_calories || [],
+    weekCalories: [],
     garminDevice: raw.garminDevice || raw.garmin_device || '',
     kmByType:     raw.kmByType || {},
     monthly:      raw.monthly || [],
@@ -1551,10 +1558,8 @@ function genMonthly(u) {
     const season = 0.82 + 0.32 * Math.sin((mi / 11) * Math.PI);
     const noise  = 0.78 + rng() * 0.44;
     const scale  = hasData ? season * noise : 0;
-    const cal    = hasData ? Math.round(u.calories * 4.3 * scale) : 0;
     const sess   = hasData ? Math.max(6, Math.round(u.workouts * 4.3 * scale)) : 0;
     const km     = hasData ? Math.round(u.km * 4.3 * scale * 10) / 10 : 0;
-    const actKcal= hasData ? Math.round(u.actKcal * 4.3 * scale) : 0;
     const bmi    = u.bmi ? Math.round(u.bmi * (0.97 + rng() * 0.06) * 10) / 10 : null;
     // Distribute km across activity types
     const runKm    = hasData ? Math.round(km * 0.55 * 10) / 10 : 0;
@@ -1568,7 +1573,7 @@ function genMonthly(u) {
     return { year: currentYear, month,
              label: new Date(currentYear, mi, 1).toLocaleString('en',{month:'short'}),
              cal, sess, km, runKm, cycleKm, virtualKm, swimKm, walkKm,
-             actKcal, bmi, days };
+             bmi, days };
   });
 }
 
@@ -1903,7 +1908,6 @@ function renderLB(){
     { key:'virtualKm',   label:'Virtual',      icon:'💻', fmt: u => fmtKm(u.virtualKm),                                                                   unit:'km' },
     { key:'swimKm',      label:'Swim',         icon:'🏊', fmt: u => fmtKm(u.swimKm),                                                                      unit:'km' },
     { key:'walkKm',      label:'Walk',         icon:'🚶', fmt: u => fmtKm(u.walkKm),                                                                      unit:'km' },
-    { key:'actKcal',     label:'Active Cal',   icon:'🔥', fmt: u => ((u.actKcal||0)/1000).toFixed(2)+'K',                                                 unit:''   },
   ];
   function fmtKm(v){ return (v||0) > 0 ? (v||0).toFixed(2) : '—'; }
 
@@ -2005,7 +2009,7 @@ function renderDetail(){
   const u=selUser;
   const rank=[...users].sort((a,b)=>userPointsKm(b)-userPointsKm(a)).findIndex(x=>x.id===u.id)+1;
   const dots=u.week.map((a,i)=>{
-    const bg=a?(u.weekCalories[i]>800?u.color:u.color+'99'):'#e2e8f8';
+    const bg=a?u.color:'#e2e8f8';
     return`<div class="day-cell"><div class="day-dot" style="background:${bg}"></div><span>${DAYS[i]}</span></div>`;
   }).join('');
 
@@ -2055,7 +2059,6 @@ function renderDetail(){
             <div class="detail-item"><div class="detail-item-lbl">Sessions</div><div class="detail-item-val" style="color:${u.color}">${u.workouts}</div></div>
             <div class="detail-item"><div class="detail-item-lbl">Original</div><div class="detail-item-val">${((u.runKm||0) + (u.cycleKm||0) + (u.virtualKm||0) + (u.swimKm||0) + (u.walkKm||0)).toFixed(2)}<span style="font-size:1.02rem">km</span></div></div>
             <div class="detail-item"><div class="detail-item-lbl">Points</div><div class="detail-item-val" style="color:var(--violet)">${userPointsKm(u).toFixed(2)}<span style="font-size:1.02rem">km</span></div></div>
-            <div class="detail-item"><div class="detail-item-lbl">Act. Kcal</div><div class="detail-item-val">${(u.actKcal/1000).toFixed(2)}K</div></div>
             ${u.bmi && u.bmi > 0 ? `<div class="detail-item"><div class="detail-item-lbl">BMI</div><div class="detail-item-val" style="color:${u.bmi<18.5?'#f59e0b':u.bmi<25?'#059669':u.bmi<30?'#f59e0b':'#ef4444'}">${u.bmi.toFixed(1)}</div></div>` : ''}
             ${u.height_m ? `<div class="detail-item"><div class="detail-item-lbl">Height</div><div class="detail-item-val">${Math.round(u.height_m * 100)}<span style="font-size:1.02rem">cm</span></div></div>` : ''}
 
@@ -2081,26 +2084,6 @@ function renderTypes(){
   document.getElementById('workoutTypes').innerHTML=all.map(t=>`<span class="wtype ${mine.has(t)?'active-type':''}">${t}</span>`).join('');
 }
 
-function renderCalChart(){
-  const sorted=[...users].sort((a,b)=>b.calories-a.calories);
-  const mx=sorted[0].calories;
-  document.getElementById('calorieChart').innerHTML=sorted.map(u=>{
-    const avatar = u.picture
-      ? `<img src="${u.picture}" style="width:18px;height:18px;border-radius:5px;object-fit:cover;vertical-align:middle;margin-right:5px">`
-      : `<span style="margin-right:4px">${u.emoji}</span>`;
-    return `<div class="compare-row">
-      <div class="cname">${avatar}${u.name.split(' ')[0]}</div>
-      <div>
-        <div class="cbar-wrap" style="margin-bottom:3px"><div class="cbar" style="width:${(u.calories/mx*100).toFixed(1)}%;background:${u.color}"></div></div>
-        <div class="cbar-wrap"><div class="cbar" style="width:${(u.actKcal/mx*100).toFixed(1)}%;background:${u.color}55"></div></div>
-      </div>
-      <div class="cval">${u.calories.toLocaleString()}<br><span style="color:${u.color};font-size:.73rem">${u.actKcal.toLocaleString()}</span></div>
-    </div>`;
-  }).join('') +
-    `<div style="display:flex;gap:14px;margin-top:10px;font-size:0.62rem;color:var(--muted);font-weight:600;padding-top:8px;border-top:1px solid var(--border)">
-      <span>■ Total Calories</span><span style="opacity:0.55">■ Activity Kcal</span>
-    </div>`;
-}
 
 function renderRings(){
   const mxKm=Math.max(...users.map(u=>u.km), 1);
@@ -2131,6 +2114,53 @@ let _removeTargetId = null;
 
 // ── Rename member ─────────────────────────────────────────────────
 let _renameTargetId = null;
+
+// ── Strava sync toggle (admin only) ──────────────────────────────
+async function initStravaToggle() {
+  const _adminName = (currentMember?.name || '').toLowerCase().trim();
+  if (!_adminName.includes('baarti')) return;
+  document.getElementById('stravaToggleWrap').style.display = 'block';
+  // Fetch current state
+  try {
+    const r = await fetch(`${API_BASE}/api/admin/strava-status`);
+    const d = await r.json();
+    updateStravaToggleBtn(d.paused);
+  } catch(e) { /* ignore */ }
+}
+
+function updateStravaToggleBtn(paused) {
+  const btn = document.getElementById('stravaToggleBtn');
+  if (!btn) return;
+  if (paused) {
+    btn.textContent  = '▶ Resume Sync';
+    btn.style.background   = '#fee2e2';
+    btn.style.color        = '#dc2626';
+    btn.style.borderColor  = '#fca5a5';
+  } else {
+    btn.textContent  = '⏸ Pause Sync';
+    btn.style.background   = '#dcfce7';
+    btn.style.color        = '#16a34a';
+    btn.style.borderColor  = '#86efac';
+  }
+}
+
+async function toggleStravaPause() {
+  const btn = document.getElementById('stravaToggleBtn');
+  btn.disabled = true;
+  btn.textContent = '…';
+  try {
+    const r = await fetch(`${API_BASE}/api/admin/strava-pause`, { method: 'POST' });
+    const d = await r.json();
+    updateStravaToggleBtn(d.paused);
+    showBanner(d.paused
+      ? '⏸ Strava sync paused — no API calls will be made'
+      : '▶ Strava sync resumed — next hourly sync will fetch new data', 'live');
+  } catch(e) {
+    showBanner('⚠️ Could not toggle sync state', 'warning');
+  } finally {
+    btn.disabled = false;
+  }
+}
 
 function openRenameModal(id, currentName) {
   _renameTargetId = id;
@@ -2572,12 +2602,11 @@ function reAggregateFromMonthly(team, p) {
       swimKm:      acc.swimKm     + (m.swimKm     || 0),
       walkKm:      acc.walkKm     + (m.walkKm     || 0),
       calories:    acc.calories   + (m.cal         || 0),
-      actKcal:     acc.actKcal    + (m.actKcal     || 0),
       workouts:    acc.workouts   + (m.sess        || 0),
       durationSec: acc.durationSec+ (m.durationSec || 0),
       challengeKm: acc.challengeKm+ (m.challengeKm != null ? m.challengeKm : calcChallengeKm(m)),
     }), { runKm:0, cycleKm:0, virtualKm:0, swimKm:0, walkKm:0,
-          calories:0, actKcal:0, workouts:0, durationSec:0, challengeKm:0 });
+          calories:0, workouts:0, durationSec:0, challengeKm:0 });
 
     agg.km = agg.runKm + agg.cycleKm + agg.virtualKm + agg.swimKm + agg.walkKm;
 
@@ -2640,7 +2669,6 @@ const MP_METRICS = [
   { key: 'swimKm',      label: '🏊 Swimming',           unit: 'km',   axFmt: v => v.toFixed(0),            valFmt: v => v.toFixed(2)+' km',        field: m => m.swimKm     || 0,           skipZero: false },
   { key: 'walkKm',      label: '🚶 Walking',            unit: 'km',   axFmt: v => v.toFixed(0),            valFmt: v => v.toFixed(2)+' km',        field: m => m.walkKm     || 0,           skipZero: false },
   { key: 'sess',        label: '🎯 Sessions',           unit: '',     axFmt: v => v.toFixed(0),            valFmt: v => v.toFixed(0),              field: m => m.sess       || 0,           skipZero: false },
-  { key: 'actKcal',     label: '⚡ Active Calories',    unit: 'kcal', axFmt: v => (v/1000).toFixed(0)+'K', valFmt: v => (v/1000).toFixed(2)+'K',   field: m => m.actKcal    || 0,           skipZero: false },
   { key: 'bmi',         label: '⚖️ BMI',                unit: '',     axFmt: v => v.toFixed(1),            valFmt: v => v.toFixed(1),              field: m => m.bmi        || null,        skipZero: true  },
 ];
 
@@ -2832,6 +2860,7 @@ let modalStep       = 1;
 // ── INIT ───
 restoreSession();   // must run before loadData so admin check works in renderLB
 buildPeriodSelector();
+initStravaToggle(); // show pause button for admin
 
 // Load persisted data instantly so the dashboard isn't blank on reload
 const hadPersistedData = persistLoad();
