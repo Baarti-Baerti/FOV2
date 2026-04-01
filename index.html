@@ -1922,9 +1922,14 @@ function renderLB(){
         else if (currentPeriod==='q3') mf=m=>m.year===cy&&m.month>=7&&m.month<=9;
         else if (currentPeriod==='q4') mf=m=>m.year===cy&&m.month>=10&&m.month<=12;
         else mf=m=>m.year===cy;
-        const elig = (u.monthly||[]).filter(mf).reduce((s,m) => s + (m.eligibleWalkKm||0), 0);
-        const eligStr = elig > 0.005 ? `<div style="font-size:0.65rem;color:var(--mint);font-weight:700;margin-top:1px">${elig.toFixed(2)} elig.</div>` : '';
-        return total + eligStr;
+        const elig  = (u.monthly||[]).filter(mf).reduce((s,m) => s + (m.eligibleWalkKm||0), 0);
+        const score = elig / 3;
+        if (elig <= 0.005) return total;
+        return total +
+          `<div style="font-size:0.65rem;font-weight:700;margin-top:2px;line-height:1.5">` +
+          `<span style="color:var(--mint)">✓ ${elig.toFixed(2)}km elig.</span>` +
+          `<span style="color:var(--violet);margin-left:5px">⭐ ${score.toFixed(2)}km pts</span>` +
+          `</div>`;
       }, unit:'km' },
   ];
   function fmtKm(v){ return (v||0) > 0 ? (v||0).toFixed(2) : '—'; }
@@ -1992,7 +1997,7 @@ function renderLB(){
         else if (currentPeriod==='q4') _mf=m=>m.year===_cy&&m.month>=10&&m.month<=12;
         else _mf=m=>m.year===_cy;
         const eligWalk = (u.monthly||[]).filter(_mf).reduce((s,m)=>s+(m.eligibleWalkKm||0),0);
-        if (eligWalk > 0.005) parts.push(`🚶 ${(eligWalk*3).toFixed(3)}km ÷3 = ${eligWalk.toFixed(3)}`);
+        if (eligWalk > 0.005) parts.push(`🚶 ${(u.walkKm||0).toFixed(3)}km total → ${eligWalk.toFixed(3)}km elig. ÷3 = ${(eligWalk/3).toFixed(3)}pts`);
         title = parts.length ? `title="${parts.join(' | ')}"` : '';
       }
       const fmtVal = c.fmt(u);
