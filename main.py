@@ -785,7 +785,8 @@ async def debug_activities(mid: int, limit: int = 5):
                     "sport_type":    a.get("sport_type"),
                     "date":          a.get("start_date_local"),
                     "distance_km":   round((a.get("distance") or 0) / 1000, 2),
-
+                    "calories":      a.get("calories"),
+                    "kilojoules":    a.get("kilojoules"),
                 }
                 for a in (acts if isinstance(acts, list) else [])
             ]
