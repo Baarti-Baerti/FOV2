@@ -674,6 +674,19 @@ async def remove_member(mid: int, body: AdminBody = Body(default=AdminBody())):
     save_db(db); cache_bust(mid)
     return {"ok": True}
 
+@app.get("/api/admin/reset-sync")
+async def reset_sync():
+    """Reset last_fetch to 0 for all members, forcing a full year resync on next sync call."""
+    db = load_db()
+    for m in db["members"]:
+        mid = m["id"]
+        stored = load_acts(mid)
+        stored["last_fetch"] = 0
+        stored["activities"] = []
+        save_acts(mid, stored)
+    _cache.clear()
+    return {"ok": True, "message": "Reset complete — run /api/admin/sync to fetch all data"}
+
 # Toggle Strava sync pause
 @app.post("/api/admin/strava-pause")
 async def toggle_strava_pause():
