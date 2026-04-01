@@ -1923,8 +1923,8 @@ function renderLB(suffix=''){
   }
 
   const COLS = [
-    { key:'convKm',      label:'Points',       icon:'⭐', fmt: u => userPointsKm(u).toFixed(2),                                                          unit:'km' },
-    { key:'km',          label:'Original',     icon:'📏', fmt: u => fmtKm((u.runKm||0)+(u.cycleKm||0)+(u.virtualKm||0)+(u.swimKm||0)+(u.walkKm||0)),    unit:'km' },
+    { key:'convKm',      label:'Points',       icon:'⭐', fmt: u => userPointsKm(u).toFixed(2),                                                          unit:'' },
+    { key:'km',          label:'Original',     icon:'📏', fmt: u => fmtKm((u.runKm||0)+(u.cycleKm||0)+(u.virtualKm||0)+(u.swimKm||0)+(u.walkKm||0)),    unit:'' },
     { key:'durationSec', label:'Time',         icon:'⏱',  fmt: u => fmtDuration(userDurationSec(u)),                                                      unit:''   },
     { key:'goalDay',     label:'Days to Goal', icon:'🎯', fmt: u => { const d=userDaysToGoal(u); return d!=null ? `${d}` : '—'; },                        unit:''   },
     { key:'workouts',    label:'Sessions',     icon:'#️⃣', fmt: u => u.workouts||0,                                                                         unit:''   },
@@ -2022,6 +2022,14 @@ function renderLB(suffix=''){
         else _mf=m=>m.year===_cy;
         const eligWalk = (u.monthly||[]).filter(_mf).reduce((s,m)=>s+(m.eligibleWalkKm||0),0);
         if (eligWalk > 0.005) parts.push(`🚶 ${(u.walkKm||0).toFixed(3)}km total → ${eligWalk.toFixed(3)}km elig. ÷3 = ${(eligWalk/3).toFixed(3)}pts`);
+        title = parts.length ? `title="${parts.join(' | ')}"` : '';
+      } else if (c.key === 'km') {
+        const parts = [];
+        if (u.runKm    > 0.05) parts.push(`🏃 Run: ${(u.runKm).toFixed(3)}km`);
+        if (u.cycleKm  > 0.05) parts.push(`🚴 Bike: ${(u.cycleKm).toFixed(3)}km`);
+        if (u.virtualKm> 0.05) parts.push(`💻 Virtual: ${(u.virtualKm).toFixed(3)}km`);
+        if (u.swimKm   > 0.05) parts.push(`🏊 Swim: ${(u.swimKm).toFixed(3)}km`);
+        if (u.walkKm   > 0.05) parts.push(`🚶 Walk: ${(u.walkKm).toFixed(3)}km`);
         title = parts.length ? `title="${parts.join(' | ')}"` : '';
       }
       const fmtVal = c.fmt(u);
@@ -2459,7 +2467,7 @@ function renderPoints(){
       const style = isCurrent ? 'color:var(--violet)' : !isPast ? 'color:#cbd5e1' : '';
       return `<th style="${style}" title="${MONTH_NAMES[m-1]} ${currentYear}${isCurrent?' (in progress)':!isPast?' (upcoming)':''}">${MONTH_NAMES[m-1]}</th>`;
     }).join('')}
-    <th style="border-left:2px solid var(--border);color:var(--text2)" title="Total equivalent km this year">Total km</th>
+    <th style="border-left:2px solid var(--border);color:var(--text2)" title="Total equivalent km this year">Total</th>
     <th style="color:#818cf8;border-left:2px solid var(--border)" title="Rule A: +1pt per month ≥${GOAL}km (including current month)">A</th>
     <th style="color:#34d399" title="Rule B: most YTD run km (+2pts)">B</th>
     <th style="color:#f472b6" title="Rule C: most Rule A points (+2pts)">C</th>
