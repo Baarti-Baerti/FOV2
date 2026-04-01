@@ -1497,6 +1497,7 @@ function normaliseUser(raw, idx) {
     swimKm:       raw.swimKm       || 0,
     skiKm:        raw.skiKm        || 0,
     walkKm:       raw.walkKm       || 0,
+    eligibleWalkKm: raw.eligibleWalkKm || 0,
     otherKm:      raw.otherKm      || 0,
     steps:        raw.steps        || 0,
     bmi:          raw.bmi          || null,
@@ -1907,7 +1908,12 @@ function renderLB(){
     { key:'cycleKm',     label:'Bike',         icon:'🚴', fmt: u => fmtKm(u.cycleKm),                                                                     unit:'km' },
     { key:'virtualKm',   label:'Virtual',      icon:'💻', fmt: u => fmtKm(u.virtualKm),                                                                   unit:'km' },
     { key:'swimKm',      label:'Swim',         icon:'🏊', fmt: u => fmtKm(u.swimKm),                                                                      unit:'km' },
-    { key:'walkKm',      label:'Walk',         icon:'🚶', fmt: u => fmtKm(u.walkKm),                                                                      unit:'km' },
+    { key:'walkKm',      label:'Walk',         icon:'🚶', fmt: u => {
+        const total = fmtKm(u.walkKm);
+        const elig  = (u.eligibleWalkKm||0);
+        const eligStr = elig > 0 ? `<div style="font-size:0.65rem;color:var(--mint);font-weight:700;margin-top:1px">${elig.toFixed(2)} elig.</div>` : '';
+        return total + eligStr;
+      }, unit:'km' },
   ];
   function fmtKm(v){ return (v||0) > 0 ? (v||0).toFixed(2) : '—'; }
 
@@ -2601,11 +2607,12 @@ function reAggregateFromMonthly(team, p) {
       virtualKm:   acc.virtualKm  + (m.virtualKm  || 0),
       swimKm:      acc.swimKm     + (m.swimKm     || 0),
       walkKm:      acc.walkKm     + (m.walkKm     || 0),
+      eligibleWalkKm: acc.eligibleWalkKm + (m.eligibleWalkKm || 0),
       calories:    acc.calories   + (m.cal         || 0),
       workouts:    acc.workouts   + (m.sess        || 0),
       durationSec: acc.durationSec+ (m.durationSec || 0),
       challengeKm: acc.challengeKm+ (m.challengeKm != null ? m.challengeKm : calcChallengeKm(m)),
-    }), { runKm:0, cycleKm:0, virtualKm:0, swimKm:0, walkKm:0,
+    }), { runKm:0, cycleKm:0, virtualKm:0, swimKm:0, walkKm:0, eligibleWalkKm:0,
           calories:0, workouts:0, durationSec:0, challengeKm:0 });
 
     agg.km = agg.runKm + agg.cycleKm + agg.virtualKm + agg.swimKm + agg.walkKm;

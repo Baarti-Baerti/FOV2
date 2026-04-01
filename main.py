@@ -300,6 +300,7 @@ _COUNTED_CATS = {"run", "ride", "virtual_ride", "swim", "walk"}
 
 def aggregate(acts: list) -> dict:
     run = ride = vride = swim = walk = 0.0
+    eligible_walk = 0.0   # walk km that pass the speed+duration filter
     secs = 0      # only time from counted activity types
     types = set()
     for a in acts:
@@ -308,21 +309,26 @@ def aggregate(acts: list) -> dict:
 
         types.add(a.get("sport_type") or a.get("type") or "Unknown")
         if cat in _COUNTED_CATS:
-            # Only count time for the 5 tracked activity types
             secs += a.get("elapsed_time", 0) or 0
         if   cat == "run":          run   += d
         elif cat == "ride":         ride  += d
         elif cat == "virtual_ride": vride += d
         elif cat == "swim":         swim  += d
-        elif cat == "walk":         walk  += d
-    # Use 3 decimal places for full precision — no rounding until display
+        elif cat == "walk":
+            walk += d
+            # Check eligibility for points
+            moving_time   = a.get("moving_time",   0) or 0
+            average_speed = a.get("average_speed", 0) or 0
+            if moving_time >= WALK_MIN_MOVING_S and average_speed >= WALK_MIN_SPEED_MS:
+                eligible_walk += d
+
     def km(v): return round(v / 1000, 3)
     rk, ck_, vk, sk, wk = km(run), km(ride), km(vride), km(swim), km(walk)
-    # challengeKm: sum per-activity so walk filter is applied individually
+    ewk = km(eligible_walk)
     ckm = round(sum(challenge_km_for_activity(a) for a in acts), 3)
-    # Only count sessions from the 5 tracked activity types
     counted_workouts = sum(1 for a in acts if classify(a.get("sport_type") or a.get("type","")) in _COUNTED_CATS)
     return dict(runKm=rk, cycleKm=ck_, virtualKm=vk, swimKm=sk, walkKm=wk,
+                eligibleWalkKm=ewk,
                 km=round(rk+ck_+vk+sk+wk, 3), durationSec=secs,
                 workouts=counted_workouts, challengeKm=ckm,
                 types=sorted(types))
@@ -419,7 +425,7 @@ def fmt_member(m: dict, idx: int, s: dict) -> dict:
         bg=m.get("bg")       or _BG[idx%len(_BG)],
         picture=m.get("strava_picture",""), height_m=m.get("height_m"),
         **{k: s.get(k,0) for k in ("km","runKm","cycleKm","virtualKm","swimKm","walkKm",
-                                    "durationSec","workouts","challengeKm")},
+                                    "durationSec","workouts","challengeKm","eligibleWalkKm")},
         types=s.get("types",[]), monthly=s.get("monthly",[]),
         week=w, weekCalories=wc)
 
