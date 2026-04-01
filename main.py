@@ -34,6 +34,9 @@ BACKEND_URL          = os.getenv("BACKEND_URL",   "http://localhost:8000")
 DB_PATH              = os.getenv("DB_PATH",        "/data/fette_otter.json")
 SECRET_KEY           = os.getenv("SECRET_KEY",     secrets.token_hex(32))
 
+# Garmin OAuth 2.0 — set these in Railway env vars
+GARMIN_API_BASE = "https://apis.garmin.com"  # kept for reference
+
 def is_strava_paused() -> bool:
     """Check if Strava syncing is paused (stored in DB so it survives restarts)."""
     db = load_db()
@@ -611,6 +614,113 @@ async def strava_callback(code: Optional[str]=Query(None),
     cache_bust(member["id"])
     return RedirectResponse(
         f"{FRONTEND_URL}?strava_ok=1&member_id={member['id']}&member_name={member['name']}")
+
+# ─────────────────────────────────────────────────────────────
+#  GARMIN LOGIN  (email + password via garminconnect library)
+# ─────────────────────────────────────────────────────────────
+
+class GarminLoginBody(BaseModel):
+    name:     str
+    email:    str
+    password: str
+
+@app.post("/api/garmin/login")
+async def garmin_login(body: GarminLoginBody):
+    """
+    Authenticate with Garmin Connect using email/password.
+    Credentials are used only to obtain a session token — never stored.
+    """
+    import asyncio
+    from garminconnect import Garmin, GarminConnectAuthenticationError
+
+    name  = body.name.strip()
+    email = body.email.strip()
+    if not name:
+        raise HTTPException(400, "Name is required")
+    if not email or not body.password:
+        raise HTTPException(400, "Email and password are required")
+
+    # Run blocking garminconnect login in thread pool
+    def do_login():
+        client = Garmin(email, body.password)
+        client.login()
+        return client
+
+    try:
+        loop   = asyncio.get_event_loop()
+        client = await loop.run_in_executor(None, do_login)
+    except GarminConnectAuthenticationError:
+        raise HTTPException(401, "Invalid Garmin email or password")
+    except Exception as e:
+        err = str(e).lower()
+        if "mfa" in err or "2fa" in err or "factor" in err or "verification" in err:
+            raise HTTPException(202, "MFA required — please check your email for a code")
+        raise HTTPException(502, f"Garmin login failed: {str(e)}")
+
+    # Get user profile for garmin_id
+    try:
+        profile   = client.get_full_name() or email
+        garmin_id = str(client.profile.get("userId", email))
+    except Exception:
+        garmin_id = email  # fall back to email as unique ID
+        profile   = name
+
+    # Serialize the session tokens for storage
+    try:
+        import json as _json
+        token_store = _json.loads(client.garth.dumps()) if hasattr(client, 'garth') else {}
+    except Exception:
+        token_store = {}
+
+    async with _db_lock:
+        db      = load_db()
+        members = db["members"]
+        member  = next((m for m in members if m.get("garmin_id") == garmin_id), None)
+
+        if member:
+            member["garmin_token_store"] = token_store
+            member["provider"]           = "garmin"
+        else:
+            idx    = len(members)
+            member = {
+                "id":                 db["next_id"],
+                "name":               name,
+                "garmin_id":          garmin_id,
+                "garmin_token_store": token_store,
+                "provider":           "garmin",
+                "emoji":              _EMOJIS[idx % len(_EMOJIS)],
+                "color":              _COLORS[idx % len(_COLORS)],
+                "bg":                 _BG[idx    % len(_BG)],
+                "height_m":           None,
+                "created_at":         datetime.now(timezone.utc).isoformat(),
+            }
+            members.append(member)
+            db["next_id"] += 1
+            print(f"[signup] New Garmin member #{member['id']}: {member['name']}")
+
+        # Atomic save
+        import shutil as _shutil
+        tmp = DB_PATH + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump(db, f, indent=2, default=str)
+        if os.path.exists(DB_PATH):
+            _shutil.copy2(DB_PATH, DB_PATH + ".bak")
+        os.replace(tmp, DB_PATH)
+
+    cache_bust(member["id"])
+
+    return {
+        "ok":     True,
+        "member": {
+            "id":      member["id"],
+            "name":    member["name"],
+            "provider":"garmin",
+            "emoji":   member["emoji"],
+            "color":   member["color"],
+            "bg":      member["bg"],
+            "picture": "",
+        }
+    }
 
 # Team stats
 @app.get("/api/team")
