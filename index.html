@@ -1968,10 +1968,8 @@ function renderLB(){
         if (u.cycleKm  > 0.05) parts.push(`🚴 ${(u.cycleKm).toFixed(3)}km ÷5 = ${(u.cycleKm/5).toFixed(3)}`);
         if (u.virtualKm> 0.05) parts.push(`💻 ${(u.virtualKm).toFixed(3)}km ÷4 = ${(u.virtualKm/4).toFixed(3)}`);
         if (u.swimKm   > 0.05) parts.push(`🏊 ${(u.swimKm).toFixed(3)}km ×4 = ${(u.swimKm*4).toFixed(3)}`);
-        const qualWalkLB = Math.round((u.challengeKm != null
-          ? Math.max(0, u.challengeKm - (u.runKm||0) - (u.cycleKm||0)/5 - (u.virtualKm||0)/4 - (u.swimKm||0)*4)
-          : 0) * 10) / 10;
-        if (qualWalkLB > 0.05) parts.push(`🚶 ${(qualWalkLB*3).toFixed(3)}km ÷3 = ${qualWalkLB.toFixed(3)}`);
+        const eligWalk = u.eligibleWalkKm || 0;
+        if (eligWalk > 0.05) parts.push(`🚶 ${(eligWalk*3).toFixed(3)}km ÷3 = ${eligWalk.toFixed(3)}`);
         title = parts.length ? `title="${parts.join(' | ')}"` : '';
       }
       const fmtVal = c.fmt(u);
@@ -2425,9 +2423,8 @@ function renderPoints(){
       if ((mData?.virtualKm||0) > 0.05) rawParts.push(`💻 ${mData.virtualKm.toFixed(3)}km÷4`);
       if ((mData?.swimKm||0) > 0.05)    rawParts.push(`🏊 ${mData.swimKm.toFixed(3)}km×4`);
       if (mData) {
-        const ckm = mData.challengeKm != null ? mData.challengeKm : calcChallengeKm(mData);
-        const qualW = Math.round(Math.max(0, ckm - (mData.runKm||0) - (mData.cycleKm||0)/5 - (mData.virtualKm||0)/4 - (mData.swimKm||0)*4) * 10) / 10;
-        if (qualW > 0.05) rawParts.push(`🚶 ${(qualW*3).toFixed(3)}km ÷3 = ${qualW.toFixed(3)}`);
+        const eligW = mData.eligibleWalkKm || 0;
+        if (eligW > 0.05) rawParts.push(`🚶 ${(eligW*3).toFixed(3)}km ÷3 = ${eligW.toFixed(3)}`);
       }
       const breakdown = rawParts.length ? ' | ' + rawParts.join(', ') : '';
 
@@ -2479,11 +2476,8 @@ function renderPoints(){
         const bike  = months.reduce((s,m)=>s+(m.cycleKm||0),0);
         const virt  = months.reduce((s,m)=>s+(m.virtualKm||0),0);
         const swim  = months.reduce((s,m)=>s+(m.swimKm||0),0);
-        // Qualifying walk km = challengeKm minus contributions from other sports
-        const qualWalk = Math.round(months.reduce((s,m)=>{
-          const ckm = m.challengeKm != null ? m.challengeKm : calcChallengeKm(m);
-          return s + Math.max(0, ckm - (m.runKm||0) - (m.cycleKm||0)/5 - (m.virtualKm||0)/4 - (m.swimKm||0)*4);
-        },0) * 10) / 10;
+        // Qualifying walk km — use backend-computed eligibleWalkKm for accuracy
+        const qualWalk = months.reduce((s,m) => s + (m.eligibleWalkKm||0), 0);
         const parts = [];
         if (run      > 0.05) parts.push('🏃 '+run.toFixed(3)+'km ÷1');
         if (bike     > 0.05) parts.push('🚴 '+bike.toFixed(3)+'km ÷5 = '+(bike/5).toFixed(3));

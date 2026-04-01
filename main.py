@@ -384,7 +384,7 @@ def monthly_breakdown(acts: list, year: int) -> list:
             year=year, month=m, label=names[m-1],
             cal=0, sess=s["workouts"], km=s["km"],
             runKm=s["runKm"], cycleKm=s["cycleKm"], virtualKm=s["virtualKm"],
-            swimKm=s["swimKm"], walkKm=s["walkKm"], actKcal=0,
+            swimKm=s["swimKm"], walkKm=s["walkKm"], eligibleWalkKm=s["eligibleWalkKm"], actKcal=0,
             durationSec=s["durationSec"], challengeKm=round(s["challengeKm"], 3),
             goalDay=goal_day,  # None if goal not yet reached this month
             days=days,
