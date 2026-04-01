@@ -349,7 +349,7 @@ def monthly_breakdown(acts: list, year: int) -> list:
         month_acts = buckets[m]
         s = aggregate(month_acts)
 
-        # Daily calories heatmap (for the activity dots)
+        # Daily activity dots
         days = [0] * 31
         for a in month_acts:
             ts = a.get("start_date_local") or a.get("start_date", "")
@@ -360,8 +360,24 @@ def monthly_breakdown(acts: list, year: int) -> list:
                     days[idx] = 1
             except (ValueError, IndexError): pass
 
-        # ── goalDay: which calendar day did cumulative challenge-km first hit 66.67? ──
-        # Sort activities chronologically, accumulate challenge-km day by day.
+        # Running-specific calorie tracking for kj factor calculation
+        run_cals = 0.0
+        run_km_cal = 0.0  # only runs that have calorie data
+        for a in month_acts:
+            cat  = classify(a.get("sport_type") or a.get("type", ""))
+            cals = a.get("calories") or 0
+            kj   = a.get("kilojoules") or 0
+            dist = (a.get("distance", 0) or 0) / 1000
+            if cat == "run" and dist > 0:
+                best = cals if cals > 0 else (kj * 0.239 if kj > 0 else 0)
+                if best > 0:
+                    run_cals   += best
+                    run_km_cal += dist
+
+        # kcal/km factor — None if no calorie data available for runs this month
+        run_kcal_per_km = round(run_cals / run_km_cal, 2) if run_km_cal > 0.5 else None
+
+        # goalDay calculation
         goal_day = None
         if month_acts:
             dated = []
@@ -378,7 +394,7 @@ def monthly_breakdown(acts: list, year: int) -> list:
                 cumulative += ckm
                 if cumulative >= MONTHLY_GOAL_KM:
                     goal_day = day_num
-                    break  # first day the goal is crossed
+                    break
 
         result.append(dict(
             year=year, month=m, label=names[m-1],
@@ -386,7 +402,9 @@ def monthly_breakdown(acts: list, year: int) -> list:
             runKm=s["runKm"], cycleKm=s["cycleKm"], virtualKm=s["virtualKm"],
             swimKm=s["swimKm"], walkKm=s["walkKm"], eligibleWalkKm=s["eligibleWalkKm"], actKcal=0,
             durationSec=s["durationSec"], challengeKm=round(s["challengeKm"], 3),
-            goalDay=goal_day,  # None if goal not yet reached this month
+            goalDay=goal_day,
+            runKcalPerKm=run_kcal_per_km,  # kcal/km factor for running (None if no data)
+            runCalKm=round(run_km_cal, 3),  # km of runs that had calorie data
             days=days,
         ))
     return result
@@ -418,6 +436,18 @@ _BG     = ["#ede9fe","#fce7f3","#d1fae5","#ffedd5","#e0f2fe","#f3e8ff","#fef3c7"
 def fmt_member(m: dict, idx: int, s: dict) -> dict:
     w  = s.pop("_w",  [False]*7)
     wc = s.pop("_wc", [0]*7)
+
+    # Find last completely finished month's running kcal/km factor
+    now = datetime.now(timezone.utc)
+    last_m = now.month - 1 if now.month > 1 else 12
+    last_y = now.year if now.month > 1 else now.year - 1
+    monthly = s.get("monthly", [])
+    last_month_data = next(
+        (mo for mo in monthly if mo.get("year") == last_y and mo.get("month") == last_m),
+        None
+    )
+    run_kcal_factor = last_month_data.get("runKcalPerKm") if last_month_data else None
+
     return dict(
         id=m["id"], name=m["name"], provider="strava",
         emoji=m.get("emoji") or _EMOJIS[idx%len(_EMOJIS)],
@@ -426,6 +456,7 @@ def fmt_member(m: dict, idx: int, s: dict) -> dict:
         picture=m.get("strava_picture",""), height_m=m.get("height_m"),
         **{k: s.get(k,0) for k in ("km","runKm","cycleKm","virtualKm","swimKm","walkKm",
                                     "durationSec","workouts","challengeKm","eligibleWalkKm")},
+        runKcalFactor=run_kcal_factor,  # kcal/km from last completed month's runs (None if unavailable)
         types=s.get("types",[]), monthly=s.get("monthly",[]),
         week=w, weekCalories=wc)
 

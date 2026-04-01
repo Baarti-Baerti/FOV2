@@ -1258,7 +1258,8 @@
 <!-- NAV TABS -->
 <div class="nav-tabs">
   <button class="nav-tab active" onclick="switchPage('points',this)">🏅 Points</button>
-  <button class="nav-tab" onclick="switchPage('details',this)">📊 Details</button>
+  <button class="nav-tab" onclick="switchPage('details',this)">📊 Static Scoring</button>
+  <button class="nav-tab" onclick="switchPage('dynamic',this)">⚡ Dynamic Scoring</button>
   <button class="nav-tab" onclick="switchPage('monthly',this)">📈 Monthly Progress</button>
 </div>
 
@@ -1298,6 +1299,23 @@
     <div class="user-detail panel" id="userDetail"></div>
   </div>
 </div><!-- end page-details -->
+
+<div class="page" id="page-dynamic">
+  <div class="details-selector-bar">
+    <div class="week-selector" id="weekSelectorDynamic"></div>
+  </div>
+  <div class="details-content">
+    <!-- Leaderboard full width -->
+    <div class="panel" style="margin-bottom:20px">
+      <div class="panel-header">
+        <span class="panel-title">⚡ Dynamic Scoring Leaderboard</span>
+      </div>
+      <div id="leaderboard-dynamic"></div>
+    </div>
+    <!-- User detail callout below -->
+    <div class="user-detail panel" id="userDetail-dynamic"></div>
+  </div>
+</div><!-- end page-dynamic -->
 
 </div><!-- end everything -->
 
@@ -1498,6 +1516,7 @@ function normaliseUser(raw, idx) {
     skiKm:        raw.skiKm        || 0,
     walkKm:       raw.walkKm       || 0,
     eligibleWalkKm: raw.eligibleWalkKm || 0,
+    runKcalFactor:  raw.runKcalFactor  ?? null,
     otherKm:      raw.otherKm      || 0,
     steps:        raw.steps        || 0,
     bmi:          raw.bmi          || null,
@@ -1767,11 +1786,16 @@ function switchPage(p,btn){
   btn.classList.add('active');
   if(p==='monthly') renderMonthly();
   if(p==='details') { renderLB(); renderDetail(); }
+  if(p==='dynamic') { renderLB('dynamic'); renderDetail('dynamic'); }
 }
 
 function renderAll(){
   renderPoints();
   renderLB(); renderDetail();
+  // Also refresh dynamic tab if it's currently visible
+  if (document.getElementById('page-dynamic')?.classList.contains('active')) {
+    renderLB('dynamic'); renderDetail('dynamic');
+  }
   setTimeout(()=>{
     document.querySelectorAll('.bar-fill,.cbar,.mc-bar-fill,.umc-bar').forEach(b=>{
       const w=b.style.width; b.style.width='0';
@@ -1819,7 +1843,7 @@ function userPointsKm(u) {
   return (u.runKm||0) + (u.cycleKm||0)/5 + (u.virtualKm||0)/4 + (u.swimKm||0)*4;
 }
 
-function renderLB(){
+function renderLB(suffix=''){
   // ── helpers ──────────────────────────────────────────────────────
   function fmtDuration(secs) {
     if (!secs || secs <= 0) return '—';
@@ -2028,7 +2052,7 @@ function renderLB(){
     </tr>`;
   }).join('');
 
-  document.getElementById('leaderboard').innerHTML =
+  document.getElementById(suffix ? 'leaderboard-'+suffix : 'leaderboard').innerHTML =
     `<div class="lb-scroll"><table class="lb-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
 }
 
@@ -2037,7 +2061,7 @@ function setMetricKey(k){
   renderLB();
 }
 
-function renderDetail(){
+function renderDetail(suffix=''){
   const u=selUser;
   const rank=[...users].sort((a,b)=>userPointsKm(b)-userPointsKm(a)).findIndex(x=>x.id===u.id)+1;
   const dots=u.week.map((a,i)=>{
@@ -2079,7 +2103,7 @@ function renderDetail(){
     : `<span style="font-size:.73rem;background:#e0f2fe;color:#0369a1;border-radius:6px;padding:2px 6px;font-weight:800;margin-left:6px;vertical-align:middle">GRM</span>`;
   const deviceLabel = u.provider === 'strava' ? 'Strava' : (u.garminDevice || 'Garmin');
 
-  document.getElementById('userDetail').innerHTML=`
+  document.getElementById(suffix ? 'userDetail-'+suffix : 'userDetail').innerHTML=`
     <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap">
       <!-- Left: avatar + name + stats -->
       <div style="display:flex;gap:18px;align-items:center;flex-shrink:0">
@@ -2093,6 +2117,15 @@ function renderDetail(){
             <div class="detail-item"><div class="detail-item-lbl">Points</div><div class="detail-item-val" style="color:var(--violet)">${userPointsKm(u).toFixed(2)}<span style="font-size:1.02rem">km</span></div></div>
             ${u.bmi && u.bmi > 0 ? `<div class="detail-item"><div class="detail-item-lbl">BMI</div><div class="detail-item-val" style="color:${u.bmi<18.5?'#f59e0b':u.bmi<25?'#059669':u.bmi<30?'#f59e0b':'#ef4444'}">${u.bmi.toFixed(1)}</div></div>` : ''}
             ${u.height_m ? `<div class="detail-item"><div class="detail-item-lbl">Height</div><div class="detail-item-val">${Math.round(u.height_m * 100)}<span style="font-size:1.02rem">cm</span></div></div>` : ''}
+            ${suffix === 'dynamic' ? `
+            <div class="detail-item" style="border-color:var(--violet);background:#ede9fe;min-width:180px">
+              <div class="detail-item-lbl" style="color:var(--violet)">Last month running calorie factor</div>
+              <div class="detail-item-val" style="color:var(--violet);font-size:1.2rem">
+                ${u.runKcalFactor != null
+                  ? `${u.runKcalFactor.toFixed(2)} <span style="font-size:0.75rem;font-weight:600;color:var(--text2)">kcal/km</span>`
+                  : `<span style="font-size:0.9rem;color:var(--muted);font-weight:600">No data</span>`}
+              </div>
+            </div>` : ''}
 
           </div>
         </div>
@@ -2139,7 +2172,7 @@ function renderRings(){
   }).join('');
 }
 
-function pickUser(id){ selUser=users.find(u=>u.id===id); renderLB(); renderDetail(); }
+function pickUser(id){ selUser=users.find(u=>u.id===id); renderLB(); renderDetail(); if(document.getElementById('page-dynamic')?.classList.contains('active')){renderLB('dynamic');renderDetail('dynamic');} }
 
 // ── Admin: remove member ──────────────────────────────────────────
 let _removeTargetId = null;
@@ -2593,10 +2626,12 @@ function buildPeriodSelector() {
     `<button class="week-btn${currentPeriod===o.key?' active':''}" data-range="${o.key}" onclick="setWeek(this,'${o.key}')">${o.label}</button>`
   ).join('');
 
-  document.getElementById('weekSelector').innerHTML =
+  const html =
     `<span class="week-group-label">Month</span><div class="week-group">${monthBtns}</div>` +
     (quarters.length ? `<span class="week-group-label">Quarter</span><div class="week-group">${qBtns}</div>` : '') +
     `<div class="week-group">${overviewBtns}</div>`;
+  document.getElementById('weekSelector').innerHTML = html;
+  document.getElementById('weekSelectorDynamic').innerHTML = html;
 }
 
 // Re-aggregate top-level user stats (km, runKm, etc.) from monthly data
