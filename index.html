@@ -1910,8 +1910,20 @@ function renderLB(){
     { key:'swimKm',      label:'Swim',         icon:'🏊', fmt: u => fmtKm(u.swimKm),                                                                      unit:'km' },
     { key:'walkKm',      label:'Walk',         icon:'🚶', fmt: u => {
         const total = fmtKm(u.walkKm);
-        const elig  = (u.eligibleWalkKm||0);
-        const eligStr = elig > 0 ? `<div style="font-size:0.65rem;color:var(--mint);font-weight:700;margin-top:1px">${elig.toFixed(2)} elig.</div>` : '';
+        // Use monthly data for eligible walk — same source as Points column
+        const today = new Date();
+        const cy = today.getFullYear(), cm = today.getMonth() + 1;
+        let mf;
+        if (currentPeriod === 'thismonth')      mf = m => m.year===cy && m.month===cm;
+        else if (currentPeriod === 'lastmonth') { const lm=cm===1?12:cm-1,ly=cm===1?cy-1:cy; mf=m=>m.year===ly&&m.month===lm; }
+        else if (currentPeriod.startsWith('month-')) { const mo=parseInt(currentPeriod.split('-')[1]); mf=m=>m.year===cy&&m.month===mo; }
+        else if (currentPeriod==='q1') mf=m=>m.year===cy&&m.month>=1&&m.month<=3;
+        else if (currentPeriod==='q2') mf=m=>m.year===cy&&m.month>=4&&m.month<=6;
+        else if (currentPeriod==='q3') mf=m=>m.year===cy&&m.month>=7&&m.month<=9;
+        else if (currentPeriod==='q4') mf=m=>m.year===cy&&m.month>=10&&m.month<=12;
+        else mf=m=>m.year===cy;
+        const elig = (u.monthly||[]).filter(mf).reduce((s,m) => s + (m.eligibleWalkKm||0), 0);
+        const eligStr = elig > 0.005 ? `<div style="font-size:0.65rem;color:var(--mint);font-weight:700;margin-top:1px">${elig.toFixed(2)} elig.</div>` : '';
         return total + eligStr;
       }, unit:'km' },
   ];
@@ -1968,8 +1980,19 @@ function renderLB(){
         if (u.cycleKm  > 0.05) parts.push(`🚴 ${(u.cycleKm).toFixed(3)}km ÷5 = ${(u.cycleKm/5).toFixed(3)}`);
         if (u.virtualKm> 0.05) parts.push(`💻 ${(u.virtualKm).toFixed(3)}km ÷4 = ${(u.virtualKm/4).toFixed(3)}`);
         if (u.swimKm   > 0.05) parts.push(`🏊 ${(u.swimKm).toFixed(3)}km ×4 = ${(u.swimKm*4).toFixed(3)}`);
-        const eligWalk = u.eligibleWalkKm || 0;
-        if (eligWalk > 0.05) parts.push(`🚶 ${(eligWalk*3).toFixed(3)}km ÷3 = ${eligWalk.toFixed(3)}`);
+        // Use same monthly source as Points total for consistency
+        const _today = new Date(); const _cy = _today.getFullYear(), _cm = _today.getMonth()+1;
+        let _mf;
+        if (currentPeriod==='thismonth')           _mf=m=>m.year===_cy&&m.month===_cm;
+        else if (currentPeriod==='lastmonth')      { const lm=_cm===1?12:_cm-1,ly=_cm===1?_cy-1:_cy; _mf=m=>m.year===ly&&m.month===lm; }
+        else if (currentPeriod.startsWith('month-')){ const mo=parseInt(currentPeriod.split('-')[1]); _mf=m=>m.year===_cy&&m.month===mo; }
+        else if (currentPeriod==='q1') _mf=m=>m.year===_cy&&m.month>=1&&m.month<=3;
+        else if (currentPeriod==='q2') _mf=m=>m.year===_cy&&m.month>=4&&m.month<=6;
+        else if (currentPeriod==='q3') _mf=m=>m.year===_cy&&m.month>=7&&m.month<=9;
+        else if (currentPeriod==='q4') _mf=m=>m.year===_cy&&m.month>=10&&m.month<=12;
+        else _mf=m=>m.year===_cy;
+        const eligWalk = (u.monthly||[]).filter(_mf).reduce((s,m)=>s+(m.eligibleWalkKm||0),0);
+        if (eligWalk > 0.005) parts.push(`🚶 ${(eligWalk*3).toFixed(3)}km ÷3 = ${eligWalk.toFixed(3)}`);
         title = parts.length ? `title="${parts.join(' | ')}"` : '';
       }
       const fmtVal = c.fmt(u);
