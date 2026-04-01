@@ -1928,10 +1928,34 @@ function renderLB(suffix=''){
     { key:'durationSec', label:'Time',         icon:'⏱',  fmt: u => fmtDuration(userDurationSec(u)),                                                      unit:''   },
     { key:'goalDay',     label:'Days to Goal', icon:'🎯', fmt: u => { const d=userDaysToGoal(u); return d!=null ? `${d}` : '—'; },                        unit:''   },
     { key:'workouts',    label:'Sessions',     icon:'#️⃣', fmt: u => u.workouts||0,                                                                         unit:''   },
-    { key:'runKm',       label:'Run',          icon:'🏃', fmt: u => fmtKm(u.runKm),                                                                       unit:'km' },
-    { key:'cycleKm',     label:'Bike',         icon:'🚴', fmt: u => fmtKm(u.cycleKm),                                                                     unit:'km' },
-    { key:'virtualKm',   label:'Virtual',      icon:'💻', fmt: u => fmtKm(u.virtualKm),                                                                   unit:'km' },
-    { key:'swimKm',      label:'Swim',         icon:'🏊', fmt: u => fmtKm(u.swimKm),                                                                      unit:'km' },
+    { key:'runKm',       label:'Run',          icon:'🏃', fmt: u => {
+        const km = u.runKm||0;
+        const pts = km; // ×1
+        if (km < 0.005) return '—';
+        return fmtKm(km) +
+          `<div style="font-size:0.65rem;font-weight:700;margin-top:2px;color:var(--violet)">⭐ ${pts.toFixed(2)} pts</div>`;
+      }, unit:'km' },
+    { key:'cycleKm',     label:'Bike',         icon:'🚴', fmt: u => {
+        const km = u.cycleKm||0;
+        const pts = km / 5;
+        if (km < 0.005) return '—';
+        return fmtKm(km) +
+          `<div style="font-size:0.65rem;font-weight:700;margin-top:2px;color:var(--violet)">⭐ ${pts.toFixed(2)} pts</div>`;
+      }, unit:'km' },
+    { key:'virtualKm',   label:'Virtual',      icon:'💻', fmt: u => {
+        const km = u.virtualKm||0;
+        const pts = km / 4;
+        if (km < 0.005) return '—';
+        return fmtKm(km) +
+          `<div style="font-size:0.65rem;font-weight:700;margin-top:2px;color:var(--violet)">⭐ ${pts.toFixed(2)} pts</div>`;
+      }, unit:'km' },
+    { key:'swimKm',      label:'Swim',         icon:'🏊', fmt: u => {
+        const km = u.swimKm||0;
+        const pts = km * 4;
+        if (km < 0.005) return '—';
+        return fmtKm(km) +
+          `<div style="font-size:0.65rem;font-weight:700;margin-top:2px;color:var(--violet)">⭐ ${pts.toFixed(2)} pts</div>`;
+      }, unit:'km' },
     { key:'walkKm',      label:'Walk',         icon:'🚶', fmt: u => {
         const total = fmtKm(u.walkKm);
         // Use monthly data for eligible walk — same source as Points column
@@ -1948,11 +1972,12 @@ function renderLB(suffix=''){
         else mf=m=>m.year===cy;
         const elig  = (u.monthly||[]).filter(mf).reduce((s,m) => s + (m.eligibleWalkKm||0), 0);
         const score = elig / 3;
+        if ((u.walkKm||0) < 0.005) return '—';
         if (elig <= 0.005) return total;
         return total +
           `<div style="font-size:0.65rem;font-weight:700;margin-top:2px;line-height:1.5">` +
-          `<span style="color:var(--mint)">✓ ${elig.toFixed(2)}km elig.</span>` +
-          `<span style="color:var(--violet);margin-left:5px">⭐ ${score.toFixed(2)}km pts</span>` +
+          `<span style="color:var(--mint)">✓ ${elig.toFixed(2)} elig.</span>` +
+          `<span style="color:var(--violet);margin-left:5px">⭐ ${score.toFixed(2)} pts</span>` +
           `</div>`;
       }, unit:'km' },
   ];
