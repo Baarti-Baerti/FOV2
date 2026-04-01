@@ -1932,32 +1932,32 @@ function renderLB(suffix=''){
         const km = u.runKm||0;
         const pts = km; // ×1
         if (km < 0.005) return '—';
-        return fmtKm(km) +
+        return fmtKm(km) + '<span style="font-size:0.72rem;color:var(--muted);font-weight:600;margin-left:1px">km</span>' +
           `<div style="font-size:0.65rem;font-weight:700;margin-top:2px;color:var(--violet)">⭐ ${pts.toFixed(2)} pts</div>`;
-      }, unit:'km' },
+      }, unit:'' },
     { key:'cycleKm',     label:'Bike',         icon:'🚴', fmt: u => {
         const km = u.cycleKm||0;
         const pts = km / 5;
         if (km < 0.005) return '—';
-        return fmtKm(km) +
+        return fmtKm(km) + '<span style="font-size:0.72rem;color:var(--muted);font-weight:600;margin-left:1px">km</span>' +
           `<div style="font-size:0.65rem;font-weight:700;margin-top:2px;color:var(--violet)">⭐ ${pts.toFixed(2)} pts</div>`;
-      }, unit:'km' },
+      }, unit:'' },
     { key:'virtualKm',   label:'Virtual',      icon:'💻', fmt: u => {
         const km = u.virtualKm||0;
         const pts = km / 4;
         if (km < 0.005) return '—';
-        return fmtKm(km) +
+        return fmtKm(km) + '<span style="font-size:0.72rem;color:var(--muted);font-weight:600;margin-left:1px">km</span>' +
           `<div style="font-size:0.65rem;font-weight:700;margin-top:2px;color:var(--violet)">⭐ ${pts.toFixed(2)} pts</div>`;
-      }, unit:'km' },
+      }, unit:'' },
     { key:'swimKm',      label:'Swim',         icon:'🏊', fmt: u => {
         const km = u.swimKm||0;
         const pts = km * 4;
         if (km < 0.005) return '—';
-        return fmtKm(km) +
+        return fmtKm(km) + '<span style="font-size:0.72rem;color:var(--muted);font-weight:600;margin-left:1px">km</span>' +
           `<div style="font-size:0.65rem;font-weight:700;margin-top:2px;color:var(--violet)">⭐ ${pts.toFixed(2)} pts</div>`;
-      }, unit:'km' },
+      }, unit:'' },
     { key:'walkKm',      label:'Walk',         icon:'🚶', fmt: u => {
-        const total = fmtKm(u.walkKm);
+        const total = fmtKm(u.walkKm) + (( u.walkKm||0) > 0.005 ? '<span style="font-size:0.72rem;color:var(--muted);font-weight:600;margin-left:1px">km</span>' : '');
         // Use monthly data for eligible walk — same source as Points column
         const today = new Date();
         const cy = today.getFullYear(), cm = today.getMonth() + 1;
@@ -1979,7 +1979,7 @@ function renderLB(suffix=''){
           `<span style="color:var(--mint)">✓ ${elig.toFixed(2)} elig.</span>` +
           `<span style="color:var(--violet);margin-left:5px">⭐ ${score.toFixed(2)} pts</span>` +
           `</div>`;
-      }, unit:'km' },
+      }, unit:'' },
   ];
   function fmtKm(v){ return (v||0) > 0 ? (v||0).toFixed(2) : '—'; }
 
