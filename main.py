@@ -202,8 +202,10 @@ def save_acts(mid: int, data: dict):
 
 async def sync_activities(member: dict) -> list:
     """
-    Incremental sync: only fetch activities newer than what we already have.
-    Returns stored activities without fetching if STRAVA_PAUSED=true.
+    Incremental sync: fetch new activities since last sync.
+    - Strava members: uses Strava API with stored tokens
+    - Garmin members: uses garminconnect with stored session token
+    Returns stored activities without fetching if paused.
     """
     mid      = member["id"]
     now      = int(time.time())
@@ -215,12 +217,19 @@ async def sync_activities(member: dict) -> list:
 
     # If paused, just return what we have stored
     if is_strava_paused():
-        print(f"[sync] PAUSED — skipping Strava fetch for {member['name']}")
+        print(f"[sync] PAUSED — skipping fetch for {member['name']}")
         return stored.get("activities", [])
 
-    # First time: fetch from Jan 1. Otherwise: fetch from last sync minus 1hr overlap
-    after = yr_start if last_fetch == 0 else max(yr_start, last_fetch - 3600)
+    provider = member.get("provider", "strava")
 
+    if provider == "garmin":
+        return await _sync_garmin(member, stored, now, yr_start, last_fetch)
+    else:
+        return await _sync_strava(member, stored, now, yr_start, last_fetch)
+
+
+async def _sync_strava(member: dict, stored: dict, now: int, yr_start: int, last_fetch: int) -> list:
+    after = yr_start if last_fetch == 0 else max(yr_start, last_fetch - 3600)
     member = await refresh(member)
     hdrs = {"Authorization": f"Bearer {member['strava_access_token']}"}
 
@@ -245,19 +254,84 @@ async def sync_activities(member: dict) -> list:
                 break
             page += 1
 
-    print(f"[sync] {member['name']}: fetched {len(new_acts)} new activities")
+    print(f"[sync] {member['name']} (Strava): fetched {len(new_acts)} new activities")
+    return _merge_and_save(member["id"], stored, new_acts, now, yr_start)
 
-    # Merge: build a dict keyed by activity ID so duplicates are overwritten cleanly
+
+async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last_fetch: int) -> list:
+    """Sync Garmin activities using stored session token."""
+    import asyncio
+    token_store = member.get("garmin_token_store")
+    if not token_store:
+        print(f"[warn] No Garmin token for {member['name']} — skipping sync")
+        return stored.get("activities", [])
+
+    after_dt  = datetime.fromtimestamp(
+        yr_start if last_fetch == 0 else max(yr_start, last_fetch - 3600),
+        tz=timezone.utc
+    )
+    before_dt = datetime.fromtimestamp(now, tz=timezone.utc)
+
+    def do_garmin_sync():
+        from garminconnect import Garmin
+        import json as _json
+        client = Garmin()
+        client.garth.loads(_json.dumps(token_store))
+        client.display_name = member.get("name", "")
+        # Fetch activities in date range
+        acts = client.get_activities_by_date(
+            after_dt.strftime("%Y-%m-%d"),
+            before_dt.strftime("%Y-%m-%d"),
+        )
+        return acts
+
+    try:
+        loop     = asyncio.get_event_loop()
+        raw_acts = await loop.run_in_executor(None, do_garmin_sync)
+    except Exception as e:
+        print(f"[warn] Garmin sync failed for {member['name']}: {e}")
+        return stored.get("activities", [])
+
+    # Normalise Garmin activities to match Strava-like shape
+    new_acts = []
+    for a in (raw_acts or []):
+        act_type = a.get("activityType", {}).get("typeKey", "other")
+        # Map Garmin type keys to Strava sport types
+        type_map = {
+            "running": "Run", "trail_running": "TrailRun",
+            "cycling": "Ride", "mountain_biking": "MountainBikeRide",
+            "virtual_ride": "VirtualRide", "indoor_cycling": "VirtualRide",
+            "swimming": "Swim", "lap_swimming": "Swim", "open_water_swimming": "Swim",
+            "walking": "Walk", "hiking": "Hike",
+        }
+        sport_type = type_map.get(act_type, act_type.title().replace("_",""))
+        start_str  = a.get("startTimeLocal", a.get("startTimeGMT", ""))
+        new_acts.append({
+            "id":               a.get("activityId", f"g_{a.get('activityId','')}"),
+            "sport_type":       sport_type,
+            "start_date_local": start_str + "Z" if start_str and not start_str.endswith("Z") else start_str,
+            "start_date":       a.get("startTimeGMT", start_str),
+            "distance":         (a.get("distance") or 0) * 1000,  # Garmin returns km, convert to m
+            "moving_time":      int((a.get("movingDuration") or a.get("duration") or 0)),
+            "elapsed_time":     int((a.get("duration") or 0)),
+            "average_speed":    (a.get("averageSpeed") or 0) / 3.6,  # km/h → m/s
+            "calories":         a.get("calories") or 0,
+            "kilojoules":       None,
+            "name":             a.get("activityName", sport_type),
+        })
+
+    print(f"[sync] {member['name']} (Garmin): fetched {len(new_acts)} new activities")
+    return _merge_and_save(member["id"], stored, new_acts, now, yr_start)
+
+
+def _merge_and_save(mid: int, stored: dict, new_acts: list, now: int, yr_start: int) -> list:
+    """Merge new activities into stored, deduplicate, save and return full list."""
     existing = {a["id"]: a for a in stored.get("activities", []) if "id" in a}
     for a in new_acts:
         if "id" in a:
-            existing[a["id"]] = a  # insert or update
-
-    # Keep only current year, sorted newest first
+            existing[a["id"]] = a
     all_acts = [a for a in existing.values() if _act_ts(a) >= yr_start]
     all_acts.sort(key=_act_ts, reverse=True)
-
-    # Always save with updated last_fetch so next sync is incremental
     save_acts(mid, {"activities": all_acts, "last_fetch": now})
     return all_acts
 
@@ -520,6 +594,16 @@ async def health():
     db = load_db()
     return {"status":"ok","members":len(db["members"]),
             "strava_configured": STRAVA_CLIENT_ID != "YOUR_CLIENT_ID"}
+
+# Status — returns last_fetch timestamps so frontend can detect stale cache
+@app.get("/api/status")
+async def status():
+    db = load_db()
+    result = {}
+    for m in db["members"]:
+        stored = load_acts(m["id"])
+        result[str(m["id"])] = stored.get("last_fetch", 0)
+    return {"last_fetch": result, "ts": int(time.time())}
 
 # Strava OAuth — initiate
 @app.get("/api/strava/auth")

@@ -2950,7 +2950,36 @@ const hadPersistedData = persistLoad();
 if (hadPersistedData && dataCache['thismonth']) {
   applyData(dataCache['thismonth'].data, 'thismonth', true);
 }
-// Then fetch fresh data from backend
+
+// Check if backend has newer data than our localStorage cache.
+// If yes, bust cache and reload. This ensures UI updates after hourly sync
+// without requiring a manual refresh.
+async function checkBackendFreshness() {
+  try {
+    const r = await fetch(`${API_BASE}/api/status`, { cache: 'no-store' });
+    if (!r.ok) return;
+    const { last_fetch } = await r.json();
+
+    // Find the most recent backend last_fetch across all members
+    const backendMaxTs = Math.max(...Object.values(last_fetch).map(Number));
+
+    // Find the timestamp of our cached data
+    const cachedTs = dataCache['thismonth']?._ts || 0;
+
+    if (backendMaxTs > cachedTs + 60) {
+      // Backend has data newer than our cache by more than 1 minute — reload
+      console.log(`[freshness] Backend newer (${backendMaxTs} > ${cachedTs}) — refreshing`);
+      persistClear();
+      await loadData(currentPeriod, true);
+    }
+  } catch(e) { /* ignore network errors */ }
+}
+
+// Check freshness on load and every 5 minutes
+checkBackendFreshness();
+setInterval(checkBackendFreshness, 5 * 60 * 1000);
+
+// Then fetch fresh data from backend (also runs in parallel)
 loadData('thismonth');
 
 // Schedule hourly refresh at the top of each clock hour
