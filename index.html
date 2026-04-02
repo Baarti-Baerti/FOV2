@@ -1593,7 +1593,8 @@ let currentPeriod = 'thismonth';
 // ──────────────────────────────────────────────────────────────────
 //  PERSISTENT CACHE  — localStorage so data survives page reloads
 // ──────────────────────────────────────────────────────────────────
-const LS_KEY = 'fo_teamdata_v1';
+const LS_KEY        = 'fo_teamdata_v1';
+const LS_BACKEND_TS = 'fo_backend_ts_v1';
 
 function persistSave() {
   try {
@@ -1667,6 +1668,12 @@ async function loadData(period = 'thismonth', forceRefresh = false) {
 
     // Persist fresh data to localStorage
     persistSave();
+
+    // Record the backend's sync timestamp so freshness check can detect future updates
+    try {
+      // Use the current time as proxy for when backend data was fetched
+      localStorage.setItem(LS_BACKEND_TS, String(Math.floor(Date.now() / 1000)));
+    } catch(e) {}
 
     const entry = dataCache[period] || dataCache['thismonth'];
     applyData(entry ? entry.data : [], period, true);
@@ -2960,16 +2967,17 @@ async function checkBackendFreshness() {
     if (!r.ok) return;
     const { last_fetch } = await r.json();
 
-    // Find the most recent backend last_fetch across all members
+    // Most recent backend sync across all members (in seconds)
     const backendMaxTs = Math.max(...Object.values(last_fetch).map(Number));
 
-    // Find the timestamp of our cached data
-    const cachedTs = dataCache['thismonth']?._ts || 0;
+    // What was the backend ts last time we pulled data?
+    const knownBackendTs = parseInt(localStorage.getItem(LS_BACKEND_TS) || '0', 10);
 
-    if (backendMaxTs > cachedTs + 60) {
-      // Backend has data newer than our cache by more than 1 minute — reload
-      console.log(`[freshness] Backend newer (${backendMaxTs} > ${cachedTs}) — refreshing`);
+    if (backendMaxTs > knownBackendTs + 60) {
+      // Backend has synced more recently than last time we fetched — reload
+      console.log(`[freshness] Backend newer (${backendMaxTs} > ${knownBackendTs}) — refreshing`);
       persistClear();
+      localStorage.setItem(LS_BACKEND_TS, String(backendMaxTs));
       await loadData(currentPeriod, true);
     }
   } catch(e) { /* ignore network errors */ }
