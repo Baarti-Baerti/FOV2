@@ -229,7 +229,7 @@ async def sync_activities(member: dict) -> list:
 
 
 async def _sync_strava(member: dict, stored: dict, now: int, yr_start: int, last_fetch: int) -> list:
-    after = yr_start if last_fetch == 0 else max(yr_start, last_fetch - 3600)
+    after = yr_start if last_fetch == 0 else max(yr_start, last_fetch - 3 * 3600)  # 3hr overlap catches delayed uploads
     member = await refresh(member)
     hdrs = {"Authorization": f"Bearer {member['strava_access_token']}"}
 
@@ -267,7 +267,7 @@ async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last
         return stored.get("activities", [])
 
     after_dt  = datetime.fromtimestamp(
-        yr_start if last_fetch == 0 else max(yr_start, last_fetch - 3600),
+        yr_start if last_fetch == 0 else max(yr_start, last_fetch - 3 * 3600),
         tz=timezone.utc
     )
     before_dt = datetime.fromtimestamp(now, tz=timezone.utc)
