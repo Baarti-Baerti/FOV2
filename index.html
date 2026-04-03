@@ -1986,6 +1986,45 @@ function renderLB(suffix=''){
     return Math.round(reached.reduce((s, d) => s + d, 0) / reached.length);
   }
 
+  // Dynamic equivalent: estimate which calendar day the user first hit 66.67 dynamic pts
+  function dynDaysToGoal(u) {
+    const today = new Date();
+    const cy = today.getFullYear(), cm = today.getMonth() + 1;
+    let months;
+    if (currentPeriod === 'thismonth')      months = (u.monthly||[]).filter(m=>m.year===cy&&m.month===cm);
+    else if (currentPeriod === 'lastmonth') { const lm=cm===1?12:cm-1,ly=cm===1?cy-1:cy; months=(u.monthly||[]).filter(m=>m.year===ly&&m.month===lm); }
+    else if (currentPeriod.startsWith('month-')) { const mo=parseInt(currentPeriod.split('-')[1]); months=(u.monthly||[]).filter(m=>m.year===cy&&m.month===mo); }
+    else if (currentPeriod==='q1') months=(u.monthly||[]).filter(m=>m.year===cy&&m.month>=1&&m.month<=3);
+    else if (currentPeriod==='q2') months=(u.monthly||[]).filter(m=>m.year===cy&&m.month>=4&&m.month<=6);
+    else if (currentPeriod==='q3') months=(u.monthly||[]).filter(m=>m.year===cy&&m.month>=7&&m.month<=9);
+    else if (currentPeriod==='q4') months=(u.monthly||[]).filter(m=>m.year===cy&&m.month>=10&&m.month<=12);
+    else months=(u.monthly||[]).filter(m=>m.year===cy);
+
+    const f = u.runKcalFactor || 1;
+    const reached = months.map(mo => {
+      // Total dynamic pts for this month
+      const pts = dynPts(mo.runCals||0, f) + dynPts(mo.rideCals||0, f) +
+                  dynPts(mo.virtualCals||0, f) + dynPts(mo.swimCals||0, f) + dynPts(mo.walkCals||0, f);
+      if (pts < MONTHLY_GOAL) return null;
+      // Estimate day proportionally using active days from the days[] array
+      if (mo.days && mo.days.length > 0) {
+        const activeDays = mo.days.reduce((acc, v, i) => { if (v > 0) acc.push(i+1); return acc; }, []);
+        if (activeDays.length > 0) {
+          const ptsPerSession = pts / activeDays.length;
+          let cum = 0;
+          for (const day of activeDays) {
+            cum += ptsPerSession;
+            if (cum >= MONTHLY_GOAL) return day;
+          }
+        }
+      }
+      return Math.ceil((MONTHLY_GOAL / pts) * 31);
+    }).filter(d => d != null);
+
+    if (reached.length === 0) return null;
+    return Math.round(reached.reduce((s, d) => s + d, 0) / reached.length);
+  }
+
   const COLS = [
     { key:'convKm',      label:'Points',       icon:'⭐', fmt: u => userPointsKm(u).toFixed(2),                                                          unit:'' },
     { key:'runKm',       label:'Run',          icon:'🏃', fmt: u => {
@@ -2078,6 +2117,7 @@ function renderLB(suffix=''){
         const total = (u.runKm||0)+(u.cycleKm||0)+(u.virtualKm||0)+(u.swimKm||0)+(u.walkKm||0);
         return total > 0 ? fmtKm(total) + '<span style="font-size:0.72rem;color:var(--muted);font-weight:600;margin-left:1px">km</span>' : '—';
       }, unit:'' },
+    { key:'dynGoalDay', label:'Days to Goal', icon:'🎯', fmt: u => { const d=dynDaysToGoal(u); return d!=null ? `${d}` : '—'; }, unit:'' },
     { key:'durationSec', label:'Time',  icon:'⏱',  fmt: u => fmtDuration(userDurationSec(u)), unit:'' },
     { key:'workouts', label:'Sessions', icon:'#️⃣', fmt: u => u.workouts||0, unit:'' },
   ];
@@ -2090,6 +2130,7 @@ function renderLB(suffix=''){
   const isAdmin = _adminName.includes('baarti');
   function metricVal(u, key) {
     if (key === 'dynTotal')    return dynTotalPts(u);
+    if (key === 'dynGoalDay')  return dynDaysToGoal(u) ?? 999;
     if (key === 'convKm')      return userPointsKm(u);
     if (key === 'km')          return (u.runKm||0) + (u.cycleKm||0) + (u.virtualKm||0) + (u.swimKm||0) + (u.walkKm||0);
     if (key === 'durationSec') return userDurationSec(u);
@@ -2106,10 +2147,10 @@ function renderLB(suffix=''){
   const thead = `<tr>
     <th style="text-align:left">Athlete</th>
     ${ACTIVE_COLS.map(c => {
-      const goalLabel = c.key === 'goalDay' && isMultiMonth ? 'Avg Days<br>to Goal' : c.label;
+      const goalLabel = (c.key === 'goalDay' || c.key === 'dynGoalDay') && isMultiMonth ? 'Avg Days<br>to Goal' : c.label;
       const iconLine = c.icon ? `<div style="font-size:1rem;margin-top:2px">${c.icon}</div>` : '';
       const sort = c.key === curMetric ? `<span style="color:var(--violet)">▾</span>` : '';
-      return `<th class="${c.key===curMetric?'sort-active':''}" onclick="setMetricKey('${c.key}')" style="text-align:center;white-space:normal;line-height:1.25;${c.key==='convKm'?'background:rgba(129,140,248,0.10);color:var(--violet)':''}">
+      return `<th class="${c.key===curMetric?'sort-active':''}" onclick="setMetricKey('${c.key}')" style="text-align:center;white-space:normal;line-height:1.25;${(c.key==='convKm'||c.key==='dynTotal')?'background:rgba(129,140,248,0.10);color:var(--violet)':''}">
         ${goalLabel} ${sort}${iconLine}
       </th>`;
     }).join('')}
@@ -2122,14 +2163,21 @@ function renderLB(suffix=''){
     const cells = ACTIVE_COLS.map(c => {
       const raw = c.key === 'convKm'
         ? userPointsKm(u)
+        : c.key === 'dynTotal'
+        ? dynTotalPts(u)
         : c.key === 'km'
         ? (u.runKm||0) + (u.cycleKm||0) + (u.virtualKm||0) + (u.swimKm||0) + (u.walkKm||0)
         : c.key === 'durationSec'
         ? userDurationSec(u)
         : c.key === 'goalDay'
         ? (userDaysToGoal(u) ?? 0)
+        : c.key === 'dynGoalDay'
+        ? (dynDaysToGoal(u) ?? 0)
         : u[c.key]||0;
-      const isZero = c.key === 'goalDay' ? userDaysToGoal(u) == null : raw === 0;
+      const isZero = c.key === 'goalDay'    ? userDaysToGoal(u) == null
+                   : c.key === 'dynGoalDay' ? dynDaysToGoal(u) == null
+                   : c.key === 'dynTotal'   ? dynTotalPts(u) === 0
+                   : raw === 0;
       const isSort = c.key === curMetric;
       const cls = isZero ? 'lb-zero' : isSort ? 'lb-sort-col' : '';
       let title = '';
@@ -2166,7 +2214,7 @@ function renderLB(suffix=''){
       const kmSuffix = c.unit === 'km' && fmtVal !== '—' && !isZero
         ? `<span style="font-size:0.72rem;color:var(--muted);font-weight:600;margin-left:1px">km</span>`
         : '';
-      return `<td ${title} class="${cls}" style="text-align:center;${(c.key==='convKm'||c.key==='dynTotal') ? `background:rgba(129,140,248,0.07);font-weight:800;color:${isZero?'var(--muted)':'var(--violet)'}` : c.key==='goalDay'&&!isZero ? 'color:var(--text)' : isSort&&!isZero?'color:'+u.color:''}">${fmtVal}${kmSuffix}</td>`;
+      return `<td ${title} class="${cls}" style="text-align:center;${(c.key==='convKm'||c.key==='dynTotal') ? `background:rgba(129,140,248,0.07);font-weight:800;color:${isZero?'var(--muted)':'var(--violet)'}` : (c.key==='goalDay'||c.key==='dynGoalDay')&&!isZero ? 'color:var(--text)' : isSort&&!isZero?'color:'+u.color:''}">${fmtVal}${kmSuffix}</td>`;
     }).join('');
     const providerBadge = u.provider === 'strava'
       ? `<span style="font-size:.84rem;background:#fff3e0;color:#c2410c;border-radius:6px;padding:1px 5px;font-weight:800;margin-left:4px">STR</span>`
