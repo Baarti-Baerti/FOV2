@@ -521,15 +521,14 @@ def fmt_member(m: dict, idx: int, s: dict) -> dict:
     wc = s.pop("_wc", [0]*7)
 
     # Find last completely finished month's running kcal/km factor
-    now = datetime.now(timezone.utc)
-    last_m = now.month - 1 if now.month > 1 else 12
-    last_y = now.year if now.month > 1 else now.year - 1
-    monthly = s.get("monthly", [])
-    last_month_data = next(
-        (mo for mo in monthly if mo.get("year") == last_y and mo.get("month") == last_m),
-        None
-    )
-    run_kcal_factor = last_month_data.get("runKcalPerKm") if last_month_data else None
+    # Calculate average running kJ/km factor across entire calendar year
+    now_dt   = datetime.now(timezone.utc)
+    cur_year = now_dt.year
+    monthly  = s.get("monthly", [])
+
+    year_run_kj = sum(mo.get("runCals", 0) or 0 for mo in monthly if mo.get("year") == cur_year)
+    year_run_km = sum(mo.get("runCalKm", 0) or 0 for mo in monthly if mo.get("year") == cur_year)
+    run_kcal_factor = round(year_run_kj / year_run_km, 2) if year_run_km > 0.5 else None
 
     return dict(
         id=m["id"], name=m["name"], provider="strava",
@@ -539,7 +538,7 @@ def fmt_member(m: dict, idx: int, s: dict) -> dict:
         picture=m.get("strava_picture",""), height_m=m.get("height_m"),
         **{k: s.get(k,0) for k in ("km","runKm","cycleKm","virtualKm","swimKm","walkKm",
                                     "durationSec","workouts","challengeKm","eligibleWalkKm")},
-        runKcalFactor=run_kcal_factor,  # kcal/km from last completed month's runs (None if unavailable)
+        runKcalFactor=run_kcal_factor,  # avg kJ/km from all runs this calendar year
         types=s.get("types",[]), monthly=s.get("monthly",[]),
         week=w, weekCalories=wc)
 

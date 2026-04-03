@@ -2264,7 +2264,7 @@ function renderDetail(suffix=''){
             ${u.height_m ? `<div class="detail-item"><div class="detail-item-lbl">Height</div><div class="detail-item-val">${Math.round(u.height_m * 100)}<span style="font-size:1.02rem">cm</span></div></div>` : ''}
             ${suffix === 'dynamic' ? `
             <div class="detail-item" style="border-color:var(--violet);background:#ede9fe;min-width:180px">
-              <div class="detail-item-lbl" style="color:var(--violet)">Last month running kJ/km factor</div>
+              <div class="detail-item-lbl" style="color:var(--violet)">Avg. running kJ/km factor (YTD)</div>
               <div class="detail-item-val" style="color:var(--violet);font-size:1.2rem">
                 ${u.runKcalFactor != null
                   ? `${u.runKcalFactor.toFixed(2)} <span style="font-size:0.75rem;font-weight:600;color:var(--text2)">kJ/km</span>`
