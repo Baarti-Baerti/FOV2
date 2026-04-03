@@ -1231,7 +1231,21 @@
   <div class="panel points-panel" id="pointsPanel">
     <div class="panel-header">
       <span class="panel-title">🏅 Points</span>
-      <span class="panel-badge" id="pointsBadge">YTD</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="display:flex;gap:3px;background:var(--surface2);border:1.5px solid var(--border);border-radius:24px;padding:3px">
+          <button id="scoringModeStatic"
+            onclick="setScoringMode('static')"
+            style="font-family:'Nunito',sans-serif;font-weight:700;font-size:0.78rem;padding:4px 12px;border-radius:20px;border:none;cursor:pointer;background:var(--violet);color:#fff;box-shadow:0 2px 8px rgba(129,140,248,0.35)">
+            📊 Static
+          </button>
+          <button id="scoringModeDynamic"
+            onclick="setScoringMode('dynamic')"
+            style="font-family:'Nunito',sans-serif;font-weight:700;font-size:0.78rem;padding:4px 12px;border-radius:20px;border:none;cursor:pointer;background:transparent;color:var(--muted)">
+            ⚡ Dynamic
+          </button>
+        </div>
+        <span class="panel-badge" id="pointsBadge">YTD</span>
+      </div>
     </div>
     <div id="pointsContent" style="padding:0 22px 20px"></div>
   </div>
@@ -2397,9 +2411,35 @@ async function executeRemove() {
 }
 
 // ════ POINTS ════
+let currentScoringMode = 'static'; // 'static' or 'dynamic'
+
+function setScoringMode(mode) {
+  currentScoringMode = mode;
+  const staticBtn  = document.getElementById('scoringModeStatic');
+  const dynamicBtn = document.getElementById('scoringModeDynamic');
+  if (mode === 'static') {
+    staticBtn.style.background    = 'var(--violet)';
+    staticBtn.style.color         = '#fff';
+    staticBtn.style.boxShadow     = '0 2px 8px rgba(129,140,248,0.35)';
+    dynamicBtn.style.background   = 'transparent';
+    dynamicBtn.style.color        = 'var(--muted)';
+    dynamicBtn.style.boxShadow    = 'none';
+  } else {
+    dynamicBtn.style.background   = 'var(--violet)';
+    dynamicBtn.style.color        = '#fff';
+    dynamicBtn.style.boxShadow    = '0 2px 8px rgba(129,140,248,0.35)';
+    staticBtn.style.background    = 'transparent';
+    staticBtn.style.color         = 'var(--muted)';
+    staticBtn.style.boxShadow     = 'none';
+  }
+  renderPoints();
+}
+
 function renderPoints(){
   const el = document.getElementById('pointsContent');
   if (!el) return;
+
+  const isDynamic = currentScoringMode === 'dynamic';
 
   const GOAL = 66.67;
   const today = new Date();
@@ -2407,16 +2447,36 @@ function renderPoints(){
   const currentMonth = today.getMonth() + 1; // 1-12
   const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-  // Build a lookup: userId → { month(1-12): challengeKm } for current year only
-  // challengeKm applies conversion factors: bike/5, virtual bike/4, swim*4,
-  // walking 1:1 only if >30min AND >6.5km/h, running 1:1
-  // Falls back to client-side calculation from per-type km fields if field absent
+  // In dynamic mode, only show users with a calorie factor
+  const pointsUsers = isDynamic ? users.filter(u => u.runKcalFactor != null) : users;
 
+  // Dynamic challengeKm: running km is weighted by personal kcal/km factor
+  // normalised against the group average factor. Higher factor = harder effort = more points.
+  const avgFactor = isDynamic && pointsUsers.length > 0
+    ? pointsUsers.reduce((s, u) => s + (u.runKcalFactor || 0), 0) / pointsUsers.length
+    : 1;
+
+  function dynamicChallengeKm(mo, u) {
+    const factor = (u.runKcalFactor && avgFactor > 0) ? u.runKcalFactor / avgFactor : 1;
+    const run  = (mo.runKm    || 0) * factor;  // running weighted by personal effort
+    const bike = (mo.cycleKm  || 0) / 5;
+    const virt = (mo.virtualKm|| 0) / 4;
+    const swim = (mo.swimKm   || 0) * 4;
+    const walk = (mo.eligibleWalkKm || 0) / 3;
+    return run + bike + virt + swim + walk;
+  }
+
+  function effectiveChallengeKm(mo, u) {
+    if (isDynamic) return dynamicChallengeKm(mo, u);
+    return calcChallengeKm(mo);
+  }
+
+  // Build a lookup: userId → { month(1-12): challengeKm } for current year only
   function monthlyRunMap(u) {
     const map = {};
     (u.monthly || []).forEach(m => {
       if (m.year === currentYear && m.month >= 1 && m.month <= 12) {
-        map[m.month] = calcChallengeKm(m);
+        map[m.month] = effectiveChallengeKm(m, u);
       }
     });
     return map;
@@ -2426,7 +2486,7 @@ function renderPoints(){
   const ruleAPoints = {};
   const ruleAData = {}; // { userId: { month: challengeKm } } for all months up to current
 
-  users.forEach(u => {
+  pointsUsers.forEach(u => {
     const runMap = monthlyRunMap(u);
     let pts = 0;
     const data = {};
@@ -2449,7 +2509,7 @@ function renderPoints(){
         .reduce((s, m) => s + calcChallengeKm(m), 0);
     });
   } else {
-    users.forEach(u => {
+    pointsUsers.forEach(u => {
       const runMap = monthlyRunMap(u);
       ytdRunKm[u.id] = Object.values(runMap).reduce((a,b)=>a+b, 0);
     });
@@ -2473,7 +2533,7 @@ function renderPoints(){
   // Only Garmin users with BMI data in both Jan and at least one later month qualify
   // Improvement = positive number means BMI went DOWN (good)
   const ruleDImprovement = {};
-  users.forEach(u => {
+  pointsUsers.forEach(u => {
     const janData = (u.monthly || []).find(m => m.year === currentYear && m.month === 1);
     const janBmi  = janData?.bmi;
     if (!janBmi || janBmi <= 0) return;
@@ -2497,7 +2557,7 @@ function renderPoints(){
 
   // Total points
   const totalPoints = {};
-  users.forEach(u => {
+  pointsUsers.forEach(u => {
     totalPoints[u.id] =
       (ruleAPoints[u.id] || 0) +
       (ruleBWinners.includes(u.id) ? 2 : 0) +
@@ -2505,7 +2565,7 @@ function renderPoints(){
       (ruleDWinners.includes(u.id) ? 1 : 0);
   });
 
-  const sorted = [...users].sort((a,b) => (totalPoints[b.id]||0) - (totalPoints[a.id]||0));
+  const sorted = [...pointsUsers].sort((a,b) => (totalPoints[b.id]||0) - (totalPoints[a.id]||0));
 
   // All 12 months Jan–Dec
   const allMonths = [1,2,3,4,5,6,7,8,9,10,11,12];
