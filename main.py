@@ -807,30 +807,36 @@ async def garmin_login(body: GarminLoginBody):
     }
 
 # Team stats
+SYNC_STALE_SECS = 90 * 60  # trigger a sync if last_fetch is older than 90 minutes
+
 @app.get("/api/team")
 async def get_team(range_: str = Query("thismonth", alias="range")):
     db   = load_db()
     after, before = date_range(range_)
     yr   = datetime.now(timezone.utc).year
     yr_start = int(datetime(yr, 1, 1, tzinfo=timezone.utc).timestamp())
+    now  = int(time.time())
     result = []
 
     for idx, m in enumerate(db["members"]):
-        # Serve from cache if available — cache is only busted on hourly sync
+        # Serve from cache if available — cache is busted on sync
         cached = cache_get(m["id"], range_)
         if cached:
             result.append(cached)
             continue
 
-        # Load stored activities (incremental sync already done by hourly job)
-        # Fall back to a live sync if the store is empty (first ever load)
+        # Load stored activities
         stored = load_acts(m["id"])
-        if not stored["activities"]:
+        last_fetch = stored.get("last_fetch", 0)
+        needs_sync = (not stored["activities"]) or (now - last_fetch > SYNC_STALE_SECS)
+
+        if needs_sync:
             try:
+                print(f"[get_team] Stale data for {m['name']} (last_fetch {now - last_fetch}s ago) — syncing")
                 year_acts = await sync_activities(m)
             except Exception as e:
-                print(f"[warn] initial sync failed for {m['name']}: {e}")
-                year_acts = []
+                print(f"[warn] sync failed for {m['name']}: {e}")
+                year_acts = stored.get("activities", [])
         else:
             year_acts = stored["activities"]
 
