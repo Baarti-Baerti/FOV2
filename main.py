@@ -437,26 +437,22 @@ def monthly_breakdown(acts: list, year: int) -> list:
                     days[idx] = 1
             except (ValueError, IndexError): pass
 
-        # Running-specific calorie tracking for kj factor calculation
-        run_cals = 0.0
-        run_km_cal = 0.0  # only runs that have calorie data
-        # Per-category calorie totals for dynamic scoring
-        cat_cals = {"run": 0.0, "ride": 0.0, "virtual_ride": 0.0, "swim": 0.0, "walk": 0.0}
+        # Per-category kJ totals for dynamic scoring (raw device data, no conversion)
+        run_kj     = 0.0
+        run_km_kj  = 0.0  # km of runs that have kJ data (for factor calculation)
+        cat_kj = {"run": 0.0, "ride": 0.0, "virtual_ride": 0.0, "swim": 0.0, "walk": 0.0}
         for a in month_acts:
             cat  = classify(a.get("sport_type") or a.get("type", ""))
-            cals = a.get("calories") or 0
             kj   = a.get("kilojoules") or 0
             dist = (a.get("distance", 0) or 0) / 1000
-            # kJ → metabolic kcal: 0.646 (Strava empirical factor, not physics 0.239)
-            best = cals if cals > 0 else (kj * 0.646 if kj > 0 else 0)
-            if cat in cat_cals and best > 0:
-                cat_cals[cat] += best
-            if cat == "run" and dist > 0 and best > 0:
-                run_cals   += best
-                run_km_cal += dist
+            if cat in cat_kj and kj > 0:
+                cat_kj[cat] += kj
+            if cat == "run" and dist > 0 and kj > 0:
+                run_kj    += kj
+                run_km_kj += dist
 
-        # kcal/km factor — None if no calorie data available for runs this month
-        run_kcal_per_km = round(run_cals / run_km_cal, 2) if run_km_cal > 0.5 else None
+        # kJ/km factor for running — None if no kJ data this month
+        run_kcal_per_km = round(run_kj / run_km_kj, 2) if run_km_kj > 0.5 else None
 
         # goalDay calculation
         goal_day = None
@@ -484,14 +480,14 @@ def monthly_breakdown(acts: list, year: int) -> list:
             swimKm=s["swimKm"], walkKm=s["walkKm"], eligibleWalkKm=s["eligibleWalkKm"], actKcal=0,
             durationSec=s["durationSec"], challengeKm=round(s["challengeKm"], 3),
             goalDay=goal_day,
-            runKcalPerKm=run_kcal_per_km,
-            runCalKm=round(run_km_cal, 3),
-            # Per-category calories for dynamic scoring
-            runCals=round(cat_cals["run"], 1),
-            rideCals=round(cat_cals["ride"], 1),
-            virtualCals=round(cat_cals["virtual_ride"], 1),
-            swimCals=round(cat_cals["swim"], 1),
-            walkCals=round(cat_cals["walk"], 1),
+            runKcalPerKm=run_kcal_per_km,   # kJ/km factor for running (None if no kJ data)
+            runCalKm=round(run_km_kj, 3),   # km of runs that had kJ data
+            # Per-category kJ for dynamic scoring
+            runCals=round(cat_kj["run"], 1),
+            rideCals=round(cat_kj["ride"], 1),
+            virtualCals=round(cat_kj["virtual_ride"], 1),
+            swimCals=round(cat_kj["swim"], 1),
+            walkCals=round(cat_kj["walk"], 1),
             days=days,
         ))
     return result

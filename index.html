@@ -2003,7 +2003,7 @@ function renderLB(suffix=''){
       }, unit:'' },
   ];
   function fmtKm(v){ return (v||0) > 0 ? (v||0).toFixed(2) : '—'; }
-  function fmtCal(v){ return (v||0) > 0 ? Math.round(v||0).toLocaleString() : '—'; }
+  function fmtCal(v){ return (v||0) > 0 ? Math.round(v||0).toLocaleString() : '—'; } // used for kJ display
 
   // ── Helper: sum per-category calories from monthly data for current period ──
   function userCatCals(u) {
@@ -2041,7 +2041,7 @@ function renderLB(suffix=''){
   function dynCell(km, cals, pts) {
     if (!km || km < 0.005) return '—';
     const calStr = cals > 0
-      ? `<div style="font-size:0.65rem;font-weight:700;margin-top:1px;color:var(--sky)">🔥 ${fmtCal(cals)} kcal</div>`
+      ? `<div style="font-size:0.65rem;font-weight:700;margin-top:1px;color:var(--sky)">⚡ ${fmtCal(cals)} kJ</div>`
       : '';
     const ptsStr = pts > 0.005
       ? `<div style="font-size:0.65rem;font-weight:700;margin-top:1px;color:var(--violet)">⭐ ${pts.toFixed(2)} pts</div>`
@@ -2263,10 +2263,10 @@ function renderDetail(suffix=''){
             ${u.height_m ? `<div class="detail-item"><div class="detail-item-lbl">Height</div><div class="detail-item-val">${Math.round(u.height_m * 100)}<span style="font-size:1.02rem">cm</span></div></div>` : ''}
             ${suffix === 'dynamic' ? `
             <div class="detail-item" style="border-color:var(--violet);background:#ede9fe;min-width:180px">
-              <div class="detail-item-lbl" style="color:var(--violet)">Last month running calorie factor</div>
+              <div class="detail-item-lbl" style="color:var(--violet)">Last month running kJ/km factor</div>
               <div class="detail-item-val" style="color:var(--violet);font-size:1.2rem">
                 ${u.runKcalFactor != null
-                  ? `${u.runKcalFactor.toFixed(2)} <span style="font-size:0.75rem;font-weight:600;color:var(--text2)">kcal/km</span>`
+                  ? `${u.runKcalFactor.toFixed(2)} <span style="font-size:0.75rem;font-weight:600;color:var(--text2)">kJ/km</span>`
                   : `<span style="font-size:0.9rem;color:var(--muted);font-weight:600">No data</span>`}
               </div>
             </div>` : ''}
@@ -2528,7 +2528,7 @@ function renderPoints(){
   // In dynamic mode, only show users with a calorie factor
   const pointsUsers = isDynamic ? users.filter(u => u.runKcalFactor != null) : users;
 
-  // Dynamic challengeKm: running km is weighted by personal kcal/km factor
+  // Dynamic challengeKm: running km is weighted by personal kJ/km factor
   // normalised against the group average factor. Higher factor = harder effort = more points.
   const avgFactor = isDynamic && pointsUsers.length > 0
     ? pointsUsers.reduce((s, u) => s + (u.runKcalFactor || 0), 0) / pointsUsers.length
