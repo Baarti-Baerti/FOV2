@@ -1192,7 +1192,14 @@
   </div>
   <div class="header-right">
     <!-- Admin: Strava sync toggle (only visible to Baarti) -->
-    <div id="stravaToggleWrap" style="display:none">
+    <div id="stravaToggleWrap" style="display:none;display:flex;gap:8px;align-items:center">
+      <button onclick="forceRefreshData()"
+        style="font-family:'Nunito',sans-serif;font-weight:800;font-size:0.78rem;
+               padding:5px 12px;border-radius:20px;border:2px solid #86efac;
+               background:#dcfce7;color:#16a34a;cursor:pointer;transition:all 0.2s"
+        title="Force reload all data from backend">
+        🔄 Refresh
+      </button>
       <button id="stravaToggleBtn" onclick="toggleStravaPause()"
         style="font-family:'Nunito',sans-serif;font-weight:800;font-size:0.78rem;
                padding:5px 12px;border-radius:20px;border:2px solid;cursor:pointer;
@@ -2207,6 +2214,13 @@ let _removeTargetId = null;
 let _renameTargetId = null;
 
 // ── Strava sync toggle (admin only) ──────────────────────────────
+async function forceRefreshData() {
+  persistClear();
+  localStorage.removeItem(LS_BACKEND_TS);
+  showBanner('🔄 Forcing full refresh…', 'info');
+  await loadData(currentPeriod, true);
+}
+
 async function initStravaToggle() {
   const _adminName = (currentMember?.name || '').toLowerCase().trim();
   if (!_adminName.includes('baarti')) return;
