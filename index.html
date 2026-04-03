@@ -1786,7 +1786,14 @@ function switchPage(p,btn){
   btn.classList.add('active');
   if(p==='monthly') renderMonthly();
   if(p==='details') { renderLB(); renderDetail(); }
-  if(p==='dynamic') { renderLB('dynamic'); renderDetail('dynamic'); }
+  if(p==='dynamic') {
+    // Auto-select first user with a calorie factor if current selection has none
+    if (!selUser || selUser.runKcalFactor == null) {
+      const first = users.find(u => u.runKcalFactor != null);
+      if (first) selUser = first;
+    }
+    renderLB('dynamic'); renderDetail('dynamic');
+  }
 }
 
 function renderAll(){
@@ -1994,7 +2001,10 @@ function renderLB(suffix=''){
     if (key === 'goalDay')     return userDaysToGoal(u) ?? 999;
     return u[key]||0;
   }
-  const sorted = [...users].sort((a,b) => metricVal(b, curMetric) - metricVal(a, curMetric));
+  const usersToShow = suffix === 'dynamic'
+    ? users.filter(u => u.runKcalFactor != null)
+    : users;
+  const sorted = [...usersToShow].sort((a,b) => metricVal(b, curMetric) - metricVal(a, curMetric));
 
   const isMultiMonth = !['thismonth','lastmonth'].includes(currentPeriod) && !currentPeriod.startsWith('month-');
 
@@ -2096,6 +2106,15 @@ function setMetricKey(k){
 
 function renderDetail(suffix=''){
   const u=selUser;
+  if (!u) return;
+  // In dynamic tab, only show detail for users with a calorie factor
+  if (suffix === 'dynamic' && u.runKcalFactor == null) {
+    document.getElementById('userDetail-dynamic').innerHTML =
+      `<div style="padding:24px;color:var(--muted);font-weight:700;font-size:.93rem">
+        Select a user from the table above to see their dynamic scoring detail.
+      </div>`;
+    return;
+  }
   const rank=[...users].sort((a,b)=>userPointsKm(b)-userPointsKm(a)).findIndex(x=>x.id===u.id)+1;
   const dots=u.week.map((a,i)=>{
     const bg=a?u.color:'#e2e8f8';
