@@ -2003,12 +2003,90 @@ function renderLB(suffix=''){
       }, unit:'' },
   ];
   function fmtKm(v){ return (v||0) > 0 ? (v||0).toFixed(2) : '—'; }
+  function fmtCal(v){ return (v||0) > 0 ? Math.round(v||0).toLocaleString() : '—'; }
+
+  // ── Helper: sum per-category calories from monthly data for current period ──
+  function userCatCals(u) {
+    const today = new Date(); const cy = today.getFullYear(), cm = today.getMonth()+1;
+    let mf;
+    if (currentPeriod==='thismonth')           mf=m=>m.year===cy&&m.month===cm;
+    else if (currentPeriod==='lastmonth')      { const lm=cm===1?12:cm-1,ly=cm===1?cy-1:cy; mf=m=>m.year===ly&&m.month===lm; }
+    else if (currentPeriod.startsWith('month-')){ const mo=parseInt(currentPeriod.split('-')[1]); mf=m=>m.year===cy&&m.month===mo; }
+    else if (currentPeriod==='q1') mf=m=>m.year===cy&&m.month>=1&&m.month<=3;
+    else if (currentPeriod==='q2') mf=m=>m.year===cy&&m.month>=4&&m.month<=6;
+    else if (currentPeriod==='q3') mf=m=>m.year===cy&&m.month>=7&&m.month<=9;
+    else if (currentPeriod==='q4') mf=m=>m.year===cy&&m.month>=10&&m.month<=12;
+    else mf=m=>m.year===cy;
+    const months = (u.monthly||[]).filter(mf);
+    return {
+      run:     months.reduce((s,m)=>s+(m.runCals    ||0),0),
+      ride:    months.reduce((s,m)=>s+(m.rideCals   ||0),0),
+      virtual: months.reduce((s,m)=>s+(m.virtualCals||0),0),
+      swim:    months.reduce((s,m)=>s+(m.swimCals   ||0),0),
+      walk:    months.reduce((s,m)=>s+(m.walkCals   ||0),0),
+    };
+  }
+
+  function dynPts(cals, factor) {
+    if (!factor || factor <= 0 || !cals || cals <= 0) return 0;
+    return cals / factor;
+  }
+
+  function dynTotalPts(u) {
+    const c = userCatCals(u);
+    const f = u.runKcalFactor || 1;
+    return dynPts(c.run,f) + dynPts(c.ride,f) + dynPts(c.virtual,f) + dynPts(c.swim,f) + dynPts(c.walk,f);
+  }
+
+  function dynCell(km, cals, pts) {
+    if (!km || km < 0.005) return '—';
+    const calStr = cals > 0
+      ? `<div style="font-size:0.65rem;font-weight:700;margin-top:1px;color:var(--sky)">🔥 ${fmtCal(cals)} kcal</div>`
+      : '';
+    const ptsStr = pts > 0.005
+      ? `<div style="font-size:0.65rem;font-weight:700;margin-top:1px;color:var(--violet)">⭐ ${pts.toFixed(2)} pts</div>`
+      : '';
+    return fmtKm(km) + '<span style="font-size:0.72rem;color:var(--muted);font-weight:600;margin-left:1px">km</span>' + calStr + ptsStr;
+  }
+
+  // Dynamic COLS — calories ÷ personal factor = points
+  const DYNAMIC_COLS = [
+    { key:'dynTotal', label:'Points',   icon:'⭐', fmt: u => {
+        const pts = dynTotalPts(u);
+        return pts > 0 ? pts.toFixed(2) : '—';
+      }, unit:'' },
+    { key:'runKm',    label:'Run',      icon:'🏃', fmt: u => {
+        const c = userCatCals(u); const f = u.runKcalFactor||1;
+        return dynCell(u.runKm, c.run, dynPts(c.run, f));
+      }, unit:'' },
+    { key:'cycleKm',  label:'Bike',     icon:'🚴', fmt: u => {
+        const c = userCatCals(u); const f = u.runKcalFactor||1;
+        return dynCell(u.cycleKm, c.ride, dynPts(c.ride, f));
+      }, unit:'' },
+    { key:'virtualKm',label:'Virtual',  icon:'💻', fmt: u => {
+        const c = userCatCals(u); const f = u.runKcalFactor||1;
+        return dynCell(u.virtualKm, c.virtual, dynPts(c.virtual, f));
+      }, unit:'' },
+    { key:'swimKm',   label:'Swim',     icon:'🏊', fmt: u => {
+        const c = userCatCals(u); const f = u.runKcalFactor||1;
+        return dynCell(u.swimKm, c.swim, dynPts(c.swim, f));
+      }, unit:'' },
+    { key:'walkKm',   label:'Walk',     icon:'🚶', fmt: u => {
+        const c = userCatCals(u); const f = u.runKcalFactor||1;
+        return dynCell(u.walkKm, c.walk, dynPts(c.walk, f));
+      }, unit:'' },
+    { key:'durationSec', label:'Time',  icon:'⏱',  fmt: u => fmtDuration(userDurationSec(u)), unit:'' },
+    { key:'workouts', label:'Sessions', icon:'#️⃣', fmt: u => u.workouts||0, unit:'' },
+  ];
+
+  const ACTIVE_COLS = suffix === 'dynamic' ? DYNAMIC_COLS : COLS;
 
   // Admin check: case-insensitive name match for any variation of "Baarti"
   // Also matches "Baarti-Baerti", "baarti", etc.
   const _adminName = (currentMember?.name || '').toLowerCase().trim();
   const isAdmin = _adminName.includes('baarti');
   function metricVal(u, key) {
+    if (key === 'dynTotal')    return dynTotalPts(u);
     if (key === 'convKm')      return userPointsKm(u);
     if (key === 'km')          return (u.runKm||0) + (u.cycleKm||0) + (u.virtualKm||0) + (u.swimKm||0) + (u.walkKm||0);
     if (key === 'durationSec') return userDurationSec(u);
@@ -2018,13 +2096,13 @@ function renderLB(suffix=''){
   const usersToShow = suffix === 'dynamic'
     ? users.filter(u => u.runKcalFactor != null)
     : users;
-  const sorted = [...usersToShow].sort((a,b) => metricVal(b, curMetric) - metricVal(a, curMetric));
+  const sorted = [...usersToShow].sort((a,b) => metricVal(b, suffix === 'dynamic' ? 'dynTotal' : curMetric) - metricVal(a, suffix === 'dynamic' ? 'dynTotal' : curMetric));
 
   const isMultiMonth = !['thismonth','lastmonth'].includes(currentPeriod) && !currentPeriod.startsWith('month-');
 
   const thead = `<tr>
     <th style="text-align:left">Athlete</th>
-    ${COLS.map(c => {
+    ${ACTIVE_COLS.map(c => {
       const goalLabel = c.key === 'goalDay' && isMultiMonth ? 'Avg Days<br>to Goal' : c.label;
       const iconLine = c.icon ? `<div style="font-size:1rem;margin-top:2px">${c.icon}</div>` : '';
       const sort = c.key === curMetric ? `<span style="color:var(--violet)">▾</span>` : '';
@@ -2038,7 +2116,7 @@ function renderLB(suffix=''){
   const tbody = sorted.map((u, i) => {
     const rc = i===0?'top1':i===1?'top2':i===2?'top3':'';
     const ac = u.id===selUser?.id ? 'lb-active' : '';
-    const cells = COLS.map(c => {
+    const cells = ACTIVE_COLS.map(c => {
       const raw = c.key === 'convKm'
         ? userPointsKm(u)
         : c.key === 'km'

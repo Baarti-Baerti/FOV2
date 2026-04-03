@@ -440,16 +440,19 @@ def monthly_breakdown(acts: list, year: int) -> list:
         # Running-specific calorie tracking for kj factor calculation
         run_cals = 0.0
         run_km_cal = 0.0  # only runs that have calorie data
+        # Per-category calorie totals for dynamic scoring
+        cat_cals = {"run": 0.0, "ride": 0.0, "virtual_ride": 0.0, "swim": 0.0, "walk": 0.0}
         for a in month_acts:
             cat  = classify(a.get("sport_type") or a.get("type", ""))
             cals = a.get("calories") or 0
             kj   = a.get("kilojoules") or 0
             dist = (a.get("distance", 0) or 0) / 1000
-            if cat == "run" and dist > 0:
-                best = cals if cals > 0 else (kj * 0.239 if kj > 0 else 0)
-                if best > 0:
-                    run_cals   += best
-                    run_km_cal += dist
+            best = cals if cals > 0 else (kj * 0.239 if kj > 0 else 0)
+            if cat in cat_cals and best > 0:
+                cat_cals[cat] += best
+            if cat == "run" and dist > 0 and best > 0:
+                run_cals   += best
+                run_km_cal += dist
 
         # kcal/km factor — None if no calorie data available for runs this month
         run_kcal_per_km = round(run_cals / run_km_cal, 2) if run_km_cal > 0.5 else None
@@ -480,8 +483,14 @@ def monthly_breakdown(acts: list, year: int) -> list:
             swimKm=s["swimKm"], walkKm=s["walkKm"], eligibleWalkKm=s["eligibleWalkKm"], actKcal=0,
             durationSec=s["durationSec"], challengeKm=round(s["challengeKm"], 3),
             goalDay=goal_day,
-            runKcalPerKm=run_kcal_per_km,  # kcal/km factor for running (None if no data)
-            runCalKm=round(run_km_cal, 3),  # km of runs that had calorie data
+            runKcalPerKm=run_kcal_per_km,
+            runCalKm=round(run_km_cal, 3),
+            # Per-category calories for dynamic scoring
+            runCals=round(cat_cals["run"], 1),
+            rideCals=round(cat_cals["ride"], 1),
+            virtualCals=round(cat_cals["virtual_ride"], 1),
+            swimCals=round(cat_cals["swim"], 1),
+            walkCals=round(cat_cals["walk"], 1),
             days=days,
         ))
     return result
