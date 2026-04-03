@@ -1268,7 +1268,7 @@
     <!-- Leaderboard full width -->
     <div class="panel" style="margin-bottom:20px">
       <div class="panel-header">
-        <span class="panel-title">🏆 Leaderboard</span>
+        <span class="panel-title">📊 Static Scoring Leaderboard</span>
       </div>
       <div id="leaderboard"></div>
     </div>
@@ -1988,10 +1988,6 @@ function renderLB(suffix=''){
 
   const COLS = [
     { key:'convKm',      label:'Points',       icon:'⭐', fmt: u => userPointsKm(u).toFixed(2),                                                          unit:'' },
-    { key:'km',          label:'Original',     icon:'📏', fmt: u => fmtKm((u.runKm||0)+(u.cycleKm||0)+(u.virtualKm||0)+(u.swimKm||0)+(u.walkKm||0)),    unit:'km' },
-    { key:'durationSec', label:'Time',         icon:'⏱',  fmt: u => fmtDuration(userDurationSec(u)),                                                      unit:''   },
-    { key:'goalDay',     label:'Days to Goal', icon:'🎯', fmt: u => { const d=userDaysToGoal(u); return d!=null ? `${d}` : '—'; },                        unit:''   },
-    { key:'workouts',    label:'Sessions',     icon:'#️⃣', fmt: u => u.workouts||0,                                                                         unit:''   },
     { key:'runKm',       label:'Run',          icon:'🏃', fmt: u => {
         const km = u.runKm||0;
         const pts = km; // ×1
@@ -2044,6 +2040,10 @@ function renderLB(suffix=''){
           `<span style="color:var(--violet);margin-left:5px">⭐ ${score.toFixed(2)} pts</span>` +
           `</div>`;
       }, unit:'' },
+    { key:'km',          label:'Original',     icon:'📏', fmt: u => fmtKm((u.runKm||0)+(u.cycleKm||0)+(u.virtualKm||0)+(u.swimKm||0)+(u.walkKm||0)),    unit:'km' },
+    { key:'durationSec', label:'Time',         icon:'⏱',  fmt: u => fmtDuration(userDurationSec(u)),                                                      unit:''   },
+    { key:'goalDay',     label:'Days to Goal', icon:'🎯', fmt: u => { const d=userDaysToGoal(u); return d!=null ? `${d}` : '—'; },                        unit:''   },
+    { key:'workouts',    label:'Sessions',     icon:'#️⃣', fmt: u => u.workouts||0,                                                                         unit:''   },
   ];
   function fmtKm(v){ return (v||0) > 0 ? (v||0).toFixed(2) : '—'; }
   function fmtCal(v){ return (v||0) > 0 ? Math.round(v||0).toLocaleString() : '—'; } // used for kJ display
@@ -2073,6 +2073,10 @@ function renderLB(suffix=''){
     { key:'walkKm',   label:'Walk',     icon:'🚶', fmt: u => {
         const c = userCatCals(u); const f = u.runKcalFactor||1;
         return dynCell(u.walkKm, c.walk, dynPts(c.walk, f));
+      }, unit:'' },
+    { key:'km', label:'Original', icon:'📏', fmt: u => {
+        const total = (u.runKm||0)+(u.cycleKm||0)+(u.virtualKm||0)+(u.swimKm||0)+(u.walkKm||0);
+        return total > 0 ? fmtKm(total) + '<span style="font-size:0.72rem;color:var(--muted);font-weight:600;margin-left:1px">km</span>' : '—';
       }, unit:'' },
     { key:'durationSec', label:'Time',  icon:'⏱',  fmt: u => fmtDuration(userDurationSec(u)), unit:'' },
     { key:'workouts', label:'Sessions', icon:'#️⃣', fmt: u => u.workouts||0, unit:'' },
@@ -2162,7 +2166,7 @@ function renderLB(suffix=''){
       const kmSuffix = c.unit === 'km' && fmtVal !== '—' && !isZero
         ? `<span style="font-size:0.72rem;color:var(--muted);font-weight:600;margin-left:1px">km</span>`
         : '';
-      return `<td ${title} class="${cls}" style="text-align:center;${c.key==='convKm' ? `background:rgba(129,140,248,0.07);font-weight:800;color:${isZero?'var(--muted)':'var(--violet)'}` : c.key==='goalDay'&&!isZero ? 'color:var(--text)' : isSort&&!isZero?'color:'+u.color:''}">${fmtVal}${kmSuffix}</td>`;
+      return `<td ${title} class="${cls}" style="text-align:center;${(c.key==='convKm'||c.key==='dynTotal') ? `background:rgba(129,140,248,0.07);font-weight:800;color:${isZero?'var(--muted)':'var(--violet)'}` : c.key==='goalDay'&&!isZero ? 'color:var(--text)' : isSort&&!isZero?'color:'+u.color:''}">${fmtVal}${kmSuffix}</td>`;
     }).join('');
     const providerBadge = u.provider === 'strava'
       ? `<span style="font-size:.84rem;background:#fff3e0;color:#c2410c;border-radius:6px;padding:1px 5px;font-weight:800;margin-left:4px">STR</span>`
