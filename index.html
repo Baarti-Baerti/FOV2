@@ -2207,7 +2207,9 @@ function renderDetail(suffix=''){
       </div>`;
     return;
   }
-  const rank=[...users].sort((a,b)=>userPointsKm(b)-userPointsKm(a)).findIndex(x=>x.id===u.id)+1;
+  const rank = suffix === 'dynamic'
+    ? [...users].filter(u => u.runKcalFactor != null).sort((a,b)=>dynTotalPts(b)-dynTotalPts(a)).findIndex(x=>x.id===u.id)+1
+    : [...users].sort((a,b)=>userPointsKm(b)-userPointsKm(a)).findIndex(x=>x.id===u.id)+1;
   const dots=u.week.map((a,i)=>{
     const bg=a?u.color:'#e2e8f8';
     return`<div class="day-cell"><div class="day-dot" style="background:${bg}"></div><span>${DAYS[i]}</span></div>`;
@@ -2258,7 +2260,7 @@ function renderDetail(suffix=''){
           <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
             <div class="detail-item"><div class="detail-item-lbl">Sessions</div><div class="detail-item-val" style="color:${u.color}">${u.workouts}</div></div>
             <div class="detail-item"><div class="detail-item-lbl">Original</div><div class="detail-item-val">${((u.runKm||0) + (u.cycleKm||0) + (u.virtualKm||0) + (u.swimKm||0) + (u.walkKm||0)).toFixed(2)}<span style="font-size:1.02rem">km</span></div></div>
-            <div class="detail-item"><div class="detail-item-lbl">Points</div><div class="detail-item-val" style="color:var(--violet)">${userPointsKm(u).toFixed(2)}<span style="font-size:1.02rem">km</span></div></div>
+            <div class="detail-item"><div class="detail-item-lbl">${suffix === 'dynamic' ? 'Dyn. Points' : 'Points'}</div><div class="detail-item-val" style="color:var(--violet)">${suffix === 'dynamic' ? dynTotalPts(u).toFixed(2) : userPointsKm(u).toFixed(2)}<span style="font-size:1.02rem">pts</span></div></div>
             ${u.bmi && u.bmi > 0 ? `<div class="detail-item"><div class="detail-item-lbl">BMI</div><div class="detail-item-val" style="color:${u.bmi<18.5?'#f59e0b':u.bmi<25?'#059669':u.bmi<30?'#f59e0b':'#ef4444'}">${u.bmi.toFixed(1)}</div></div>` : ''}
             ${u.height_m ? `<div class="detail-item"><div class="detail-item-lbl">Height</div><div class="detail-item-val">${Math.round(u.height_m * 100)}<span style="font-size:1.02rem">cm</span></div></div>` : ''}
             ${suffix === 'dynamic' ? `
