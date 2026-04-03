@@ -447,7 +447,8 @@ def monthly_breakdown(acts: list, year: int) -> list:
             cals = a.get("calories") or 0
             kj   = a.get("kilojoules") or 0
             dist = (a.get("distance", 0) or 0) / 1000
-            best = cals if cals > 0 else (kj * 0.239 if kj > 0 else 0)
+            # kJ → metabolic kcal: 0.646 (Strava empirical factor, not physics 0.239)
+            best = cals if cals > 0 else (kj * 0.646 if kj > 0 else 0)
             if cat in cat_cals and best > 0:
                 cat_cals[cat] += best
             if cat == "run" and dist > 0 and best > 0:
