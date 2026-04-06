@@ -19,7 +19,7 @@ from contextlib import asynccontextmanager
 from urllib.parse import urlencode
 
 import httpx
-from fastapi import FastAPI, HTTPException, Query, Body
+from fastapi import FastAPI, HTTPException, Query, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
@@ -969,20 +969,29 @@ async def manual_sync():
 
 # Debug — inspect raw Strava activity data for a specific member
 @app.get("/api/admin/debug-activities/{mid}")
-async def debug_activities(mid: int, limit: int = 5):
+async def debug_activities(mid: int, request: Request, limit: int = 5):
     db = load_db()
     m = next((x for x in db["members"] if x["id"] == mid), None)
     if not m: raise HTTPException(404, "Member not found")
     try:
         m = await refresh(m)
-        hdrs = {"Authorization": f"Bearer {m['strava_access_token']}"}
-        async with httpx.AsyncClient(timeout=30) as c:
-            r = await c.get(f"{STRAVA_API_BASE}/athlete/activities", headers=hdrs,
-                            params={"per_page": limit, "page": 1})
-        acts = r.json()
+        # Read from stored file by default, fetch live from Strava if ?live=1
+        live = request.query_params.get('live', '0') == '1'
+        if live:
+            hdrs = {"Authorization": f"Bearer {m['strava_access_token']}"}
+            async with httpx.AsyncClient(timeout=30) as c:
+                r = await c.get(f"{STRAVA_API_BASE}/athlete/activities", headers=hdrs,
+                                params={"per_page": limit, "page": 1})
+            acts = r.json() if r.status_code == 200 else []
+            source = "strava_live"
+        else:
+            stored = load_acts(m["id"])
+            acts = sorted(stored.get("activities", []), key=lambda a: a.get("start_date",""), reverse=True)[:limit]
+            source = "stored_file"
         return {
             "member": m["name"],
             "strava_id": m.get("strava_id"),
+            "source": source,
             "activity_count": len(acts),
             "activities": [
                 {
