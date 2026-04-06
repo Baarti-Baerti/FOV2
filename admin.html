@@ -340,6 +340,12 @@
         <button class="action-btn post" onclick="toggleStravaPause()">
           <span class="btn-method method-post">POST</span> <span id="pauseLabel">Pause sync</span>
         </button>
+        <button class="action-btn" onclick="forceRefreshDashboard()">
+          <span class="btn-method method-get">↻</span> Refresh dashboard
+        </button>
+        <a href="index.html" target="_blank" class="action-btn" style="text-decoration:none">
+          <span class="btn-method method-get">↗</span> Open dashboard
+        </a>
         <button class="action-btn" onclick="callApi('/api/admin/debug-store','GET','Debug Store')">
           <span class="btn-method method-get">GET</span> Debug store
         </button>
@@ -649,6 +655,19 @@ function memberAction(action) {
 async function toggleStravaPause() {
   await callApi('/api/admin/strava-pause', 'POST', stravaPaused ? 'Resume Strava Sync' : 'Pause Strava Sync');
   await refreshHealth();
+}
+
+function forceRefreshDashboard() {
+  const dashOrigin = window.location.origin + window.location.pathname.replace('admin.html', '');
+  const wins = window.opener;
+  try {
+    // Try to message any open dashboard window
+    localStorage.removeItem('fo_teamdata_v1');
+    localStorage.removeItem('fo_backend_ts_v1');
+    showToast('Cache cleared — refresh the dashboard tab', 'ok');
+  } catch(e) {}
+  // Also call clear-cache on backend
+  callApi('/api/admin/clear-cache', 'GET', 'Clear Backend Cache + Force Dashboard Refresh');
 }
 
 // Auto-refresh health every 2 min

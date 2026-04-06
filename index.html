@@ -1192,20 +1192,15 @@
   </div>
   <div class="header-right">
     <!-- Admin: Strava sync toggle (only visible to Baarti) -->
-    <div id="stravaToggleWrap" style="display:none;display:flex;gap:8px;align-items:center">
-      <button onclick="forceRefreshData()"
+    <div id="stravaToggleWrap" style="display:none">
+      <a href="admin.html" target="_blank"
         style="font-family:'Nunito',sans-serif;font-weight:800;font-size:0.78rem;
-               padding:5px 12px;border-radius:20px;border:2px solid #86efac;
-               background:#dcfce7;color:#16a34a;cursor:pointer;transition:all 0.2s"
-        title="Force reload all data from backend">
-        🔄 Refresh
-      </button>
-      <button id="stravaToggleBtn" onclick="toggleStravaPause()"
-        style="font-family:'Nunito',sans-serif;font-weight:800;font-size:0.78rem;
-               padding:5px 12px;border-radius:20px;border:2px solid;cursor:pointer;
-               transition:all 0.2s">
-        ⏸ Pause Sync
-      </button>
+               padding:5px 12px;border-radius:20px;border:2px solid #c4b5fd;
+               background:#ede9fe;color:#7c3aed;cursor:pointer;transition:all 0.2s;
+               text-decoration:none;display:inline-flex;align-items:center;gap:5px"
+        title="Open Admin Dashboard">
+        🛠️ Admin
+      </a>
     </div>
     <!-- Signed-in user chip (shown after joining) -->
     <div class="current-user-chip" id="currentUserChip" onclick="openMyProfile()" title="Your profile">
@@ -2389,46 +2384,6 @@ async function initStravaToggle() {
   const _adminName = (currentMember?.name || '').toLowerCase().trim();
   if (!_adminName.includes('baarti')) return;
   document.getElementById('stravaToggleWrap').style.display = 'block';
-  // Fetch current state
-  try {
-    const r = await fetch(`${API_BASE}/api/admin/strava-status`);
-    const d = await r.json();
-    updateStravaToggleBtn(d.paused);
-  } catch(e) { /* ignore */ }
-}
-
-function updateStravaToggleBtn(paused) {
-  const btn = document.getElementById('stravaToggleBtn');
-  if (!btn) return;
-  if (paused) {
-    btn.textContent  = '▶ Resume Sync';
-    btn.style.background   = '#fee2e2';
-    btn.style.color        = '#dc2626';
-    btn.style.borderColor  = '#fca5a5';
-  } else {
-    btn.textContent  = '⏸ Pause Sync';
-    btn.style.background   = '#dcfce7';
-    btn.style.color        = '#16a34a';
-    btn.style.borderColor  = '#86efac';
-  }
-}
-
-async function toggleStravaPause() {
-  const btn = document.getElementById('stravaToggleBtn');
-  btn.disabled = true;
-  btn.textContent = '…';
-  try {
-    const r = await fetch(`${API_BASE}/api/admin/strava-pause`, { method: 'POST' });
-    const d = await r.json();
-    updateStravaToggleBtn(d.paused);
-    showBanner(d.paused
-      ? '⏸ Strava sync paused — no API calls will be made'
-      : '▶ Strava sync resumed — next hourly sync will fetch new data', 'live');
-  } catch(e) {
-    showBanner('⚠️ Could not toggle sync state', 'warning');
-  } finally {
-    btn.disabled = false;
-  }
 }
 
 function openRenameModal(id, currentName) {
