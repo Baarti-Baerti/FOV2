@@ -275,6 +275,14 @@
 <div class="header">
   <span class="header-logo">🦦 Fette Otter</span>
   <span class="header-badge">ADMIN</span>
+  <a href="index.html"
+    style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);text-decoration:none;
+           display:flex;align-items:center;gap:5px;padding:4px 10px;border:1px solid var(--border2);
+           border-radius:6px;transition:all 0.15s"
+    onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--border)'"
+    onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border2)'">
+    ← dashboard
+  </a>
   <div class="header-api">
     <span style="color:var(--muted)">API:</span>
     <input class="api-input" id="apiBase" value="https://fov2.up.railway.app" placeholder="https://your-backend.railway.app">
@@ -343,7 +351,7 @@
         <button class="action-btn" onclick="forceRefreshDashboard()">
           <span class="btn-method method-get">↻</span> Refresh dashboard
         </button>
-        <a href="index.html" target="_blank" class="action-btn" style="text-decoration:none">
+        <a href="index.html" class="action-btn" style="text-decoration:none">
           <span class="btn-method method-get">↗</span> Open dashboard
         </a>
         <button class="action-btn" onclick="callApi('/api/admin/debug-store','GET','Debug Store')">
