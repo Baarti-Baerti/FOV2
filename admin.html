@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fette Otter — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #161921;
+    --surface2: #1e222d;
+    --border: #2a2f3d;
+    --border2: #363c4e;
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --violet: #818cf8;
+    --violet-dim: #4f46e5;
+    --mint: #34d399;
+    --amber: #fbbf24;
+    --red: #f87171;
+    --sky: #38bdf8;
+    --pink: #f472b6;
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-display: 'Syne', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 24px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .header-logo { font-family: var(--font-display); font-size: 1.1rem; font-weight: 800; color: var(--violet); letter-spacing: -0.02em; }
+  .header-badge { font-size: 0.65rem; background: var(--violet-dim); color: #c7d2fe; padding: 2px 8px; border-radius: 99px; font-family: var(--font-mono); font-weight: 600; letter-spacing: 0.05em; }
+  .header-api { font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted); margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .api-input { background: var(--bg); border: 1px solid var(--border2); color: var(--text); font-family: var(--font-mono); font-size: 0.72rem; padding: 5px 10px; border-radius: 6px; width: 260px; outline: none; }
+  .api-input:focus { border-color: var(--violet); }
+  .save-btn { background: var(--violet-dim); color: #c7d2fe; border: none; padding: 5px 12px; border-radius: 6px; font-family: var(--font-mono); font-size: 0.72rem; font-weight: 600; cursor: pointer; }
+  .save-btn:hover { background: var(--violet); color: #fff; }
+
+  /* ── LAYOUT ── */
+  .layout { display: flex; flex: 1; overflow: hidden; }
+
+  /* ── LEFT PANEL ── */
+  .left-panel {
+    width: 340px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+  }
+
+  /* ── RIGHT PANEL ── */
+  .right-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── SECTION ── */
+  .section { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  .section-title { font-family: var(--font-mono); font-size: 0.65rem; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 12px; }
+
+  /* ── STATUS GRID ── */
+  .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .stat-label { font-size: 0.68rem; color: var(--muted); margin-bottom: 4px; }
+  .stat-value { font-family: var(--font-mono); font-size: 1.1rem; font-weight: 600; }
+  .stat-value.ok { color: var(--mint); }
+  .stat-value.warn { color: var(--amber); }
+  .stat-value.err { color: var(--red); }
+  .stat-value.info { color: var(--sky); }
+  .stat-sub { font-size: 0.65rem; color: var(--muted); margin-top: 2px; }
+
+  /* ── HEALTH DOTS ── */
+  .member-list { display: flex; flex-direction: column; gap: 6px; }
+  .member-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .member-row:hover { border-color: var(--border2); }
+  .member-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot-ok { background: var(--mint); box-shadow: 0 0 6px rgba(52,211,153,0.5); }
+  .dot-warn { background: var(--amber); box-shadow: 0 0 6px rgba(251,191,36,0.5); }
+  .dot-err { background: var(--red); box-shadow: 0 0 6px rgba(248,113,113,0.5); }
+  .member-name { font-weight: 600; font-size: 0.85rem; flex: 1; }
+  .member-meta { font-family: var(--font-mono); font-size: 0.65rem; color: var(--muted); }
+  .member-count { font-family: var(--font-mono); font-size: 0.72rem; color: var(--sky); }
+
+  /* ── ACTION BUTTONS ── */
+  .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .action-btn {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 8px 11px;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s;
+    width: 100%;
+  }
+  .action-btn:hover { background: var(--border); border-color: var(--violet); color: var(--violet); }
+  .action-btn.danger:hover { border-color: var(--red); color: var(--red); }
+  .action-btn.post { border-style: dashed; }
+  .action-btn .btn-icon { font-size: 14px; flex-shrink: 0; }
+  .action-btn .btn-method { font-family: var(--font-mono); font-size: 0.6rem; padding: 1px 5px; border-radius: 4px; font-weight: 600; }
+  .method-get { background: rgba(52,211,153,0.15); color: var(--mint); }
+  .method-post { background: rgba(251,191,36,0.15); color: var(--amber); }
+
+  /* ── MEMBER ACTION BUTTONS ── */
+  .member-actions { display: flex; flex-direction: column; gap: 6px; }
+  .member-select {
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 0.8rem;
+    padding: 6px 10px;
+    border-radius: 7px;
+    outline: none;
+    width: 100%;
+  }
+  .member-select:focus { border-color: var(--violet); }
+  .member-btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px; }
+
+  /* ── RIGHT PANEL INNER ── */
+  .response-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .response-url { font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .response-url.active { color: var(--sky); }
+  .response-status { font-family: var(--font-mono); font-size: 0.72rem; padding: 3px 8px; border-radius: 5px; font-weight: 600; flex-shrink: 0; }
+  .status-200 { background: rgba(52,211,153,0.15); color: var(--mint); }
+  .status-err { background: rgba(248,113,113,0.15); color: var(--red); }
+  .copy-btn { background: var(--surface2); border: 1px solid var(--border2); color: var(--muted); font-family: var(--font-mono); font-size: 0.65rem; padding: 3px 8px; border-radius: 5px; cursor: pointer; flex-shrink: 0; }
+  .copy-btn:hover { color: var(--text); border-color: var(--border); }
+  .clear-btn { background: none; border: none; color: var(--muted); font-size: 0.72rem; cursor: pointer; flex-shrink: 0; padding: 2px 6px; }
+  .clear-btn:hover { color: var(--red); }
+
+  .response-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    line-height: 1.7;
+    color: var(--text);
+  }
+  .placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 8px;
+    color: var(--muted);
+  }
+  .placeholder-icon { font-size: 2rem; }
+  .placeholder-text { font-size: 0.8rem; }
+
+  /* JSON syntax highlight */
+  .json-key { color: #7dd3fc; }
+  .json-str { color: #86efac; }
+  .json-num { color: #fbbf24; }
+  .json-bool { color: #f472b6; }
+  .json-null { color: #94a3b8; }
+
+  /* ── LOADING ── */
+  .loading-bar {
+    height: 2px;
+    background: linear-gradient(90deg, var(--violet), var(--sky), var(--violet));
+    background-size: 200% 100%;
+    animation: shimmer 1s linear infinite;
+    border-radius: 2px;
+  }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  .spinning { animation: spin 1s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-size: 0.78rem;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-family: var(--font-body);
+    z-index: 999;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.2s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.ok { border-left: 3px solid var(--mint); }
+  .toast.err { border-left: 3px solid var(--red); }
+
+  /* ── TABS ── */
+  .tab-bar { display: flex; gap: 2px; padding: 12px 20px 0; }
+  .tab {
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+    color: var(--muted);
+    padding: 6px 12px;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    border: 1px solid transparent;
+    border-bottom: none;
+    transition: all 0.15s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--violet); background: var(--surface2); border-color: var(--border); }
+
+  /* scrollbars */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  .pulse { animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <span class="header-logo">🦦 Fette Otter</span>
+  <span class="header-badge">ADMIN</span>
+  <div class="header-api">
+    <span style="color:var(--muted)">API:</span>
+    <input class="api-input" id="apiBase" value="https://fov2.up.railway.app" placeholder="https://your-backend.railway.app">
+    <button class="save-btn" onclick="saveApiBase()">Save</button>
+  </div>
+</div>
+
+<div class="layout">
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+
+    <!-- SYSTEM HEALTH -->
+    <div class="section">
+      <div class="section-title">System Health <span id="healthSpinner" style="display:none" class="spinning">↻</span></div>
+      <div class="status-grid">
+        <div class="stat-card">
+          <div class="stat-label">Backend</div>
+          <div class="stat-value" id="hStatus">—</div>
+          <div class="stat-sub" id="hMembers">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Strava Sync</div>
+          <div class="stat-value" id="hStrava">—</div>
+          <div class="stat-sub" id="hSyncAge">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Last Sync</div>
+          <div class="stat-value info" id="hLastSync">—</div>
+          <div class="stat-sub" id="hLastSyncAge">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Stored Acts</div>
+          <div class="stat-value info" id="hTotalActs">—</div>
+          <div class="stat-sub">across all members</div>
+        </div>
+      </div>
+      <button class="action-btn" style="width:100%;margin-top:8px;justify-content:center" onclick="refreshHealth()">
+        <span class="btn-icon">↻</span> Refresh health
+      </button>
+    </div>
+
+    <!-- MEMBERS STATUS -->
+    <div class="section">
+      <div class="section-title">Members</div>
+      <div class="member-list" id="memberList">
+        <div style="color:var(--muted);font-size:0.75rem;padding:8px 0">Loading...</div>
+      </div>
+    </div>
+
+    <!-- GLOBAL ACTIONS -->
+    <div class="section">
+      <div class="section-title">Global Actions</div>
+      <div class="btn-grid">
+        <button class="action-btn" onclick="callApi('/api/admin/sync','GET','Sync All Members')">
+          <span class="btn-method method-get">GET</span> Sync all
+        </button>
+        <button class="action-btn" onclick="callApi('/api/admin/clear-cache','GET','Clear Cache')">
+          <span class="btn-method method-get">GET</span> Clear cache
+        </button>
+        <button class="action-btn danger" onclick="callApi('/api/admin/reset-sync','GET','Reset All Sync')">
+          <span class="btn-method method-get">GET</span> Reset all sync
+        </button>
+        <button class="action-btn post" onclick="toggleStravaPause()">
+          <span class="btn-method method-post">POST</span> <span id="pauseLabel">Pause sync</span>
+        </button>
+        <button class="action-btn" onclick="callApi('/api/admin/debug-store','GET','Debug Store')">
+          <span class="btn-method method-get">GET</span> Debug store
+        </button>
+        <button class="action-btn" onclick="callApi('/api/admin/debug-db','GET','Debug DB')">
+          <span class="btn-method method-get">GET</span> Debug DB
+        </button>
+        <button class="action-btn" onclick="callApi('/api/status','GET','System Status')">
+          <span class="btn-method method-get">GET</span> Status
+        </button>
+        <button class="action-btn" onclick="callApi('/api/health','GET','Health Check')">
+          <span class="btn-method method-get">GET</span> Health
+        </button>
+      </div>
+    </div>
+
+    <!-- PER-MEMBER ACTIONS -->
+    <div class="section">
+      <div class="section-title">Per-Member Actions</div>
+      <div class="member-actions">
+        <select class="member-select" id="memberSelect">
+          <option value="">Select member…</option>
+        </select>
+        <div class="member-btn-grid">
+          <button class="action-btn" onclick="memberAction('activities')">
+            <span class="btn-method method-get">GET</span> Activities
+          </button>
+          <button class="action-btn" onclick="memberAction('activities-live')">
+            <span class="btn-method method-get">GET</span> Live acts
+          </button>
+          <button class="action-btn" onclick="memberAction('debug-sync')">
+            <span class="btn-method method-get">GET</span> Debug sync
+          </button>
+          <button class="action-btn danger" onclick="memberAction('reset-sync')">
+            <span class="btn-method method-get">GET</span> Reset sync
+          </button>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:4px">
+          <input id="actLimit" type="number" value="10" min="1" max="100"
+            style="background:var(--bg);border:1px solid var(--border2);color:var(--text);font-family:var(--font-mono);font-size:0.72rem;padding:5px 8px;border-radius:6px;width:70px;outline:none;"
+            placeholder="limit">
+          <span style="font-size:0.68rem;color:var(--muted);line-height:1;align-self:center">acts limit</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <div class="tab-bar">
+      <div class="tab active" id="tab-response" onclick="switchTab('response')">response</div>
+      <div class="tab" id="tab-history" onclick="switchTab('history')">history</div>
+    </div>
+
+    <div id="panel-response" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+      <div class="response-header" id="responseHeader">
+        <div class="response-url" id="responseUrl">No request made yet</div>
+        <div id="responseStatus"></div>
+        <button class="copy-btn" id="copyBtn" onclick="copyResponse()" style="display:none">copy</button>
+        <button class="clear-btn" onclick="clearResponse()">✕</button>
+      </div>
+      <div id="loadingBar" style="display:none;padding:0 20px;padding-top:4px"><div class="loading-bar"></div></div>
+      <div class="response-body" id="responseBody">
+        <div class="placeholder">
+          <div class="placeholder-icon">⬡</div>
+          <div class="placeholder-text">Select an action to see the response</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="panel-history" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+      <div style="flex:1;overflow-y:auto;padding:16px 20px">
+        <div class="section-title" style="margin-bottom:12px">Request History</div>
+        <div id="historyList" style="display:flex;flex-direction:column;gap:6px">
+          <div style="color:var(--muted);font-size:0.75rem">No requests yet</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API_KEY = 'fo_admin_api_base';
+let apiBase = localStorage.getItem(API_KEY) || 'https://fov2.up.railway.app';
+let members = [];
+let lastResponse = '';
+let requestHistory = [];
+let stravaPaused = false;
+
+document.getElementById('apiBase').value = apiBase;
+
+function saveApiBase() {
+  apiBase = document.getElementById('apiBase').value.trim().replace(/\/$/, '');
+  localStorage.setItem(API_KEY, apiBase);
+  showToast('API base saved', 'ok');
+  refreshHealth();
+}
+
+function showToast(msg, type='ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast show ${type}`;
+  setTimeout(() => t.className = 'toast', 2500);
+}
+
+function switchTab(tab) {
+  document.getElementById('panel-response').style.display = tab === 'response' ? 'flex' : 'none';
+  document.getElementById('panel-history').style.display  = tab === 'history'  ? 'flex' : 'none';
+  document.getElementById('tab-response').className = 'tab' + (tab === 'response' ? ' active' : '');
+  document.getElementById('tab-history').className  = 'tab' + (tab === 'history'  ? ' active' : '');
+}
+
+function syntaxHighlight(json) {
+  return json
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+\.?\d*(?:[eE][+\-]?\d+)?)/g, m => {
+      if (/^"/.test(m)) {
+        if (/:$/.test(m)) return `<span class="json-key">${m}</span>`;
+        return `<span class="json-str">${m}</span>`;
+      }
+      if (/true|false/.test(m)) return `<span class="json-bool">${m}</span>`;
+      if (/null/.test(m)) return `<span class="json-null">${m}</span>`;
+      return `<span class="json-num">${m}</span>`;
+    });
+}
+
+async function callApi(path, method='GET', label='', body=null) {
+  const url = apiBase + path;
+  const urlEl = document.getElementById('responseUrl');
+  const statusEl = document.getElementById('responseStatus');
+  const bodyEl = document.getElementById('responseBody');
+  const loadingBar = document.getElementById('loadingBar');
+  const copyBtn = document.getElementById('copyBtn');
+
+  urlEl.textContent = method + ' ' + path;
+  urlEl.className = 'response-url active';
+  statusEl.innerHTML = '';
+  bodyEl.innerHTML = '<div class="placeholder"><div class="placeholder-text pulse">Loading…</div></div>';
+  loadingBar.style.display = 'block';
+  copyBtn.style.display = 'none';
+  switchTab('response');
+
+  const start = Date.now();
+  try {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(url, opts);
+    const elapsed = Date.now() - start;
+    const text = await res.text();
+    let pretty;
+    try { pretty = JSON.stringify(JSON.parse(text), null, 2); }
+    catch { pretty = text; }
+
+    lastResponse = pretty;
+    bodyEl.innerHTML = `<pre style="white-space:pre-wrap;word-break:break-word">${syntaxHighlight(pretty)}</pre>`;
+    statusEl.innerHTML = `<span class="response-status ${res.ok ? 'status-200' : 'status-err'}">${res.status} · ${elapsed}ms</span>`;
+    copyBtn.style.display = 'block';
+
+    requestHistory.unshift({ label: label || path, path, method, status: res.status, elapsed, ts: new Date().toLocaleTimeString(), response: pretty });
+    if (requestHistory.length > 50) requestHistory.pop();
+    renderHistory();
+
+    if (!res.ok) showToast(`${res.status} — ${path}`, 'err');
+  } catch(e) {
+    bodyEl.innerHTML = `<div style="color:var(--red);font-family:var(--font-mono);font-size:0.8rem">${e.message}</div>`;
+    statusEl.innerHTML = `<span class="response-status status-err">ERR</span>`;
+    showToast('Request failed: ' + e.message, 'err');
+  } finally {
+    loadingBar.style.display = 'none';
+  }
+}
+
+function renderHistory() {
+  const el = document.getElementById('historyList');
+  if (!requestHistory.length) { el.innerHTML = '<div style="color:var(--muted);font-size:0.75rem">No requests yet</div>'; return; }
+  el.innerHTML = requestHistory.map((r, i) => `
+    <div onclick="showHistoryItem(${i})" style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;cursor:pointer;transition:border-color 0.15s" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='var(--border)'">
+      <span style="font-family:var(--font-mono);font-size:0.65rem;padding:2px 6px;border-radius:4px;background:${r.status < 300 ? 'rgba(52,211,153,0.15)' : 'rgba(248,113,113,0.15)'};color:${r.status < 300 ? 'var(--mint)' : 'var(--red)'};flex-shrink:0">${r.status}</span>
+      <span style="font-size:0.78rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.label}</span>
+      <span style="font-family:var(--font-mono);font-size:0.65rem;color:var(--muted);flex-shrink:0">${r.ts}</span>
+      <span style="font-family:var(--font-mono);font-size:0.65rem;color:var(--sky);flex-shrink:0">${r.elapsed}ms</span>
+    </div>
+  `).join('');
+}
+
+function showHistoryItem(i) {
+  const r = requestHistory[i];
+  document.getElementById('responseUrl').textContent = r.method + ' ' + r.path;
+  document.getElementById('responseUrl').className = 'response-url active';
+  document.getElementById('responseStatus').innerHTML = `<span class="response-status ${r.status < 300 ? 'status-200' : 'status-err'}">${r.status} · ${r.elapsed}ms</span>`;
+  document.getElementById('responseBody').innerHTML = `<pre style="white-space:pre-wrap;word-break:break-word">${syntaxHighlight(r.response)}</pre>`;
+  document.getElementById('copyBtn').style.display = 'block';
+  lastResponse = r.response;
+  switchTab('response');
+}
+
+function copyResponse() {
+  navigator.clipboard.writeText(lastResponse).then(() => showToast('Copied to clipboard', 'ok'));
+}
+
+function clearResponse() {
+  document.getElementById('responseUrl').textContent = 'No request made yet';
+  document.getElementById('responseUrl').className = 'response-url';
+  document.getElementById('responseStatus').innerHTML = '';
+  document.getElementById('responseBody').innerHTML = '<div class="placeholder"><div class="placeholder-icon">⬡</div><div class="placeholder-text">Select an action to see the response</div></div>';
+  document.getElementById('copyBtn').style.display = 'none';
+  lastResponse = '';
+}
+
+async function refreshHealth() {
+  document.getElementById('healthSpinner').style.display = 'inline';
+  try {
+    const [healthRes, statusRes, storeRes, stravaRes] = await Promise.all([
+      fetch(apiBase + '/api/health'),
+      fetch(apiBase + '/api/status'),
+      fetch(apiBase + '/api/admin/debug-store'),
+      fetch(apiBase + '/api/admin/strava-status'),
+    ]);
+
+    if (healthRes.ok) {
+      const h = await healthRes.json();
+      document.getElementById('hStatus').textContent = h.status === 'ok' ? 'ONLINE' : 'ERROR';
+      document.getElementById('hStatus').className = 'stat-value ' + (h.status === 'ok' ? 'ok' : 'err');
+      document.getElementById('hMembers').textContent = h.members + ' members registered';
+    }
+
+    if (stravaRes.ok) {
+      const s = await stravaRes.json();
+      stravaPaused = s.paused;
+      document.getElementById('hStrava').textContent = s.paused ? 'PAUSED' : 'ACTIVE';
+      document.getElementById('hStrava').className = 'stat-value ' + (s.paused ? 'warn' : 'ok');
+      document.getElementById('pauseLabel').textContent = s.paused ? 'Resume sync' : 'Pause sync';
+    }
+
+    if (statusRes.ok) {
+      const st = await statusRes.json();
+      const maxTs = Math.max(...Object.values(st.last_fetch).map(Number));
+      const ageMin = Math.round((Date.now()/1000 - maxTs) / 60);
+      document.getElementById('hLastSync').textContent = new Date(maxTs * 1000).toLocaleTimeString();
+      document.getElementById('hLastSyncAge').textContent = ageMin + 'm ago';
+      document.getElementById('hSyncAge').textContent = ageMin > 90 ? 'STALE' : 'FRESH';
+    }
+
+    if (storeRes.ok) {
+      const store = await storeRes.json();
+      const total = store.reduce((s, m) => s + (m.stored_count || 0), 0);
+      document.getElementById('hTotalActs').textContent = total.toLocaleString();
+      renderMemberList(store);
+    }
+  } catch(e) {
+    document.getElementById('hStatus').textContent = 'OFFLINE';
+    document.getElementById('hStatus').className = 'stat-value err';
+    showToast('Health check failed — check API URL', 'err');
+  }
+  document.getElementById('healthSpinner').style.display = 'none';
+}
+
+function renderMemberList(store) {
+  const statusData = {};
+  store.forEach(m => { statusData[m.id] = m; });
+
+  const now = Date.now() / 1000;
+  const el = document.getElementById('memberList');
+  el.innerHTML = store.map(m => {
+    const ageH = (now - (m.last_fetch || 0)) / 3600;
+    const dotClass = !m.file_exists ? 'dot-err' : ageH > 3 ? 'dot-warn' : 'dot-ok';
+    const ageStr = m.last_fetch ? (ageH < 1 ? Math.round(ageH*60) + 'm' : Math.round(ageH) + 'h') + ' ago' : 'never';
+    return `<div class="member-row" onclick="quickViewMember(${m.id}, '${m.member}')">
+      <div class="member-dot ${dotClass}"></div>
+      <div class="member-name">${m.member}</div>
+      <div class="member-count">${(m.stored_count || 0)} acts</div>
+      <div class="member-meta">${ageStr}</div>
+    </div>`;
+  }).join('');
+
+  const sel = document.getElementById('memberSelect');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Select member…</option>' +
+    store.map(m => `<option value="${m.id}">${m.member} (#${m.id})</option>`).join('');
+  if (cur) sel.value = cur;
+  members = store;
+}
+
+function quickViewMember(id, name) {
+  document.getElementById('memberSelect').value = id;
+  callApi(`/api/admin/debug-activities/${id}?limit=10`, 'GET', `Activities — ${name}`);
+}
+
+function memberAction(action) {
+  const sel = document.getElementById('memberSelect');
+  const id = sel.value;
+  if (!id) { showToast('Select a member first', 'err'); return; }
+  const name = sel.options[sel.selectedIndex].text;
+  const limit = document.getElementById('actLimit').value || 10;
+  const paths = {
+    'activities':      [`/api/admin/debug-activities/${id}?limit=${limit}`, `Activities (stored) — ${name}`],
+    'activities-live': [`/api/admin/debug-activities/${id}?limit=${limit}&live=1`, `Activities (live Strava) — ${name}`],
+    'debug-sync':      [`/api/admin/debug-sync/${id}`, `Debug Sync — ${name}`],
+    'reset-sync':      [`/api/admin/reset-sync/${id}`, `Reset Sync — ${name}`],
+  };
+  const [path, label] = paths[action];
+  callApi(path, 'GET', label);
+}
+
+async function toggleStravaPause() {
+  await callApi('/api/admin/strava-pause', 'POST', stravaPaused ? 'Resume Strava Sync' : 'Pause Strava Sync');
+  await refreshHealth();
+}
+
+// Auto-refresh health every 2 min
+refreshHealth();
+setInterval(refreshHealth, 120000);
+</script>
+</body>
+</html>
