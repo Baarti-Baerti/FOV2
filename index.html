@@ -2262,8 +2262,18 @@ function renderDetail(suffix=''){
     return`<div class="day-cell"><div class="day-dot" style="background:${bg}"></div><span>${DAYS[i]}</span></div>`;
   }).join('');
 
-  // Distance breakdown by activity type
-  const kmByType = u.kmByType || {};
+  // Filter recentActs to match the currently selected period
+  const today2 = new Date(); const cy2 = today2.getFullYear(), cm2 = today2.getMonth()+1;
+  let actMf;
+  if (currentPeriod==='thismonth')           actMf=a=>{ const d=new Date(a.date); return d.getFullYear()===cy2&&d.getMonth()+1===cm2; };
+  else if (currentPeriod==='lastmonth')      { const lm=cm2===1?12:cm2-1,ly=cm2===1?cy2-1:cy2; actMf=a=>{ const d=new Date(a.date); return d.getFullYear()===ly&&d.getMonth()+1===lm; }; }
+  else if (currentPeriod.startsWith('month-')){ const mo=parseInt(currentPeriod.split('-')[1]); actMf=a=>{ const d=new Date(a.date); return d.getFullYear()===cy2&&d.getMonth()+1===mo; }; }
+  else if (currentPeriod==='q1') actMf=a=>{ const d=new Date(a.date); return d.getFullYear()===cy2&&d.getMonth()+1<=3; };
+  else if (currentPeriod==='q2') actMf=a=>{ const d=new Date(a.date); return d.getFullYear()===cy2&&d.getMonth()+1>=4&&d.getMonth()+1<=6; };
+  else if (currentPeriod==='q3') actMf=a=>{ const d=new Date(a.date); return d.getFullYear()===cy2&&d.getMonth()+1>=7&&d.getMonth()+1<=9; };
+  else if (currentPeriod==='q4') actMf=a=>{ const d=new Date(a.date); return d.getFullYear()===cy2&&d.getMonth()+1>=10; };
+  else actMf=a=>{ const d=new Date(a.date); return d.getFullYear()===cy2; }; // ytd
+  const periodActs = (u.recentActs||[]).filter(actMf);
   const typeEntries = Object.entries(kmByType).sort((a,b)=>b[1]-a[1]);
   const totalKm = u.km || 0;
 
@@ -2334,10 +2344,13 @@ function renderDetail(suffix=''){
         <div class="week-grid">${dots}</div>
       </div>
     </div>
-    ${(u.recentActs||[]).length > 0 ? `
+    ${periodActs.length > 0 ? `
     <!-- Recent activities list -->
     <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">
-      <div style="font-size:.76rem;color:var(--muted);margin-bottom:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase">Recent Activities</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:.76rem;color:var(--muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase">Recent Activities <span style="color:var(--text2);font-weight:800">(${periodActs.length})</span></div>
+        ${periodActs.length > 15 ? `<button onclick="toggleActList(this)" data-expanded="false" style="font-size:.72rem;font-weight:700;background:none;border:1px solid var(--border);border-radius:20px;padding:3px 10px;cursor:pointer;color:var(--muted)">Show all ▾</button>` : ''}
+      </div>
       <div style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;font-size:.82rem">
           <thead>
@@ -2351,7 +2364,7 @@ function renderDetail(suffix=''){
             </tr>
           </thead>
           <tbody>
-            ${(u.recentActs||[]).map(a => {
+            ${periodActs.map((a, idx) => {
               const dt = new Date(a.date);
               const dateStr = dt.toLocaleDateString('en-GB', {day:'2-digit',month:'short'});
               const timeStr = dt.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
@@ -2360,7 +2373,6 @@ function renderDetail(suffix=''){
               const distStr = a.dist_km > 0 ? a.dist_km.toFixed(2)+'km' : '—';
               const movSecs = a.moving_time || 0;
               const durStr = movSecs > 0 ? (movSecs>=3600 ? Math.floor(movSecs/3600)+'h '+Math.floor((movSecs%3600)/60)+'m' : Math.floor(movSecs/60)+'m') : '—';
-              // Pace for runs (min/km), speed for others (km/h)
               let paceStr = '—';
               if (a.dist_km > 0 && movSecs > 0) {
                 const isRun = cat==='Run'||cat==='TrailRun'||cat==='Walk'||cat==='Hike';
@@ -2372,7 +2384,8 @@ function renderDetail(suffix=''){
                 }
               }
               const kjStr = a.kj > 0 ? Math.round(a.kj) : '—';
-              return `<tr style="border-bottom:1px solid var(--border);transition:background .1s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+              const hidden = idx >= 15 ? 'class="act-extra" style="display:none;border-bottom:1px solid var(--border)"' : 'style="border-bottom:1px solid var(--border)"';
+              return `<tr ${hidden} onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
                 <td style="padding:6px 10px 6px 0;white-space:nowrap;color:var(--text2)">
                   <span style="font-weight:700">${dateStr}</span>
                   <span style="color:var(--muted);font-size:.72rem;margin-left:4px">${timeStr}</span>
@@ -2391,6 +2404,15 @@ function renderDetail(suffix=''){
         </table>
       </div>
     </div>` : ''}`;
+}
+
+function toggleActList(btn) {
+  const expanded = btn.dataset.expanded === 'true';
+  const rows = btn.closest('.user-detail, [id^=userDetail]')?.querySelectorAll('.act-extra') ||
+               btn.parentElement.closest('[id^=userDetail]')?.querySelectorAll('.act-extra') || [];
+  rows.forEach(r => r.style.display = expanded ? 'none' : '');
+  btn.dataset.expanded = !expanded;
+  btn.textContent = expanded ? 'Show all ▾' : 'Show less ▴';
 }
 
 function renderTypes(){
@@ -2942,7 +2964,14 @@ function reAggregateFromMonthly(team, p) {
       if (typeof agg[k] === 'number') agg[k] = Math.round(agg[k] * 1000) / 1000;
     });
 
-    return { ...u, ...agg };
+    // Filter recentActs to the selected period using the same month filter
+    const matchingMonthKeys = new Set(months.map(m => `${m.year}-${m.month}`));
+    const filteredActs = (u.recentActs || []).filter(a => {
+      const dt = new Date(a.date);
+      return matchingMonthKeys.has(`${dt.getFullYear()}-${dt.getMonth()+1}`);
+    });
+
+    return { ...u, ...agg, recentActs: filteredActs };
   });
 }
 

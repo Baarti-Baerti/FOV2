@@ -853,18 +853,18 @@ async def get_team(range_: str = Query("thismonth", alias="range")):
         s["monthly"] = monthly_breakdown(year_acts, yr)
         w, wc = week_bits(year_acts)
         s["_w"] = w; s["_wc"] = wc
-        # Include recent activities for the callout activity list (latest 30, year sorted)
+        # Include ALL year activities so frontend can filter for any selected period
         s["recentActs"] = [
             {
-                "name":       a.get("name", ""),
-                "sport_type": a.get("sport_type") or a.get("type", ""),
-                "date":       a.get("start_date_local") or a.get("start_date", ""),
-                "dist_km":    round((a.get("distance", 0) or 0) / 1000, 2),
+                "name":        a.get("name", ""),
+                "sport_type":  a.get("sport_type") or a.get("type", ""),
+                "date":        a.get("start_date_local") or a.get("start_date", ""),
+                "dist_km":     round((a.get("distance", 0) or 0) / 1000, 2),
                 "moving_time": a.get("moving_time") or 0,
-                "kj":         a.get("kilojoules") or 0,
-                "hr":         a.get("average_heartrate") or 0,
+                "kj":          a.get("kilojoules") or 0,
+                "hr":          a.get("average_heartrate") or 0,
             }
-            for a in sorted(year_acts, key=_act_ts, reverse=True)[:30]
+            for a in sorted(year_acts, key=_act_ts, reverse=True)
         ]
         entry = fmt_member(m, idx, s)
         cache_set(m["id"], range_, entry)
