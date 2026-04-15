@@ -1519,6 +1519,7 @@ function normaliseUser(raw, idx) {
     walkKm:       raw.walkKm       || 0,
     eligibleWalkKm: raw.eligibleWalkKm || 0,
     runKcalFactor:  raw.runKcalFactor  ?? null,
+    recentActs:     raw.recentActs     || [],
     otherKm:      raw.otherKm      || 0,
     steps:        raw.steps        || 0,
     bmi:          raw.bmi          || null,
@@ -2332,7 +2333,64 @@ function renderDetail(suffix=''){
         <div style="font-size:.76rem;color:var(--muted);margin-bottom:6px;font-weight:700;letter-spacing:.06em;text-transform:uppercase">This period's activity</div>
         <div class="week-grid">${dots}</div>
       </div>
-    </div>`;
+    </div>
+    ${(u.recentActs||[]).length > 0 ? `
+    <!-- Recent activities list -->
+    <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">
+      <div style="font-size:.76rem;color:var(--muted);margin-bottom:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase">Recent Activities</div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:.82rem">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border)">
+              <th style="text-align:left;padding:4px 10px 6px 0;color:var(--muted);font-weight:700;font-size:.72rem;letter-spacing:.04em;white-space:nowrap">Date</th>
+              <th style="text-align:left;padding:4px 10px 6px 0;color:var(--muted);font-weight:700;font-size:.72rem;letter-spacing:.04em">Activity</th>
+              <th style="text-align:right;padding:4px 10px 6px 0;color:var(--muted);font-weight:700;font-size:.72rem;letter-spacing:.04em">Dist</th>
+              <th style="text-align:right;padding:4px 10px 6px 0;color:var(--muted);font-weight:700;font-size:.72rem;letter-spacing:.04em">Time</th>
+              <th style="text-align:right;padding:4px 10px 6px 0;color:var(--muted);font-weight:700;font-size:.72rem;letter-spacing:.04em">Pace/Speed</th>
+              <th style="text-align:right;padding:4px 0 6px 0;color:var(--muted);font-weight:700;font-size:.72rem;letter-spacing:.04em">kJ</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(u.recentActs||[]).map(a => {
+              const dt = new Date(a.date);
+              const dateStr = dt.toLocaleDateString('en-GB', {day:'2-digit',month:'short'});
+              const timeStr = dt.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
+              const cat = a.sport_type || '';
+              const icon = cat==='Run'||cat==='TrailRun' ? '🏃' : cat==='Ride'||cat==='GravelRide'||cat==='MountainBikeRide' ? '🚴' : cat==='VirtualRide' ? '💻' : cat==='Swim' ? '🏊' : cat==='Walk'||cat==='Hike' ? '🚶' : '🏋️';
+              const distStr = a.dist_km > 0 ? a.dist_km.toFixed(2)+'km' : '—';
+              const movSecs = a.moving_time || 0;
+              const durStr = movSecs > 0 ? (movSecs>=3600 ? Math.floor(movSecs/3600)+'h '+Math.floor((movSecs%3600)/60)+'m' : Math.floor(movSecs/60)+'m') : '—';
+              // Pace for runs (min/km), speed for others (km/h)
+              let paceStr = '—';
+              if (a.dist_km > 0 && movSecs > 0) {
+                const isRun = cat==='Run'||cat==='TrailRun'||cat==='Walk'||cat==='Hike';
+                if (isRun) {
+                  const secPerKm = movSecs / a.dist_km;
+                  paceStr = Math.floor(secPerKm/60)+':'+(String(Math.round(secPerKm%60)).padStart(2,'0'))+'/km';
+                } else {
+                  paceStr = ((a.dist_km/(movSecs/3600)).toFixed(1))+'km/h';
+                }
+              }
+              const kjStr = a.kj > 0 ? Math.round(a.kj) : '—';
+              return `<tr style="border-bottom:1px solid var(--border);transition:background .1s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+                <td style="padding:6px 10px 6px 0;white-space:nowrap;color:var(--text2)">
+                  <span style="font-weight:700">${dateStr}</span>
+                  <span style="color:var(--muted);font-size:.72rem;margin-left:4px">${timeStr}</span>
+                </td>
+                <td style="padding:6px 10px 6px 0;max-width:160px">
+                  <span style="margin-right:5px">${icon}</span>
+                  <span style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:inline-block;max-width:130px;vertical-align:bottom" title="${a.name}">${a.name}</span>
+                </td>
+                <td style="padding:6px 10px 6px 0;text-align:right;font-weight:700;white-space:nowrap;color:${u.color}">${distStr}</td>
+                <td style="padding:6px 10px 6px 0;text-align:right;white-space:nowrap;color:var(--text2)">${durStr}</td>
+                <td style="padding:6px 10px 6px 0;text-align:right;white-space:nowrap;color:var(--muted);font-size:.78rem">${paceStr}</td>
+                <td style="padding:6px 0 6px 0;text-align:right;white-space:nowrap;color:var(--sky);font-size:.78rem">${kjStr}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>` : ''}`;
 }
 
 function renderTypes(){

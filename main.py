@@ -540,6 +540,7 @@ def fmt_member(m: dict, idx: int, s: dict) -> dict:
                                     "durationSec","workouts","challengeKm","eligibleWalkKm")},
         runKcalFactor=run_kcal_factor,  # avg kJ/km from all runs this calendar year
         types=s.get("types",[]), monthly=s.get("monthly",[]),
+        recentActs=s.get("recentActs",[]),
         week=w, weekCalories=wc)
 
 # ─────────────────────────────────────────────────────────────
@@ -852,6 +853,19 @@ async def get_team(range_: str = Query("thismonth", alias="range")):
         s["monthly"] = monthly_breakdown(year_acts, yr)
         w, wc = week_bits(year_acts)
         s["_w"] = w; s["_wc"] = wc
+        # Include recent activities for the callout activity list (latest 30, year sorted)
+        s["recentActs"] = [
+            {
+                "name":       a.get("name", ""),
+                "sport_type": a.get("sport_type") or a.get("type", ""),
+                "date":       a.get("start_date_local") or a.get("start_date", ""),
+                "dist_km":    round((a.get("distance", 0) or 0) / 1000, 2),
+                "moving_time": a.get("moving_time") or 0,
+                "kj":         a.get("kilojoules") or 0,
+                "hr":         a.get("average_heartrate") or 0,
+            }
+            for a in sorted(year_acts, key=_act_ts, reverse=True)[:30]
+        ]
         entry = fmt_member(m, idx, s)
         cache_set(m["id"], range_, entry)
         result.append(entry)
@@ -928,6 +942,20 @@ async def reset_sync():
         save_acts(mid, stored)
     _cache.clear()
     return {"ok": True, "message": "Reset complete — run /api/admin/sync to fetch all data"}
+
+@app.get("/api/admin/reset-sync/{mid}")
+async def reset_sync_member(mid: int):
+    """Reset last_fetch to 0 for a single member only."""
+    db = load_db()
+    m = next((x for x in db["members"] if x["id"] == mid), None)
+    if not m:
+        raise HTTPException(404, "Member not found")
+    stored = load_acts(mid)
+    stored["last_fetch"] = 0
+    stored["activities"] = []
+    save_acts(mid, stored)
+    cache_bust(mid)
+    return {"ok": True, "member": m["name"], "message": f"Reset complete for {m['name']} — run /api/admin/sync to fetch their data"}
 
 # Toggle Strava sync pause
 @app.post("/api/admin/strava-pause")
