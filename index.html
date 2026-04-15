@@ -3447,6 +3447,8 @@ function openWeightModal() {
 
 function closeWeightModal() {
   document.getElementById('weightModal').classList.remove('open');
+  const btn = document.getElementById('weightBtn');
+  btn.disabled = false; btn.textContent = 'Save';
 }
 
 document.getElementById('weightModal').addEventListener('click', function(e) {
@@ -3494,6 +3496,7 @@ async function submitWeight() {
     showBanner(`⚖️ Weight logged: ${kg}kg${bmiStr}`, 'live');
   } catch(e) {
     msg.innerHTML = `<span style="color:#b91c1c">${e.message}</span>`;
+  } finally {
     btn.disabled = false; btn.textContent = 'Save';
   }
 }
