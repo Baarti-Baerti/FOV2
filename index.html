@@ -2835,12 +2835,9 @@ function renderPoints(){
       const janBmi  = janData?.weightBmi && janData.weightBmi > 0 ? janData.weightBmi : null;
       const pctDrop = (bmi && janBmi && m > 1) ? ((janBmi - bmi) / janBmi * 100) : null;
 
-      const bmiLine = bmi
-        ? `<div style="font-size:.72rem;font-weight:700;line-height:1.2;margin-top:2px;color:${bmi<18.5?'#f59e0b':bmi<25?'#059669':bmi<30?'#f59e0b':'#ef4444'}">${bmi.toFixed(1)}</div>`
-          + (pctDrop !== null
-            ? `<div style="font-size:.68rem;font-weight:700;line-height:1.2;color:${pctDrop>0?'#059669':pctDrop<0?'#ef4444':'var(--muted)'}">${pctDrop>0?'↓':'↑'}${Math.abs(pctDrop).toFixed(1)}%</div>`
-            : '')
-        : '';
+      const bmiLine =
+        `<div style="font-size:.72rem;font-weight:700;line-height:1.2;margin-top:2px;color:${bmi ? (bmi<18.5?'#f59e0b':bmi<25?'#059669':bmi<30?'#f59e0b':'#ef4444') : 'transparent'}">${bmi ? bmi.toFixed(1) : '·'}</div>`
+        + `<div style="font-size:.68rem;font-weight:700;line-height:1.2;color:${pctDrop !== null ? (pctDrop>0?'#059669':pctDrop<0?'#ef4444':'var(--muted)') : 'transparent'}">${pctDrop !== null ? (pctDrop>0?'↓':'↑')+Math.abs(pctDrop).toFixed(1)+'%' : '·'}</div>`;
 
       // Build breakdown tooltip — only show activities that contributed to challengeKm
       const rawParts = [];
@@ -2860,7 +2857,7 @@ function renderPoints(){
         return `<td title="${MONTH_NAMES[m-1]}: ${val} eq.km (in progress, goal ${GOAL}km)${breakdown}" style="font-size:1.02rem;color:${col}">${val}${bmiLine}</td>`;
       }
       if (!isPast) {
-        return `<td style="color:#e2e8f8;font-size:1.02rem">·</td>`;
+        return `<td style="color:#e2e8f8;font-size:1.02rem">·<div style="font-size:.72rem;line-height:1.2;margin-top:2px;color:transparent">·</div><div style="font-size:.68rem;line-height:1.2;color:transparent">·</div></td>`;
       }
       const hit = (km || 0) >= GOAL;
       const val = km != null ? km.toFixed(2) : '0.00';
