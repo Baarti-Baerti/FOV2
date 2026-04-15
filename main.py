@@ -13,7 +13,7 @@ Run locally:
 """
 
 import os, json, time, hmac, hashlib, secrets
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date
 from typing import Optional
 from contextlib import asynccontextmanager
 from urllib.parse import urlencode
@@ -530,15 +530,24 @@ def fmt_member(m: dict, idx: int, s: dict) -> dict:
     year_run_km = sum(mo.get("runCalKm", 0) or 0 for mo in monthly if mo.get("year") == cur_year)
     run_kcal_factor = round(year_run_kj / year_run_km, 2) if year_run_km > 0.5 else None
 
+    # Weight log and current BMI
+    weight_log = m.get("weight_log", [])
+    height_m   = m.get("height_m")
+    # Most recent weight entry
+    latest_weight = weight_log[0] if weight_log else None
+    current_bmi   = latest_weight["bmi"] if latest_weight else None
+
     return dict(
         id=m["id"], name=m["name"], provider="strava",
         emoji=m.get("emoji") or _EMOJIS[idx%len(_EMOJIS)],
         color=m.get("color") or _COLORS[idx%len(_COLORS)],
         bg=m.get("bg")       or _BG[idx%len(_BG)],
-        picture=m.get("strava_picture",""), height_m=m.get("height_m"),
+        picture=m.get("strava_picture",""), height_m=height_m,
         **{k: s.get(k,0) for k in ("km","runKm","cycleKm","virtualKm","swimKm","walkKm",
                                     "durationSec","workouts","challengeKm","eligibleWalkKm")},
-        runKcalFactor=run_kcal_factor,  # avg kJ/km from all runs this calendar year
+        runKcalFactor=run_kcal_factor,
+        bmi=current_bmi,
+        weightLog=weight_log,
         types=s.get("types",[]), monthly=s.get("monthly",[]),
         recentActs=s.get("recentActs",[]),
         week=w, weekCalories=wc)
@@ -882,21 +891,76 @@ async def get_members():
              "bg":m.get("bg","#ede9fe"),"picture":m.get("strava_picture","")}
             for m in db["members"]]
 
-# Height
+# Height — self-service (no admin required)
 class HeightBody(BaseModel):
-    admin_name: str
     height_cm: float
+    admin_name: str = ""  # kept for backward compat, ignored
 
 @app.post("/api/members/{mid}/height")
 async def set_height(mid: int, body: HeightBody):
     if not (100 <= body.height_cm <= 250):
-        raise HTTPException(400, "Height 100–250 cm")
+        raise HTTPException(400, "Height must be between 100–250 cm")
     db = load_db()
     m = next((x for x in db["members"] if x["id"] == mid), None)
-    if not m: raise HTTPException(404, "Not found")
-    m["height_m"] = round(body.height_cm/100, 3)
+    if not m: raise HTTPException(404, "Member not found")
+    m["height_m"] = round(body.height_cm / 100, 3)
     save_db(db); cache_bust(mid)
     return {"ok": True, "height_m": m["height_m"]}
+
+# Weight log — add a weight entry
+class WeightBody(BaseModel):
+    weight_kg: float
+    date: str  # ISO date string e.g. "2026-04-15"
+
+@app.post("/api/members/{mid}/weight")
+async def log_weight(mid: int, body: WeightBody):
+    if not (20 <= body.weight_kg <= 300):
+        raise HTTPException(400, "Weight must be between 20–300 kg")
+    # Validate date — must be within current year and not before Jan 1
+    try:
+        entry_date = datetime.fromisoformat(body.date).date()
+    except ValueError:
+        raise HTTPException(400, "Invalid date format")
+    yr = datetime.now(timezone.utc).year
+    jan1 = date(yr, 1, 1)
+    today = datetime.now(timezone.utc).date()
+    if entry_date < jan1 or entry_date > today:
+        raise HTTPException(400, f"Date must be between Jan 1 {yr} and today")
+
+    db = load_db()
+    m = next((x for x in db["members"] if x["id"] == mid), None)
+    if not m: raise HTTPException(404, "Member not found")
+
+    height_m = m.get("height_m")
+    bmi = round(body.weight_kg / (height_m ** 2), 1) if height_m else None
+
+    if "weight_log" not in m:
+        m["weight_log"] = []
+
+    # Update existing entry for same date, or add new
+    existing = next((e for e in m["weight_log"] if e["date"] == body.date), None)
+    if existing:
+        existing["weight_kg"] = round(body.weight_kg, 1)
+        existing["bmi"]       = bmi
+    else:
+        m["weight_log"].append({
+            "date":      body.date,
+            "weight_kg": round(body.weight_kg, 1),
+            "bmi":       bmi,
+        })
+
+    # Sort log by date descending
+    m["weight_log"].sort(key=lambda e: e["date"], reverse=True)
+    save_db(db); cache_bust(mid)
+    return {"ok": True, "bmi": bmi, "weight_kg": round(body.weight_kg, 1)}
+
+@app.get("/api/members/{mid}/weight")
+async def get_weight_log(mid: int):
+    db = load_db()
+    m = next((x for x in db["members"] if x["id"] == mid), None)
+    if not m: raise HTTPException(404, "Member not found")
+    return {"weight_log": m.get("weight_log", []), "height_m": m.get("height_m")}
+
 
 # Rename member
 class RenameBody(BaseModel):

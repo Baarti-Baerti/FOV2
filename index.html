@@ -1191,6 +1191,16 @@
     </div>
   </div>
   <div class="header-right">
+    <!-- Log Weight button (shown to all logged-in users) -->
+    <div id="logWeightWrap" style="display:none">
+      <button onclick="openWeightModal()"
+        style="font-family:'Nunito',sans-serif;font-weight:800;font-size:0.78rem;
+               padding:5px 12px;border-radius:20px;border:2px solid #fde68a;
+               background:#fef9c3;color:#92400e;cursor:pointer;transition:all 0.2s"
+        title="Log your weight">
+        ⚖️ Log Weight
+      </button>
+    </div>
     <!-- Admin: Strava sync toggle (only visible to Baarti) -->
     <div id="stravaToggleWrap" style="display:none">
       <a href="admin.html"
@@ -1437,7 +1447,7 @@
     <div class="modal-header" style="background:linear-gradient(135deg,#ede9fe,#ddd6fe)">
       <span class="modal-header-icon">📏</span>
       <h2 style="color:#4c1d95">One quick thing…</h2>
-      <p style="color:#6d28d9;font-size:1.06rem">Your height isn't set in Garmin, so we can't calculate your BMI. Enter it once and we'll remember it.</p>
+      <p style="color:#6d28d9;font-size:1.06rem">Enter your height so we can track your BMI alongside your fitness data.</p>
       <button class="modal-close" onclick="closeHeightModal()">✕</button>
     </div>
     <div class="modal-body" style="padding:24px 28px 28px">
@@ -1453,6 +1463,39 @@
       <div style="display:flex;gap:12px">
         <button class="btn-secondary" onclick="closeHeightModal()" style="flex:1">Skip</button>
         <button class="btn-primary" onclick="submitHeight()" style="flex:1" id="heightBtn">Save height</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── WEIGHT LOG MODAL ── -->
+<div class="modal-overlay" id="weightModal">
+  <div class="modal-box" style="max-width:360px">
+    <div class="modal-header" style="background:linear-gradient(135deg,#fef9c3,#fde68a)">
+      <span class="modal-header-icon">⚖️</span>
+      <h2 style="color:#78350f">Log Weight</h2>
+      <p style="color:#92400e;font-size:1.0rem">Track your weight and BMI over time.</p>
+      <button class="modal-close" onclick="closeWeightModal()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:24px 28px 28px">
+      <div class="field">
+        <label>Date</label>
+        <input type="date" id="weightDateInput"
+          onkeydown="if(event.key==='Enter') submitWeight()">
+      </div>
+      <div class="field">
+        <label>Weight</label>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input type="number" id="weightKgInput" placeholder="e.g. 75.5" min="20" max="300" step="0.1"
+            style="flex:1" onkeydown="if(event.key==='Enter') submitWeight()">
+          <span style="font-weight:700;color:var(--muted)">kg</span>
+        </div>
+      </div>
+      <div id="weightBmiPreview" style="font-size:.87rem;color:var(--muted);margin-bottom:4px;min-height:20px"></div>
+      <div class="modal-msg" id="weightModalMsg" style="margin-bottom:12px"></div>
+      <div style="display:flex;gap:12px">
+        <button class="btn-secondary" onclick="closeWeightModal()" style="flex:1">Cancel</button>
+        <button class="btn-primary" onclick="submitWeight()" style="flex:1" id="weightBtn">Save</button>
       </div>
     </div>
   </div>
@@ -1523,6 +1566,7 @@ function normaliseUser(raw, idx) {
     otherKm:      raw.otherKm      || 0,
     steps:        raw.steps        || 0,
     bmi:          raw.bmi          || null,
+    weightLog:    raw.weightLog    || [],
     height_m:     raw.height_m     || null,
     types:        raw.types        || raw.activity_types || [],
     week:         raw.week         || raw.week_active  || [],
@@ -1749,12 +1793,12 @@ function applyData(team, period, isLive) {
     } else {
       showBanner(`⚡ ${liveCount}/${team.length} athletes live · ${periodLabel(period)}`, 'warning');
     }
-    // Check if the current user is missing BMI — prompt for height once per session
+    // Check if the current user is missing height — prompt once per session
     if (currentMember && isLive) {
       const me = users.find(u => u.id === currentMember.id);
-      const hasBmi = me && me.bmi && me.bmi > 0;
+      const hasHeight = me && me.height_m && me.height_m > 0;
       const alreadyAsked = sessionStorage.getItem('height_prompted');
-      if (!hasBmi && !alreadyAsked && me?.provider !== 'strava') {
+      if (!hasHeight && !alreadyAsked) {
         sessionStorage.setItem('height_prompted', '1');
         setTimeout(() => openHeightModal(), 1200);
       }
@@ -2317,7 +2361,7 @@ function renderDetail(suffix=''){
             <div class="detail-item"><div class="detail-item-lbl">Sessions</div><div class="detail-item-val" style="color:${u.color}">${u.workouts}</div></div>
             <div class="detail-item"><div class="detail-item-lbl">Original</div><div class="detail-item-val">${((u.runKm||0) + (u.cycleKm||0) + (u.virtualKm||0) + (u.swimKm||0) + (u.walkKm||0)).toFixed(2)}<span style="font-size:1.02rem">km</span></div></div>
             <div class="detail-item"><div class="detail-item-lbl">${suffix === 'dynamic' ? 'Dyn. Points' : 'Points'}</div><div class="detail-item-val" style="color:var(--violet)">${suffix === 'dynamic' ? dynTotalPts(u).toFixed(2) : userPointsKm(u).toFixed(2)}<span style="font-size:1.02rem">pts</span></div></div>
-            ${u.bmi && u.bmi > 0 ? `<div class="detail-item"><div class="detail-item-lbl">BMI</div><div class="detail-item-val" style="color:${u.bmi<18.5?'#f59e0b':u.bmi<25?'#059669':u.bmi<30?'#f59e0b':'#ef4444'}">${u.bmi.toFixed(1)}</div></div>` : ''}
+            ${u.bmi && u.bmi > 0 ? `<div class="detail-item"><div class="detail-item-lbl">Current BMI</div><div class="detail-item-val" style="color:${u.bmi<18.5?'#f59e0b':u.bmi<25?'#059669':u.bmi<30?'#f59e0b':'#ef4444'}">${u.bmi.toFixed(1)}</div></div>` : ''}
             ${u.height_m ? `<div class="detail-item"><div class="detail-item-lbl">Height</div><div class="detail-item-val">${Math.round(u.height_m * 100)}<span style="font-size:1.02rem">cm</span></div></div>` : ''}
             ${suffix === 'dynamic' ? `
             <div class="detail-item" style="border-color:var(--violet);background:#ede9fe;min-width:180px">
@@ -2343,11 +2387,11 @@ function renderDetail(suffix=''){
         <div class="week-grid">${dots}</div>
       </div>
     </div>
-    ${periodActs.length > 0 ? `
-    <!-- Recent activities list -->
+    ${(periodActs.length > 0 || (u.weightLog||[]).length > 0) ? `
+    <!-- Recent activities + weight log -->
     <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div style="font-size:.76rem;color:var(--muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase">Recent Activities <span style="color:var(--text2);font-weight:800">(${periodActs.length})</span></div>
+        <div style="font-size:.76rem;color:var(--muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase">Activities & Weight Log <span style="color:var(--text2);font-weight:800">(${periodActs.length})</span></div>
         ${periodActs.length > 15 ? `<button onclick="toggleActList(this)" data-expanded="false" style="font-size:.72rem;font-weight:700;background:none;border:1px solid var(--border);border-radius:20px;padding:3px 10px;cursor:pointer;color:var(--muted)">Show all ▾</button>` : ''}
       </div>
       <div style="overflow-x:auto">
@@ -2365,60 +2409,70 @@ function renderDetail(suffix=''){
             </tr>
           </thead>
           <tbody>
-            ${periodActs.map((a, idx) => {
-              const dt = new Date(a.date);
-              const dateStr = dt.toLocaleDateString('en-GB', {day:'2-digit',month:'short'});
-              const timeStr = dt.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
-              const cat = a.sport_type || '';
-              const icon = cat==='Run'||cat==='TrailRun' ? '🏃'
-                : cat==='Ride'||cat==='GravelRide'||cat==='MountainBikeRide'||cat==='EBikeRide' ? '🚴'
-                : cat==='VirtualRide' ? '💻'
-                : cat==='Swim' ? '🏊'
-                : cat==='Walk'||cat==='Hike' ? '🚶'
-                : '🏋️';
-              const distStr = a.dist_km > 0 ? a.dist_km.toFixed(2)+'km' : '—';
-              // Points calculation (static scoring)
-              const WALK_MIN_SPEED = 6500/3600; // m/s
-              const WALK_MIN_TIME  = 30*60;     // seconds
-              let pts = 0;
-              if      (cat==='Run'||cat==='TrailRun')         pts = a.dist_km;
-              else if (cat==='Ride'||cat==='GravelRide'||cat==='MountainBikeRide'||cat==='EBikeRide') pts = a.dist_km/5;
-              else if (cat==='VirtualRide')                   pts = a.dist_km/4;
-              else if (cat==='Swim')                          pts = a.dist_km*4;
-              else if (cat==='Walk'||cat==='Hike') {
-                const spd = a.average_speed || 0;
-                const mt  = a.moving_time   || 0;
-                pts = (mt >= WALK_MIN_TIME && spd >= WALK_MIN_SPEED) ? a.dist_km/3 : 0;
-              }
-              const ptsStr = pts > 0 ? pts.toFixed(2) : '—';
-              const movSecs = a.moving_time || 0;
-              const durStr = movSecs > 0 ? (movSecs>=3600 ? Math.floor(movSecs/3600)+'h '+Math.floor((movSecs%3600)/60)+'m' : Math.floor(movSecs/60)+'m') : '—';
-              let paceStr = '—';
-              if (a.dist_km > 0 && movSecs > 0) {
-                const isRun = cat==='Run'||cat==='TrailRun'||cat==='Walk'||cat==='Hike';
-                if (isRun) {
-                  const secPerKm = movSecs / a.dist_km;
-                  paceStr = Math.floor(secPerKm/60)+':'+(String(Math.round(secPerKm%60)).padStart(2,'0'))+'/km';
-                } else {
-                  paceStr = (a.dist_km/(movSecs/3600)).toFixed(1)+'km/h';
+            ${(() => {
+              // Build combined list: activities + weight entries, sorted by date desc
+              const actRows = periodActs.map(a => ({ type: 'act', sortKey: a.date, data: a }));
+              const wtRows  = (u.weightLog||[]).map(w => ({ type: 'weight', sortKey: w.date + 'T00:00:00Z', data: w }));
+              const combined = [...actRows, ...wtRows].sort((a,b) => b.sortKey.localeCompare(a.sortKey));
+              let actIdx = 0;
+              return combined.map(item => {
+                if (item.type === 'weight') {
+                  const w = item.data;
+                  const bmiColor = !w.bmi ? 'var(--muted)' : w.bmi<18.5?'#f59e0b':w.bmi<25?'#059669':w.bmi<30?'#f59e0b':'#ef4444';
+                  return `<tr style="border-bottom:1px solid var(--border);background:rgba(251,191,36,0.04)" onmouseover="this.style.background='rgba(251,191,36,0.10)'" onmouseout="this.style.background='rgba(251,191,36,0.04)'">
+                    <td style="padding:6px 10px 6px 0;white-space:nowrap;color:var(--text2)"><span style="font-weight:700">${new Date(w.date+'T12:00:00Z').toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</span></td>
+                    <td style="padding:6px 10px 6px 0;text-align:center;font-size:1rem">⚖️</td>
+                    <td style="padding:6px 10px 6px 0;font-weight:600;color:var(--muted)">Weight entry</td>
+                    <td style="padding:6px 10px 6px 0;text-align:right;font-weight:700;color:#92400e">${w.weight_kg} kg</td>
+                    <td style="padding:6px 10px 6px 0;text-align:right;font-weight:700;color:${bmiColor}">${w.bmi ? 'BMI '+w.bmi.toFixed(1) : '—'}</td>
+                    <td colspan="3" style="padding:6px 0 6px 0;color:var(--muted);font-size:.72rem">${!u.height_m ? '<span style="color:var(--amber)">Set height to enable BMI</span>' : ''}</td>
+                  </tr>`;
                 }
-              }
-              const kjStr = a.kj > 0 ? Math.round(a.kj) : '—';
-              const hidden = idx >= 15 ? 'class="act-extra" style="display:none;border-bottom:1px solid var(--border)"' : 'style="border-bottom:1px solid var(--border)"';
-              return `<tr ${hidden} onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
-                <td style="padding:6px 10px 6px 0;white-space:nowrap;color:var(--text2)">
-                  <span style="font-weight:700">${dateStr}</span>
-                  <span style="color:var(--muted);font-size:.72rem;margin-left:4px">${timeStr}</span>
-                </td>
-                <td style="padding:6px 10px 6px 0;text-align:center;font-size:1rem">${icon}</td>
-                <td style="padding:6px 10px 6px 0;font-weight:600;color:var(--text)">${a.name}</td>
-                <td style="padding:6px 10px 6px 0;text-align:right;font-weight:700;white-space:nowrap;color:${u.color}">${distStr}</td>
-                <td style="padding:6px 10px 6px 0;text-align:right;font-weight:700;white-space:nowrap;color:var(--violet)">${ptsStr}</td>
-                <td style="padding:6px 10px 6px 0;text-align:right;white-space:nowrap;color:var(--text2)">${durStr}</td>
-                <td style="padding:6px 10px 6px 0;text-align:right;white-space:nowrap;color:var(--muted);font-size:.78rem">${paceStr}</td>
-                <td style="padding:6px 0 6px 0;text-align:right;white-space:nowrap;color:var(--sky);font-size:.78rem">${kjStr}</td>
-              </tr>`;
-            }).join('')}
+                const a = item.data;
+                const thisIdx = actIdx++;
+                const dt = new Date(a.date);
+                const dateStr = dt.toLocaleDateString('en-GB', {day:'2-digit',month:'short'});
+                const timeStr = dt.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
+                const cat = a.sport_type || '';
+                const icon = cat==='Run'||cat==='TrailRun' ? '🏃'
+                  : cat==='Ride'||cat==='GravelRide'||cat==='MountainBikeRide'||cat==='EBikeRide' ? '🚴'
+                  : cat==='VirtualRide' ? '💻' : cat==='Swim' ? '🏊'
+                  : cat==='Walk'||cat==='Hike' ? '🚶' : '🏋️';
+                const distStr = a.dist_km > 0 ? a.dist_km.toFixed(2)+'km' : '—';
+                const WALK_MIN_SPEED = 6500/3600;
+                const WALK_MIN_TIME  = 30*60;
+                let pts = 0;
+                if      (cat==='Run'||cat==='TrailRun')        pts = a.dist_km;
+                else if (cat==='Ride'||cat==='GravelRide'||cat==='MountainBikeRide'||cat==='EBikeRide') pts = a.dist_km/5;
+                else if (cat==='VirtualRide')                  pts = a.dist_km/4;
+                else if (cat==='Swim')                         pts = a.dist_km*4;
+                else if (cat==='Walk'||cat==='Hike') { const spd=a.average_speed||0,mt=a.moving_time||0; pts=(mt>=WALK_MIN_TIME&&spd>=WALK_MIN_SPEED)?a.dist_km/3:0; }
+                const ptsStr = pts > 0 ? pts.toFixed(2) : '—';
+                const movSecs = a.moving_time || 0;
+                const durStr = movSecs > 0 ? (movSecs>=3600 ? Math.floor(movSecs/3600)+'h '+Math.floor((movSecs%3600)/60)+'m' : Math.floor(movSecs/60)+'m') : '—';
+                let paceStr = '—';
+                if (a.dist_km > 0 && movSecs > 0) {
+                  const isRun = cat==='Run'||cat==='TrailRun'||cat==='Walk'||cat==='Hike';
+                  if (isRun) { const s=movSecs/a.dist_km; paceStr=Math.floor(s/60)+':'+(String(Math.round(s%60)).padStart(2,'0'))+'/km'; }
+                  else paceStr = (a.dist_km/(movSecs/3600)).toFixed(1)+'km/h';
+                }
+                const kjStr = a.kj > 0 ? Math.round(a.kj) : '—';
+                const hidden = thisIdx >= 15 ? 'class="act-extra" style="display:none;border-bottom:1px solid var(--border)"' : 'style="border-bottom:1px solid var(--border)"';
+                return `<tr ${hidden} onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+                  <td style="padding:6px 10px 6px 0;white-space:nowrap;color:var(--text2)">
+                    <span style="font-weight:700">${dateStr}</span>
+                    <span style="color:var(--muted);font-size:.72rem;margin-left:4px">${timeStr}</span>
+                  </td>
+                  <td style="padding:6px 10px 6px 0;text-align:center;font-size:1rem">${icon}</td>
+                  <td style="padding:6px 10px 6px 0;font-weight:600;color:var(--text)">${a.name}</td>
+                  <td style="padding:6px 10px 6px 0;text-align:right;font-weight:700;white-space:nowrap;color:${u.color}">${distStr}</td>
+                  <td style="padding:6px 10px 6px 0;text-align:right;font-weight:700;white-space:nowrap;color:var(--violet)">${ptsStr}</td>
+                  <td style="padding:6px 10px 6px 0;text-align:right;white-space:nowrap;color:var(--text2)">${durStr}</td>
+                  <td style="padding:6px 10px 6px 0;text-align:right;white-space:nowrap;color:var(--muted);font-size:.78rem">${paceStr}</td>
+                  <td style="padding:6px 0 6px 0;text-align:right;white-space:nowrap;color:var(--sky);font-size:.78rem">${kjStr}</td>
+                </tr>`;
+              }).join('');
+            })()}
           </tbody>
         </table>
       </div>
@@ -3303,6 +3357,8 @@ function updateHeaderChip(member) {
   wrap.innerHTML = `<span class="chip-avatar-emoji" style="background:${member.bg}">${member.emoji}</span>`;
   nameEl.textContent = member.name.split(' ')[0];
   chip.classList.add('visible');
+  // Show Log Weight button for all logged-in users
+  document.getElementById('logWeightWrap').style.display = 'block';
 }
 
 // ── Open / close modal ────────────────────────────────────────────
@@ -3368,6 +3424,77 @@ async function submitHeight() {
     msg.innerHTML = `<span style="color:#b91c1c">Error: ${e.message}</span>`;
     btn.disabled = false;
     btn.textContent = 'Save height';
+  }
+}
+
+// ── Weight modal ──────────────────────────────────────────────────
+function openWeightModal() {
+  if (!currentMember?.id) { showBanner('Please join first to log weight', 'warning'); return; }
+  // Set date to today, min to Jan 1 of current year
+  const today = new Date();
+  const jan1  = new Date(today.getFullYear(), 0, 1);
+  const toISO = d => d.toISOString().split('T')[0];
+  const inp   = document.getElementById('weightDateInput');
+  inp.value = toISO(today);
+  inp.min   = toISO(jan1);
+  inp.max   = toISO(today);
+  document.getElementById('weightKgInput').value = '';
+  document.getElementById('weightModalMsg').innerHTML = '';
+  document.getElementById('weightBmiPreview').innerHTML = '';
+  document.getElementById('weightModal').classList.add('open');
+  setTimeout(() => document.getElementById('weightKgInput').focus(), 100);
+}
+
+function closeWeightModal() {
+  document.getElementById('weightModal').classList.remove('open');
+}
+
+document.getElementById('weightModal').addEventListener('click', function(e) {
+  if (e.target === this) closeWeightModal();
+});
+
+// Live BMI preview as user types weight
+document.getElementById('weightKgInput').addEventListener('input', function() {
+  const kg = parseFloat(this.value);
+  const me = users.find(u => u.id === currentMember?.id);
+  const h  = me?.height_m;
+  const prev = document.getElementById('weightBmiPreview');
+  if (kg > 0 && h > 0) {
+    const bmi = kg / (h * h);
+    const label = bmi < 18.5 ? 'Underweight' : bmi < 25 ? 'Normal' : bmi < 30 ? 'Overweight' : 'Obese';
+    const color = bmi < 18.5 ? '#f59e0b' : bmi < 25 ? '#059669' : bmi < 30 ? '#f59e0b' : '#ef4444';
+    prev.innerHTML = `BMI: <strong style="color:${color}">${bmi.toFixed(1)}</strong> <span style="color:var(--muted)">(${label})</span>`;
+  } else {
+    prev.innerHTML = h ? '' : '<span style="color:var(--amber)">Set your height first to see BMI</span>';
+  }
+});
+
+async function submitWeight() {
+  const dateVal = document.getElementById('weightDateInput').value;
+  const kg      = parseFloat(document.getElementById('weightKgInput').value);
+  const msg     = document.getElementById('weightModalMsg');
+  if (!dateVal) { msg.innerHTML = '<span style="color:#b91c1c">Please select a date.</span>'; return; }
+  if (!kg || kg < 20 || kg > 300) { msg.innerHTML = '<span style="color:#b91c1c">Please enter a valid weight (20–300 kg).</span>'; return; }
+  if (!currentMember?.id) { msg.innerHTML = '<span style="color:#b91c1c">Not logged in.</span>'; return; }
+
+  const btn = document.getElementById('weightBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const res = await fetch(`${API_BASE}/api/members/${currentMember.id}/weight`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ weight_kg: kg, date: dateVal }),
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || 'Error saving weight');
+    const data = await res.json();
+    closeWeightModal();
+    await fetch(`${API_BASE}/api/admin/clear-cache`);
+    await loadData(currentPeriod, true);
+    const bmiStr = data.bmi ? ` · BMI ${data.bmi.toFixed(1)}` : '';
+    showBanner(`⚖️ Weight logged: ${kg}kg${bmiStr}`, 'live');
+  } catch(e) {
+    msg.innerHTML = `<span style="color:#b91c1c">${e.message}</span>`;
+    btn.disabled = false; btn.textContent = 'Save';
   }
 }
 
