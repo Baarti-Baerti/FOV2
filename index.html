@@ -1610,8 +1610,8 @@ let currentPeriod = 'thismonth';
 // ──────────────────────────────────────────────────────────────────
 //  PERSISTENT CACHE  — localStorage so data survives page reloads
 // ──────────────────────────────────────────────────────────────────
-const LS_KEY        = 'fo_teamdata_v1';
-const LS_BACKEND_TS = 'fo_backend_ts_v1';
+const LS_KEY        = 'fo_teamdata_v2';  // bumped — clears old cache missing recentActs
+const LS_BACKEND_TS = 'fo_backend_ts_v2';
 
 function persistSave() {
   try {
