@@ -2768,25 +2768,21 @@ function renderPoints(){
     ? ruleCCandidates.map(u => u.id)
     : [];
 
-  // Rule D: biggest BMI improvement (Jan BMI → most recent month's BMI) = +1pt
-  // Only Garmin users with BMI data in both Jan and at least one later month qualify
-  // Improvement = positive number means BMI went DOWN (good)
-  const ruleDImprovement = {};
+  // Rule D: biggest BMI % drop vs January, measured in the current month
+  // Uses weightBmi from weight log entries (last entry per month)
+  const ruleDImprovement = {}; // userId → % drop (positive = improved)
   pointsUsers.forEach(u => {
     const janData = (u.monthly || []).find(m => m.year === currentYear && m.month === 1);
-    const janBmi  = janData?.bmi;
+    const janBmi  = janData?.weightBmi;
     if (!janBmi || janBmi <= 0) return;
-    // Find latest month with BMI data (excluding Jan)
-    const laterMonths = (u.monthly || [])
-      .filter(m => m.year === currentYear && m.month > 1 && m.bmi && m.bmi > 0)
-      .sort((a, b) => b.month - a.month);
-    if (laterMonths.length === 0) return;
-    const latestBmi = laterMonths[0].bmi;
-    const improvement = janBmi - latestBmi; // positive = improved (BMI went down)
-    ruleDImprovement[u.id] = improvement;
+    // Current month BMI from weight log
+    const curData = (u.monthly || []).find(m => m.year === currentYear && m.month === currentMonth);
+    const curBmi  = curData?.weightBmi;
+    if (!curBmi || curBmi <= 0) return;
+    const pctDrop = ((janBmi - curBmi) / janBmi) * 100; // positive = BMI went down
+    if (pctDrop > 0) ruleDImprovement[u.id] = pctDrop;
   });
   const maxImprovement = Math.max(...Object.values(ruleDImprovement), 0);
-  // Rule D: only award if improvement > 0 AND strictly one winner (no tie)
   const ruleDCandidates = maxImprovement > 0
     ? users.filter(u => (ruleDImprovement[u.id] || 0) === maxImprovement)
     : [];
@@ -2821,7 +2817,7 @@ function renderPoints(){
     <th style="color:#818cf8;border-left:2px solid var(--border)" title="Rule A: +1pt per month ≥${GOAL}km (including current month)">A</th>
     <th style="color:#34d399" title="Rule B: most YTD run km (+2pts)">B</th>
     <th style="color:#f472b6" title="Rule C: most Rule A points (+2pts)">C</th>
-    <th style="color:#fb923c" title="Rule D: biggest BMI improvement Jan→latest month (+1pt)">D</th>
+    <th style="color:#fb923c" title="Rule D: biggest BMI % drop vs January in current month (+1pt)">D</th>
     <th style="border-left:2px solid var(--border)">Total 🏅</th>
   </tr>`;
 
@@ -2832,8 +2828,19 @@ function renderPoints(){
       const isCurrent = m === currentMonth;
       const km = runMap[m];  // challengeKm
       const mData = (u.monthly||[]).find(md => md.year === currentYear && md.month === m);
-      const bmi = mData?.bmi && mData.bmi > 0 ? mData.bmi : null;
-      const bmiLine = bmi ? `<div style="font-size:.76rem;color:var(--muted);font-weight:600;line-height:1.2;margin-top:2px">${bmi.toFixed(1)}</div>` : '';
+      const bmi = mData?.weightBmi && mData.weightBmi > 0 ? mData.weightBmi : null;
+
+      // % drop vs January (from weight log)
+      const janData = (u.monthly||[]).find(md => md.year === currentYear && md.month === 1);
+      const janBmi  = janData?.weightBmi && janData.weightBmi > 0 ? janData.weightBmi : null;
+      const pctDrop = (bmi && janBmi && m > 1) ? ((janBmi - bmi) / janBmi * 100) : null;
+
+      const bmiLine = bmi
+        ? `<div style="font-size:.72rem;font-weight:700;line-height:1.2;margin-top:2px;color:${bmi<18.5?'#f59e0b':bmi<25?'#059669':bmi<30?'#f59e0b':'#ef4444'}">${bmi.toFixed(1)}</div>`
+          + (pctDrop !== null
+            ? `<div style="font-size:.68rem;font-weight:700;line-height:1.2;color:${pctDrop>0?'#059669':pctDrop<0?'#ef4444':'var(--muted)'}">${pctDrop>0?'↓':'↑'}${Math.abs(pctDrop).toFixed(1)}%</div>`
+            : '')
+        : '';
 
       // Build breakdown tooltip — only show activities that contributed to challengeKm
       const rawParts = [];
@@ -2864,16 +2871,16 @@ function renderPoints(){
     const hasB  = ruleBWinners.includes(u.id);
     const hasC  = ruleCWinners.includes(u.id);
     const hasD  = ruleDWinners.includes(u.id);
-    const impD  = ruleDImprovement[u.id];
+    const impD  = ruleDImprovement[u.id]; // % drop
     const total = totalPoints[u.id] || 0;
 
-    const janBmiVal  = (u.monthly||[]).find(m => m.year===currentYear && m.month===1)?.bmi;
-    const latestBmiVal = [...(u.monthly||[])]
-      .filter(m => m.year===currentYear && m.month <= currentMonth && m.bmi && m.bmi > 0)
-      .sort((a,b) => b.month - a.month)[0]?.bmi;
-    const bmiSubline = (janBmiVal && janBmiVal > 0)
-      ? `<div style="font-size:.93rem;color:var(--muted);font-weight:700;margin-top:2px">
-           ⚖️ Jan: ${janBmiVal.toFixed(1)}${latestBmiVal && latestBmiVal !== janBmiVal ? ` → <span style="color:${latestBmiVal < janBmiVal ? '#059669' : '#ef4444'}">${latestBmiVal.toFixed(1)}</span>` : ''}
+    const janBmiVal  = (u.monthly||[]).find(m => m.year===currentYear && m.month===1)?.weightBmi;
+    const curBmiVal  = (u.monthly||[]).find(m => m.year===currentYear && m.month===currentMonth)?.weightBmi;
+    const pctDropD   = (janBmiVal && curBmiVal && curBmiVal !== janBmiVal)
+      ? ((janBmiVal - curBmiVal) / janBmiVal * 100) : null;
+    const bmiSubline = janBmiVal
+      ? `<div style="font-size:.82rem;color:var(--muted);font-weight:700;margin-top:2px">
+           ⚖️ Jan: ${janBmiVal.toFixed(1)}${curBmiVal && currentMonth > 1 ? ` → <span style="color:${curBmiVal < janBmiVal ? '#059669' : '#ef4444'}">${curBmiVal.toFixed(1)}</span>${pctDropD !== null ? ` <span style="font-size:.72rem">(${pctDropD>0?'↓':'↑'}${Math.abs(pctDropD).toFixed(1)}%)</span>` : ''}` : ''}
          </div>`
       : '';
 
@@ -2908,7 +2915,7 @@ function renderPoints(){
       <td style="color:#818cf8;font-weight:900;border-left:2px solid var(--border)">${ruleA}</td>
       <td style="color:${hasB?'#34d399':'var(--muted)'};font-weight:${hasB?900:600}">${hasB?'+2':'—'}</td>
       <td style="color:${hasC?'#f472b6':'var(--muted)'};font-weight:${hasC?900:600}">${hasC?'+2':'—'}</td>
-      <td style="color:${hasD?'#fb923c':'var(--muted)'};font-weight:${hasD?900:600}" title="${impD!=null?'BMI change: '+(impD>0?'−':'+')+Math.abs(impD).toFixed(1):'No BMI data'}">${hasD?'+1':'—'}</td>
+      <td style="color:${hasD?'#fb923c':'var(--muted)'};font-weight:${hasD?900:600}" title="${impD!=null?'BMI % drop vs Jan: −'+impD.toFixed(1)+'%':'No BMI data for Jan & current month'}">${hasD?'+1':impD!=null?'−'+impD.toFixed(1)+'%':'—'}</td>
       <td style="border-left:2px solid var(--border)"><span class="pts-total">${total}</span></td>
     </tr>`;
   }).join('');
@@ -2919,7 +2926,7 @@ function renderPoints(){
     <span style="color:#818cf8">A: +1pt / qualifying month</span>
     <span style="color:#34d399">B: most YTD eq.km = +2pts</span>
     <span style="color:#f472b6">C: sole leader in Rule A = +2pts (no bonus if tied)</span>
-    <span style="color:#fb923c">D: biggest BMI drop Jan→latest = +1pt (Garmin only, no bonus if tied)</span>
+    <span style="color:#fb923c">D: biggest BMI % drop vs January (current month) = +1pt (no bonus if tied)</span>
     <span style="color:var(--violet)">Current month shown in progress, not yet scored · hover cells for raw breakdown</span>
   </div>`;
 
@@ -3045,6 +3052,7 @@ function reAggregateFromMonthly(team, p) {
     });
 
     return { ...u, ...agg, recentActs: filteredActs };
+    // Note: monthly array stays intact so weightBmi per month is preserved
   });
 }
 

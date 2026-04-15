@@ -537,6 +537,27 @@ def fmt_member(m: dict, idx: int, s: dict) -> dict:
     latest_weight = weight_log[0] if weight_log else None
     current_bmi   = latest_weight["bmi"] if latest_weight else None
 
+    # Build monthly BMI map: for each month, find the last weight entry in that month
+    # (i.e. the entry with the highest date that is still within that month)
+    monthly_bmi = {}  # { (year, month): bmi }
+    if height_m and weight_log:
+        for entry in weight_log:
+            try:
+                entry_date = datetime.fromisoformat(entry["date"]).date()
+            except Exception:
+                continue
+            key = (entry_date.year, entry_date.month)
+            # Keep the latest date in each month
+            if key not in monthly_bmi or entry["date"] > monthly_bmi[key]["date"]:
+                monthly_bmi[key] = entry
+
+    # Attach monthly BMI to monthly breakdown
+    monthly_data = s.get("monthly", [])
+    for mo in monthly_data:
+        key = (mo.get("year"), mo.get("month"))
+        entry = monthly_bmi.get(key)
+        mo["weightBmi"] = entry["bmi"] if entry and entry.get("bmi") else None
+
     return dict(
         id=m["id"], name=m["name"], provider="strava",
         emoji=m.get("emoji") or _EMOJIS[idx%len(_EMOJIS)],
