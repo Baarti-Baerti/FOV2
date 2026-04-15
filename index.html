@@ -2355,8 +2355,10 @@ function renderDetail(suffix=''){
           <thead>
             <tr style="border-bottom:1px solid var(--border)">
               <th style="text-align:left;padding:4px 10px 6px 0;color:var(--muted);font-weight:700;font-size:.72rem;letter-spacing:.04em;white-space:nowrap">Date</th>
+              <th style="text-align:center;padding:4px 10px 6px 0;color:var(--muted);font-weight:700;font-size:.72rem;letter-spacing:.04em">Type</th>
               <th style="text-align:left;padding:4px 10px 6px 0;color:var(--muted);font-weight:700;font-size:.72rem;letter-spacing:.04em">Activity</th>
               <th style="text-align:right;padding:4px 10px 6px 0;color:var(--muted);font-weight:700;font-size:.72rem;letter-spacing:.04em">Dist</th>
+              <th style="text-align:right;padding:4px 10px 6px 0;color:var(--muted);font-weight:700;font-size:.72rem;letter-spacing:.04em">⭐ Pts</th>
               <th style="text-align:right;padding:4px 10px 6px 0;color:var(--muted);font-weight:700;font-size:.72rem;letter-spacing:.04em">Time</th>
               <th style="text-align:right;padding:4px 10px 6px 0;color:var(--muted);font-weight:700;font-size:.72rem;letter-spacing:.04em">Pace/Speed</th>
               <th style="text-align:right;padding:4px 0 6px 0;color:var(--muted);font-weight:700;font-size:.72rem;letter-spacing:.04em">kJ</th>
@@ -2368,8 +2370,27 @@ function renderDetail(suffix=''){
               const dateStr = dt.toLocaleDateString('en-GB', {day:'2-digit',month:'short'});
               const timeStr = dt.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
               const cat = a.sport_type || '';
-              const icon = cat==='Run'||cat==='TrailRun' ? '🏃' : cat==='Ride'||cat==='GravelRide'||cat==='MountainBikeRide' ? '🚴' : cat==='VirtualRide' ? '💻' : cat==='Swim' ? '🏊' : cat==='Walk'||cat==='Hike' ? '🚶' : '🏋️';
+              const icon = cat==='Run'||cat==='TrailRun' ? '🏃'
+                : cat==='Ride'||cat==='GravelRide'||cat==='MountainBikeRide'||cat==='EBikeRide' ? '🚴'
+                : cat==='VirtualRide' ? '💻'
+                : cat==='Swim' ? '🏊'
+                : cat==='Walk'||cat==='Hike' ? '🚶'
+                : '🏋️';
               const distStr = a.dist_km > 0 ? a.dist_km.toFixed(2)+'km' : '—';
+              // Points calculation (static scoring)
+              const WALK_MIN_SPEED = 6500/3600; // m/s
+              const WALK_MIN_TIME  = 30*60;     // seconds
+              let pts = 0;
+              if      (cat==='Run'||cat==='TrailRun')         pts = a.dist_km;
+              else if (cat==='Ride'||cat==='GravelRide'||cat==='MountainBikeRide'||cat==='EBikeRide') pts = a.dist_km/5;
+              else if (cat==='VirtualRide')                   pts = a.dist_km/4;
+              else if (cat==='Swim')                          pts = a.dist_km*4;
+              else if (cat==='Walk'||cat==='Hike') {
+                const spd = a.average_speed || 0;
+                const mt  = a.moving_time   || 0;
+                pts = (mt >= WALK_MIN_TIME && spd >= WALK_MIN_SPEED) ? a.dist_km/3 : 0;
+              }
+              const ptsStr = pts > 0 ? pts.toFixed(2) : '—';
               const movSecs = a.moving_time || 0;
               const durStr = movSecs > 0 ? (movSecs>=3600 ? Math.floor(movSecs/3600)+'h '+Math.floor((movSecs%3600)/60)+'m' : Math.floor(movSecs/60)+'m') : '—';
               let paceStr = '—';
@@ -2379,7 +2400,7 @@ function renderDetail(suffix=''){
                   const secPerKm = movSecs / a.dist_km;
                   paceStr = Math.floor(secPerKm/60)+':'+(String(Math.round(secPerKm%60)).padStart(2,'0'))+'/km';
                 } else {
-                  paceStr = ((a.dist_km/(movSecs/3600)).toFixed(1))+'km/h';
+                  paceStr = (a.dist_km/(movSecs/3600)).toFixed(1)+'km/h';
                 }
               }
               const kjStr = a.kj > 0 ? Math.round(a.kj) : '—';
@@ -2389,11 +2410,10 @@ function renderDetail(suffix=''){
                   <span style="font-weight:700">${dateStr}</span>
                   <span style="color:var(--muted);font-size:.72rem;margin-left:4px">${timeStr}</span>
                 </td>
-                <td style="padding:6px 10px 6px 0;max-width:160px">
-                  <span style="margin-right:5px">${icon}</span>
-                  <span style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:inline-block;max-width:130px;vertical-align:bottom" title="${a.name}">${a.name}</span>
-                </td>
+                <td style="padding:6px 10px 6px 0;text-align:center;font-size:1rem">${icon}</td>
+                <td style="padding:6px 10px 6px 0;font-weight:600;color:var(--text)">${a.name}</td>
                 <td style="padding:6px 10px 6px 0;text-align:right;font-weight:700;white-space:nowrap;color:${u.color}">${distStr}</td>
+                <td style="padding:6px 10px 6px 0;text-align:right;font-weight:700;white-space:nowrap;color:var(--violet)">${ptsStr}</td>
                 <td style="padding:6px 10px 6px 0;text-align:right;white-space:nowrap;color:var(--text2)">${durStr}</td>
                 <td style="padding:6px 10px 6px 0;text-align:right;white-space:nowrap;color:var(--muted);font-size:.78rem">${paceStr}</td>
                 <td style="padding:6px 0 6px 0;text-align:right;white-space:nowrap;color:var(--sky);font-size:.78rem">${kjStr}</td>

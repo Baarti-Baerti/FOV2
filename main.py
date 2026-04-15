@@ -856,13 +856,14 @@ async def get_team(range_: str = Query("thismonth", alias="range")):
         # Include ALL year activities so frontend can filter for any selected period
         s["recentActs"] = [
             {
-                "name":        str(a.get("name") or ""),
-                "sport_type":  str(a.get("sport_type") or a.get("type") or ""),
-                "date":        str(a.get("start_date_local") or a.get("start_date") or ""),
-                "dist_km":     round(float(a.get("distance") or 0) / 1000, 2),
-                "moving_time": int(a.get("moving_time") or 0),
-                "kj":          float(a.get("kilojoules") or 0),
-                "hr":          float(a.get("average_heartrate") or 0),
+                "name":          str(a.get("name") or ""),
+                "sport_type":    str(a.get("sport_type") or a.get("type") or ""),
+                "date":          str(a.get("start_date_local") or a.get("start_date") or ""),
+                "dist_km":       round(float(a.get("distance") or 0) / 1000, 2),
+                "moving_time":   int(a.get("moving_time") or 0),
+                "average_speed": float(a.get("average_speed") or 0),
+                "kj":            float(a.get("kilojoules") or 0),
+                "hr":            float(a.get("average_heartrate") or 0),
             }
             for a in sorted(year_acts, key=_act_ts, reverse=True)
         ]
