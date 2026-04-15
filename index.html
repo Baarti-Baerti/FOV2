@@ -2274,7 +2274,6 @@ function renderDetail(suffix=''){
   else if (currentPeriod==='q4') actMf=a=>{ const d=new Date(a.date); return d.getFullYear()===cy2&&d.getMonth()+1>=10; };
   else actMf=a=>{ const d=new Date(a.date); return d.getFullYear()===cy2; }; // ytd
   const periodActs = (u.recentActs||[]).filter(actMf);
-  const typeEntries = Object.entries(kmByType).sort((a,b)=>b[1]-a[1]);
   const totalKm = u.km || 0;
 
   // Show per-activity distance breakdown
