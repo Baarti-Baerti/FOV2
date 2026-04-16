@@ -1808,6 +1808,12 @@ function applyData(team, period, isLive) {
   if (!selMoUser) selMoUser = users[0];
   if (users[0]?.monthly?.length) selMonth = users[0].monthly.length - 1;
   renderAll();
+
+  // Ensure Log Weight button is visible for any logged-in user
+  // (catches cases where updateHeaderChip ran before users were loaded)
+  if (currentMember) {
+    document.getElementById('logWeightWrap').style.display = 'block';
+  }
 }
 
 function applyMockData(period) {
