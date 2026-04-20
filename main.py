@@ -229,11 +229,12 @@ async def sync_activities(member: dict) -> list:
 
 
 async def _sync_strava(member: dict, stored: dict, now: int, yr_start: int, last_fetch: int) -> list:
-    after = yr_start if last_fetch == 0 else max(yr_start, last_fetch - 3 * 3600)  # 3hr overlap catches delayed uploads
+    after = yr_start if last_fetch == 0 else max(yr_start, last_fetch - 6 * 3600)  # 6hr overlap catches delayed uploads
     member = await refresh(member)
     hdrs = {"Authorization": f"Bearer {member['strava_access_token']}"}
 
     new_acts = []
+    hit_error = False
     page = 1
     async with httpx.AsyncClient(timeout=30) as c:
         while True:
@@ -242,9 +243,11 @@ async def _sync_strava(member: dict, stored: dict, now: int, yr_start: int, last
                                     "per_page": 100, "page": page})
             if r.status_code == 429:
                 print(f"[warn] Strava rate limit for {member['name']}")
+                hit_error = True
                 break
             if r.status_code != 200:
                 print(f"[warn] Strava API {r.status_code} for {member['name']}")
+                hit_error = True
                 break
             batch = r.json()
             if not isinstance(batch, list) or not batch:
@@ -255,7 +258,9 @@ async def _sync_strava(member: dict, stored: dict, now: int, yr_start: int, last
             page += 1
 
     print(f"[sync] {member['name']} (Strava): fetched {len(new_acts)} new activities")
-    return _merge_and_save(member["id"], stored, new_acts, now, yr_start)
+    # Only advance last_fetch timestamp if we completed without errors
+    save_ts = now if not hit_error else last_fetch
+    return _merge_and_save(member["id"], stored, new_acts, save_ts, yr_start)
 
 
 async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last_fetch: int) -> list:
@@ -843,7 +848,7 @@ async def garmin_login(body: GarminLoginBody):
     }
 
 # Team stats
-SYNC_STALE_SECS = 90 * 60  # trigger a sync if last_fetch is older than 90 minutes
+SYNC_STALE_SECS = 60 * 60  # trigger a sync if last_fetch is older than 60 minutes
 
 @app.get("/api/team")
 async def get_team(range_: str = Query("thismonth", alias="range")):
@@ -870,6 +875,7 @@ async def get_team(range_: str = Query("thismonth", alias="range")):
             try:
                 print(f"[get_team] Stale data for {m['name']} (last_fetch {now - last_fetch}s ago) — syncing")
                 year_acts = await sync_activities(m)
+                cache_bust(m["id"])  # bust ALL period caches so stale data isn't served
             except Exception as e:
                 print(f"[warn] sync failed for {m['name']}: {e}")
                 year_acts = stored.get("activities", [])
