@@ -2918,7 +2918,7 @@ function renderPoints(){
       <td style="color:#818cf8;font-weight:900;border-left:2px solid var(--border)">${ruleA}</td>
       <td style="color:${hasB?'#34d399':'var(--muted)'};font-weight:${hasB?900:600}">${hasB?'+2':'—'}</td>
       <td style="color:${hasC?'#f472b6':'var(--muted)'};font-weight:${hasC?900:600}">${hasC?'+2':'—'}</td>
-      <td style="color:${hasD?'#fb923c':'var(--muted)'};font-weight:${hasD?900:600}" title="${impD!=null?'BMI % drop vs Jan: −'+impD.toFixed(1)+'%':'No BMI data for Jan & current month'}">${hasD?'+1':impD!=null?'−'+impD.toFixed(1)+'%':'—'}</td>
+      <td style="color:${hasD?'#fb923c':'var(--muted)'};font-weight:${hasD?900:600}" title="${impD!=null?'BMI % drop vs Jan: −'+impD.toFixed(1)+'%':'No BMI data for Jan & current month'}">${hasD?'+1':'—'}</td>
       <td style="border-left:2px solid var(--border)"><span class="pts-total">${total}</span></td>
     </tr>`;
   }).join('');
