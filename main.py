@@ -1119,8 +1119,18 @@ async def debug_activities(mid: int, request: Request, limit: int = 5):
                     "sport_type":    a.get("sport_type"),
                     "date":          a.get("start_date_local"),
                     "distance_km":   round((a.get("distance") or 0) / 1000, 2),
+                    "moving_time_s": a.get("moving_time"),
+                    "moving_time_m": round((a.get("moving_time") or 0) / 60, 1),
+                    "average_speed_ms": a.get("average_speed"),
+                    "average_speed_kmh": round((a.get("average_speed") or 0) * 3.6, 2),
                     "calories":      a.get("calories"),
                     "kilojoules":    a.get("kilojoules"),
+                    "classified_as": classify(a.get("sport_type") or a.get("type") or ""),
+                    "eligible_walk": (
+                        classify(a.get("sport_type") or a.get("type") or "") == "walk"
+                        and (a.get("moving_time") or 0) >= WALK_MIN_MOVING_S
+                        and (a.get("average_speed") or 0) >= WALK_MIN_SPEED_MS
+                    ),
                 }
                 for a in (acts if isinstance(acts, list) else [])
             ]
