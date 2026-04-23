@@ -356,7 +356,7 @@ def _act_ts(a: dict) -> int:
 # ─────────────────────────────────────────────────────────────
 MONTHLY_GOAL_KM    = 66.67        # challenge goal per month
 WALK_MIN_SPEED_MS  = 6500 / 3600  # 6.5 km/h in m/s
-WALK_MIN_MOVING_S  = 30 * 60      # 30 minutes in seconds
+WALK_MIN_MOVING_S  = 30 * 60 - 30  # 30 min minus 30s tolerance (Strava rounding)
 
 def challenge_km_for_activity(a: dict) -> float:
     """Return the challenge-km contribution of a single activity.

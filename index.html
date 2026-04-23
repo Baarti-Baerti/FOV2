@@ -2446,7 +2446,7 @@ function renderDetail(suffix=''){
                   : cat==='Walk'||cat==='Hike' ? '🚶' : '🏋️';
                 const distStr = a.dist_km > 0 ? a.dist_km.toFixed(2)+'km' : '—';
                 const WALK_MIN_SPEED = 6500/3600;
-                const WALK_MIN_TIME  = 30*60;
+                const WALK_MIN_TIME  = 30*60 - 30; // 30min minus 30s tolerance for Strava rounding
                 let pts = 0;
                 if      (cat==='Run'||cat==='TrailRun')        pts = a.dist_km;
                 else if (cat==='Ride'||cat==='GravelRide'||cat==='MountainBikeRide'||cat==='EBikeRide') pts = a.dist_km/5;
