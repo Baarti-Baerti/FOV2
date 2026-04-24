@@ -892,6 +892,7 @@ async def get_team(range_: str = Query("thismonth", alias="range")):
         # Include ALL year activities so frontend can filter for any selected period
         s["recentActs"] = [
             {
+                "id":            str(a.get("id") or ""),
                 "name":          str(a.get("name") or ""),
                 "sport_type":    str(a.get("sport_type") or a.get("type") or ""),
                 "date":          str(a.get("start_date_local") or a.get("start_date") or ""),
@@ -987,6 +988,33 @@ async def get_weight_log(mid: int):
     m = next((x for x in db["members"] if x["id"] == mid), None)
     if not m: raise HTTPException(404, "Member not found")
     return {"weight_log": m.get("weight_log", []), "height_m": m.get("height_m")}
+
+# Delete a specific activity from a member's stored file
+@app.delete("/api/admin/members/{mid}/activity/{act_id}")
+async def delete_activity(mid: int, act_id: str):
+    stored = load_acts(mid)
+    acts = stored.get("activities", [])
+    before = len(acts)
+    stored["activities"] = [a for a in acts if str(a.get("id", "")) != act_id]
+    if len(stored["activities"]) == before:
+        raise HTTPException(404, f"Activity {act_id} not found for member {mid}")
+    save_acts(mid, stored)
+    cache_bust(mid)
+    return {"ok": True, "removed": before - len(stored["activities"])}
+
+# Delete a specific weight entry from a member
+@app.delete("/api/admin/members/{mid}/weight/{date}")
+async def delete_weight_entry(mid: int, date: str):
+    db = load_db()
+    m = next((x for x in db["members"] if x["id"] == mid), None)
+    if not m: raise HTTPException(404, "Member not found")
+    before = len(m.get("weight_log", []))
+    m["weight_log"] = [e for e in m.get("weight_log", []) if e.get("date") != date]
+    if len(m["weight_log"]) == before:
+        raise HTTPException(404, f"Weight entry for {date} not found")
+    save_db(db)
+    cache_bust(mid)
+    return {"ok": True}
 
 
 # Rename member
