@@ -1804,7 +1804,9 @@ function applyData(team, period, isLive) {
       }
     }
   }
-  selUser = users[0];
+  // Preserve previously selected user across reloads (e.g. after deleting an activity)
+  const prevSelId = selUser?.id;
+  selUser = (prevSelId && users.find(u => u.id === prevSelId)) || users[0];
   if (!selMoUser) selMoUser = users[0];
   if (users[0]?.monthly?.length) selMonth = users[0].monthly.length - 1;
   renderAll();
@@ -2497,11 +2499,13 @@ function renderDetail(suffix=''){
 
 async function deleteActivity(mid, actId) {
   if (!confirm('Delete this activity permanently? This cannot be undone.')) return;
+  const savedUserId = selUser?.id;
   try {
     const r = await fetch(`${API_BASE}/api/admin/members/${mid}/activity/${actId}`, { method: 'DELETE' });
     if (!r.ok) throw new Error((await r.json()).detail || 'Delete failed');
     showBanner('🗑️ Activity deleted', 'live');
     await loadData(currentPeriod, true);
+    if (savedUserId) { const u = users.find(u => u.id === savedUserId); if (u) { selUser = u; renderDetail(); renderDetail('dynamic'); } }
   } catch(e) {
     showBanner(`⚠️ ${e.message}`, 'error');
   }
@@ -2509,11 +2513,13 @@ async function deleteActivity(mid, actId) {
 
 async function deleteWeightEntry(mid, date) {
   if (!confirm(`Delete weight entry for ${date}? This cannot be undone.`)) return;
+  const savedUserId = selUser?.id;
   try {
     const r = await fetch(`${API_BASE}/api/admin/members/${mid}/weight/${date}`, { method: 'DELETE' });
     if (!r.ok) throw new Error((await r.json()).detail || 'Delete failed');
     showBanner('🗑️ Weight entry deleted', 'live');
     await loadData(currentPeriod, true);
+    if (savedUserId) { const u = users.find(u => u.id === savedUserId); if (u) { selUser = u; renderDetail(); renderDetail('dynamic'); } }
   } catch(e) {
     showBanner(`⚠️ ${e.message}`, 'error');
   }
