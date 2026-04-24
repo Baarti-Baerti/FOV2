@@ -1953,6 +1953,11 @@ function dynCell(km, kj, pts) {
   return (km > 0 ? km.toFixed(2) : '—') + kmSpan + kjStr + ptsStr;
 }
 
+// ── Admin check — outer scope so both renderLB and renderDetail can use it ──
+function checkIsAdmin() {
+  return (currentMember?.name || '').toLowerCase().trim().includes('baarti');
+}
+
 function renderLB(suffix=''){
   // ── helpers ──────────────────────────────────────────────────────
   function fmtDuration(secs) {
@@ -2172,8 +2177,7 @@ function renderLB(suffix=''){
 
   // Admin check: case-insensitive name match for any variation of "Baarti"
   // Also matches "Baarti-Baerti", "baarti", etc.
-  const _adminName = (currentMember?.name || '').toLowerCase().trim();
-  const isAdmin = _adminName.includes('baarti');
+  const isAdmin = checkIsAdmin();
   function metricVal(u, key) {
     if (key === 'dynTotal')    return dynTotalPts(u);
     if (key === 'dynGoalDay')  return dynDaysToGoal(u) ?? 999;
@@ -2296,6 +2300,7 @@ function setMetricKey(k){
 function renderDetail(suffix=''){
   const u=selUser;
   if (!u) return;
+  const isAdmin = checkIsAdmin();
   // In dynamic tab, only show detail for users with a calorie factor
   if (suffix === 'dynamic' && u.runKcalFactor == null) {
     document.getElementById('userDetail-dynamic').innerHTML =
