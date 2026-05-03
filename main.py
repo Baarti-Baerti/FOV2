@@ -280,13 +280,13 @@ async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last
     def do_garmin_sync():
         from garminconnect import Garmin
         client = Garmin()
-        # token_store is a base64 string from garth.dumps() — pass directly to loads()
+        # token_store is a base64 string from client.dumps() — pass directly to loads()
         if isinstance(token_store, str):
-            client.garth.loads(token_store)
+            client.client.loads(token_store)
         else:
             # Legacy: dict format — convert back to string
             import json as _json
-            client.garth.loads(_json.dumps(token_store))
+            client.client.loads(_json.dumps(token_store))
         client.display_name = member.get("name", "")
         acts = client.get_activities_by_date(
             after_dt.strftime("%Y-%m-%d"),
@@ -839,8 +839,8 @@ async def garmin_login(body: GarminLoginBody):
     # garth.dumps() returns a base64 string (not JSON) — store it as-is
     token_store = None
     try:
-        if hasattr(client, 'garth') and hasattr(client.garth, 'dumps'):
-            raw = client.garth.dumps()
+        if hasattr(client, 'client') and hasattr(client.client, 'dumps'):
+            raw = client.client.dumps()
             if raw and raw != 'W251bGwsIG51bGxd':  # skip empty/null token
                 token_store = raw  # store as plain string
                 print(f"[garmin] Token saved for {name} ({len(raw)} chars base64)")
@@ -1162,10 +1162,10 @@ async def debug_garmin(mid: int):
         token_store = m.get("garmin_token_store")
         client = Garmin()
         if isinstance(token_store, str):
-            client.garth.loads(token_store)
+            client.client.loads(token_store)
         else:
             import json as _j
-            client.garth.loads(_j.dumps(token_store))
+            client.client.loads(_j.dumps(token_store))
         acts = client.get_activities_by_date(
             after_dt.strftime("%Y-%m-%d"),
             before_dt.strftime("%Y-%m-%d"),
