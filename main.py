@@ -495,6 +495,8 @@ def monthly_breakdown(acts: list, year: int) -> list:
                 rule_e_pts = 2
             elif got_sprint:
                 rule_e_pts = 1
+        # ── goalDay: which calendar day did cumulative challenge-km first hit the goal? ──
+        goal_day = None
         if month_acts:
             dated = []
             for a in month_acts:
