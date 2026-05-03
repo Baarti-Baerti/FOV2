@@ -609,7 +609,7 @@ def fmt_member(m: dict, idx: int, s: dict) -> dict:
         mo["weightBmi"] = entry["bmi"] if entry and entry.get("bmi") else None
 
     return dict(
-        id=m["id"], name=m["name"], provider="strava",
+        id=m["id"], name=m["name"], provider=m.get("provider", "strava"),
         emoji=m.get("emoji") or _EMOJIS[idx%len(_EMOJIS)],
         color=m.get("color") or _COLORS[idx%len(_COLORS)],
         bg=m.get("bg")       or _BG[idx%len(_BG)],
@@ -969,7 +969,7 @@ async def get_team(range_: str = Query("thismonth", alias="range")):
 @app.get("/api/members")
 async def get_members():
     db = load_db()
-    return [{"id":m["id"],"name":m["name"],"provider":"strava",
+    return [{"id":m["id"],"name":m["name"],"provider":m.get("provider","strava"),
              "emoji":m.get("emoji","🦦"),"color":m.get("color","#818cf8"),
              "bg":m.get("bg","#ede9fe"),"picture":m.get("strava_picture","")}
             for m in db["members"]]
