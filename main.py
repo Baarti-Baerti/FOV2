@@ -613,7 +613,7 @@ def fmt_member(m: dict, idx: int, s: dict) -> dict:
         emoji=m.get("emoji") or _EMOJIS[idx%len(_EMOJIS)],
         color=m.get("color") or _COLORS[idx%len(_COLORS)],
         bg=m.get("bg")       or _BG[idx%len(_BG)],
-        picture=m.get("strava_picture",""), height_m=height_m,
+        picture=m.get("garmin_picture","") if m.get("provider") == "garmin" else m.get("strava_picture",""), height_m=height_m,
         **{k: s.get(k,0) for k in ("km","runKm","cycleKm","virtualKm","swimKm","walkKm",
                                     "durationSec","workouts","challengeKm","eligibleWalkKm")},
         runKcalFactor=run_kcal_factor,
@@ -827,13 +827,29 @@ async def garmin_login(body: GarminLoginBody):
             raise HTTPException(202, "MFA required — please check your email for a code")
         raise HTTPException(502, f"Garmin login failed: {str(e)}")
 
-    # Get user profile for garmin_id
+    # Get user profile for garmin_id and picture
     try:
         profile   = client.get_full_name() or email
         garmin_id = str(client.profile.get("userId", email))
     except Exception:
-        garmin_id = email  # fall back to email as unique ID
+        garmin_id = email
         profile   = name
+
+    # Fetch profile picture from social profile
+    garmin_picture = ""
+    try:
+        social = client.client.connectapi("/userprofile-service/socialProfile")
+        # Try common field names for avatar URL
+        garmin_picture = (
+            social.get("profileImageUrlMedium") or
+            social.get("profileImageUrlLarge") or
+            social.get("profileImageUrlSmall") or
+            social.get("profileImage") or
+            ""
+        )
+        print(f"[garmin] Profile picture for {name}: {garmin_picture[:60] if garmin_picture else 'none'}")
+    except Exception as pe:
+        print(f"[garmin] Could not fetch profile picture for {name}: {pe}")
 
     # Serialize the session tokens for storage
     # garth.dumps() returns a base64 string (not JSON) — store it as-is
@@ -860,6 +876,8 @@ async def garmin_login(body: GarminLoginBody):
         if member:
             member["garmin_token_store"] = token_store
             member["provider"]           = "garmin"
+            if garmin_picture:
+                member["garmin_picture"] = garmin_picture
         else:
             idx    = len(members)
             member = {
@@ -867,6 +885,7 @@ async def garmin_login(body: GarminLoginBody):
                 "name":               name,
                 "garmin_id":          garmin_id,
                 "garmin_token_store": token_store,
+                "garmin_picture":     garmin_picture,
                 "provider":           "garmin",
                 "emoji":              _EMOJIS[idx % len(_EMOJIS)],
                 "color":              _COLORS[idx % len(_COLORS)],
