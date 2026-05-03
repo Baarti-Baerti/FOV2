@@ -281,9 +281,21 @@ async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last
         from garminconnect import Garmin
         import json as _json
         client = Garmin()
-        client.garth.loads(_json.dumps(token_store))
+        # Load token — handle both garth.loads() string and dict formats
+        ts = token_store
+        if isinstance(ts, dict):
+            ts_str = _json.dumps(ts)
+        else:
+            ts_str = str(ts)
+        try:
+            client.garth.loads(ts_str)
+        except Exception as e:
+            print(f"[warn] garth.loads failed: {e} — trying direct token assignment")
+            # Try assigning oauth tokens directly if available
+            if isinstance(token_store, dict):
+                if 'oauth2_token' in token_store and hasattr(client.garth, 'oauth2_token'):
+                    client.garth.oauth2_token = token_store['oauth2_token']
         client.display_name = member.get("name", "")
-        # Fetch activities in date range
         acts = client.get_activities_by_date(
             after_dt.strftime("%Y-%m-%d"),
             before_dt.strftime("%Y-%m-%d"),
@@ -831,12 +843,34 @@ async def garmin_login(body: GarminLoginBody):
         garmin_id = email  # fall back to email as unique ID
         profile   = name
 
-    # Serialize the session tokens for storage
+    # Serialize the session tokens for storage — try multiple garth API approaches
+    token_store = None
     try:
         import json as _json
-        token_store = _json.loads(client.garth.dumps()) if hasattr(client, 'garth') else {}
-    except Exception:
+        if hasattr(client, 'garth'):
+            g = client.garth
+            # garth >= 0.4: use dumps()
+            if hasattr(g, 'dumps'):
+                raw = g.dumps()
+                token_store = _json.loads(raw) if isinstance(raw, str) else raw
+            # garth older: access oauth1/oauth2 tokens directly
+            elif hasattr(g, 'oauth1_token') or hasattr(g, 'oauth2_token'):
+                token_store = {}
+                if hasattr(g, 'oauth1_token') and g.oauth1_token:
+                    token_store['oauth1_token'] = vars(g.oauth1_token) if hasattr(g.oauth1_token, '__dict__') else str(g.oauth1_token)
+                if hasattr(g, 'oauth2_token') and g.oauth2_token:
+                    token_store['oauth2_token'] = vars(g.oauth2_token) if hasattr(g.oauth2_token, '__dict__') else str(g.oauth2_token)
+            # Last resort: store entire garth object dict
+            if not token_store:
+                token_store = {k: str(v) for k, v in vars(g).items() if not k.startswith('_')}
+        print(f"[garmin] Token serialized for {name}, keys: {list(token_store.keys()) if token_store else 'EMPTY'}")
+    except Exception as te:
+        print(f"[warn] Could not serialize Garmin token for {name}: {te}")
         token_store = {}
+
+    if not token_store:
+        print(f"[warn] Empty token store for Garmin user {name} — sync will fail until re-login")
+        raise HTTPException(500, "Garmin login succeeded but session could not be saved. Please try again.")
 
     async with _db_lock:
         db      = load_db()
