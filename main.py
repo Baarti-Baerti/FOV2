@@ -459,8 +459,42 @@ def monthly_breakdown(acts: list, year: int) -> list:
         # kJ/km factor for running — None if no kJ data this month
         run_kcal_per_km = round(run_kj / run_km_kj, 2) if run_km_kj > 0.5 else None
 
-        # goalDay calculation
-        goal_day = None
+        # ── Rule E: Multi-sport triathlon days (May only) ──────────────────
+        # Olympic: 40km bike + 10km run + 1.5km swim in one calendar day → 2pts
+        # Sprint:  20km bike + 5km run + 0.75km swim in one calendar day → 1pt
+        # Maximum 2pts regardless of how many sprint days achieved
+        rule_e_pts = 0
+        if m == 5:  # May only
+            # Group activities by local calendar day
+            from collections import defaultdict
+            day_acts = defaultdict(lambda: {"run":0.0,"ride":0.0,"swim":0.0})
+            for a in month_acts:
+                cat  = classify(a.get("sport_type") or a.get("type",""))
+                dist = (a.get("distance",0) or 0) / 1000
+                ts   = a.get("start_date_local") or a.get("start_date","")
+                try:
+                    day_key = datetime.fromisoformat(ts.replace("Z","+00:00")).strftime("%Y-%m-%d")
+                except Exception:
+                    continue
+                if cat == "run":
+                    day_acts[day_key]["run"] += dist
+                elif cat in ("ride","virtual_ride"):
+                    day_acts[day_key]["ride"] += dist
+                elif cat == "swim":
+                    day_acts[day_key]["swim"] += dist
+
+            got_olympic = False
+            got_sprint  = False
+            for day, d in day_acts.items():
+                if d["ride"] >= 40 and d["run"] >= 10 and d["swim"] >= 1.5:
+                    got_olympic = True
+                elif d["ride"] >= 20 and d["run"] >= 5 and d["swim"] >= 0.75:
+                    got_sprint = True
+
+            if got_olympic:
+                rule_e_pts = 2
+            elif got_sprint:
+                rule_e_pts = 1
         if month_acts:
             dated = []
             for a in month_acts:
@@ -487,6 +521,7 @@ def monthly_breakdown(acts: list, year: int) -> list:
             goalDay=goal_day,
             runKcalPerKm=run_kcal_per_km,   # kJ/km factor for running (None if no kJ data)
             runCalKm=round(run_km_kj, 3),   # km of runs that had kJ data
+            ruleEPts=rule_e_pts,  # 0, 1 (sprint tri), or 2 (olympic tri) — May only
             # Per-category kJ for dynamic scoring
             runCals=round(cat_kj["run"], 1),
             rideCals=round(cat_kj["ride"], 1),
