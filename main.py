@@ -293,15 +293,15 @@ async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last
     try:
         loop     = asyncio.get_event_loop()
         raw_acts = await loop.run_in_executor(None, do_garmin_sync)
+        print(f"[sync] {member['name']} (Garmin): raw fetch returned {len(raw_acts or [])} activities")
     except Exception as e:
-        print(f"[warn] Garmin sync failed for {member['name']}: {e}")
+        print(f"[warn] Garmin sync failed for {member['name']}: {type(e).__name__}: {e}")
         return stored.get("activities", [])
 
     # Normalise Garmin activities to match Strava-like shape
     new_acts = []
     for a in (raw_acts or []):
-        act_type = a.get("activityType", {}).get("typeKey", "other")
-        # Map Garmin type keys to Strava sport types
+        act_type   = a.get("activityType", {}).get("typeKey", "other")
         type_map = {
             "running": "Run", "trail_running": "TrailRun",
             "cycling": "Ride", "mountain_biking": "MountainBikeRide",
@@ -311,12 +311,16 @@ async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last
         }
         sport_type = type_map.get(act_type, act_type.title().replace("_",""))
         start_str  = a.get("startTimeLocal", a.get("startTimeGMT", ""))
+        # Garmin distance field: already in metres for most endpoints
+        dist_raw   = a.get("distance") or 0
+        # If value looks like it's in km (< 200 for any activity), convert to metres
+        dist_m = dist_raw * 1000 if dist_raw < 500 else dist_raw
         new_acts.append({
-            "id":               a.get("activityId", f"g_{a.get('activityId','')}"),
+            "id":               str(a.get("activityId", f"g_{id(a)}")),
             "sport_type":       sport_type,
             "start_date_local": start_str + "Z" if start_str and not start_str.endswith("Z") else start_str,
             "start_date":       a.get("startTimeGMT", start_str),
-            "distance":         (a.get("distance") or 0) * 1000,  # Garmin returns km, convert to m
+            "distance":         dist_m,
             "moving_time":      int((a.get("movingDuration") or a.get("duration") or 0)),
             "elapsed_time":     int((a.get("duration") or 0)),
             "average_speed":    (a.get("averageSpeed") or 0) / 3.6,  # km/h → m/s
@@ -1113,6 +1117,75 @@ async def reset_sync_member(mid: int):
     save_acts(mid, stored)
     cache_bust(mid)
     return {"ok": True, "member": m["name"], "message": f"Reset complete for {m['name']} — run /api/admin/sync to fetch their data"}
+
+@app.get("/api/admin/debug-garmin/{mid}")
+async def debug_garmin(mid: int):
+    """Debug Garmin sync for a specific member — shows token status and raw fetch attempt."""
+    import asyncio
+    db = load_db()
+    m = next((x for x in db["members"] if x["id"] == mid), None)
+    if not m: raise HTTPException(404, "Member not found")
+
+    provider      = m.get("provider", "strava")
+    has_token     = bool(m.get("garmin_token_store"))
+    token_keys    = list(m.get("garmin_token_store", {}).keys()) if has_token else []
+    stored        = load_acts(mid)
+    stored_count  = len(stored.get("activities", []))
+    last_fetch    = stored.get("last_fetch", 0)
+
+    if provider != "garmin":
+        return {"member": m["name"], "provider": provider, "error": "Not a Garmin member"}
+    if not has_token:
+        return {"member": m["name"], "provider": "garmin", "error": "No garmin_token_store — user needs to re-login"}
+
+    # Try a live fetch for last 7 days to test the token
+    now      = int(time.time())
+    after_dt = datetime.fromtimestamp(now - 7 * 86400, tz=timezone.utc)
+    before_dt = datetime.fromtimestamp(now, tz=timezone.utc)
+
+    def do_test_fetch():
+        from garminconnect import Garmin
+        import json as _json
+        token_store = m.get("garmin_token_store")
+        client = Garmin()
+        client.garth.loads(_json.dumps(token_store))
+        acts = client.get_activities_by_date(
+            after_dt.strftime("%Y-%m-%d"),
+            before_dt.strftime("%Y-%m-%d"),
+        )
+        return acts
+
+    loop = asyncio.get_event_loop()
+    try:
+        raw = await loop.run_in_executor(None, do_test_fetch)
+        sample = [
+            {
+                "name":      a.get("activityName"),
+                "type":      a.get("activityType", {}).get("typeKey"),
+                "date":      a.get("startTimeLocal"),
+                "dist_km":   round((a.get("distance") or 0), 2),
+                "duration_m": round((a.get("duration") or 0) / 60, 1),
+            }
+            for a in (raw or [])[:5]
+        ]
+        return {
+            "member":       m["name"],
+            "provider":     "garmin",
+            "garmin_id":    m.get("garmin_id"),
+            "token_keys":   token_keys,
+            "stored_count": stored_count,
+            "last_fetch_ago_h": round((now - last_fetch) / 3600, 1) if last_fetch else None,
+            "fetch_last_7d_count": len(raw or []),
+            "sample":       sample,
+        }
+    except Exception as e:
+        return {
+            "member":     m["name"],
+            "provider":   "garmin",
+            "token_keys": token_keys,
+            "error":      str(e),
+            "hint":       "Token likely expired — user needs to re-login via Garmin Connect button",
+        }
 
 # Toggle Strava sync pause
 @app.post("/api/admin/strava-pause")
