@@ -1141,8 +1141,9 @@ async def debug_garmin(mid: int):
     if not m: raise HTTPException(404, "Member not found")
 
     provider      = m.get("provider", "strava")
-    has_token     = bool(m.get("garmin_token_store"))
-    token_keys    = list(m.get("garmin_token_store", {}).keys()) if has_token else []
+    has_token  = bool(m.get("garmin_token_store"))
+    token_store_val = m.get("garmin_token_store")
+    token_info = f"base64 string ({len(token_store_val)} chars)" if isinstance(token_store_val, str) else (list(token_store_val.keys()) if isinstance(token_store_val, dict) else "unknown")
     stored        = load_acts(mid)
     stored_count  = len(stored.get("activities", []))
     last_fetch    = stored.get("last_fetch", 0)
@@ -1192,7 +1193,7 @@ async def debug_garmin(mid: int):
             "member":       m["name"],
             "provider":     "garmin",
             "garmin_id":    m.get("garmin_id"),
-            "token_keys":   token_keys,
+            "token_info":   token_info,
             "stored_count": stored_count,
             "last_fetch_ago_h": round((now - last_fetch) / 3600, 1) if last_fetch else None,
             "fetch_last_7d_count": len(raw or []),
@@ -1202,7 +1203,7 @@ async def debug_garmin(mid: int):
         return {
             "member":     m["name"],
             "provider":   "garmin",
-            "token_keys": token_keys,
+            "token_info": token_info,
             "error":      str(e),
             "hint":       "Token likely expired — user needs to re-login via Garmin Connect button",
         }
