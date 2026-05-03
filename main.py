@@ -307,18 +307,18 @@ async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last
     for a in (raw_acts or []):
         act_type   = a.get("activityType", {}).get("typeKey", "other")
         type_map = {
-            "running": "Run", "trail_running": "TrailRun",
-            "cycling": "Ride", "mountain_biking": "MountainBikeRide",
+            "running": "Run", "trail_running": "TrailRun", "treadmill_running": "Run",
+            "cycling": "Ride", "road_biking": "Ride", "mountain_biking": "MountainBikeRide",
+            "gravel_cycling": "Ride", "cyclocross": "Ride", "road_cycling": "Ride",
             "virtual_ride": "VirtualRide", "indoor_cycling": "VirtualRide",
+            "zwift": "VirtualRide", "indoor_biking": "VirtualRide",
             "swimming": "Swim", "lap_swimming": "Swim", "open_water_swimming": "Swim",
-            "walking": "Walk", "hiking": "Hike",
+            "walking": "Walk", "hiking": "Hike", "trail_hiking": "Hike",
         }
         sport_type = type_map.get(act_type, act_type.title().replace("_",""))
         start_str  = a.get("startTimeLocal", a.get("startTimeGMT", ""))
-        # Garmin distance field: already in metres for most endpoints
-        dist_raw   = a.get("distance") or 0
-        # If value looks like it's in km (< 200 for any activity), convert to metres
-        dist_m = dist_raw * 1000 if dist_raw < 500 else dist_raw
+        # Garmin returns distance in metres
+        dist_m = float(a.get("distance") or 0)
         new_acts.append({
             "id":               str(a.get("activityId", f"g_{id(a)}")),
             "sport_type":       sport_type,
