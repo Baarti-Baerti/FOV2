@@ -703,6 +703,7 @@ async def lifespan(app):
     else:
         db = load_db()
         print(f"[startup] Loaded database: {len(db['members'])} member(s) from {DB_PATH}")
+
     # Start hourly background sync
     task = asyncio.create_task(hourly_sync_job())
     yield
@@ -978,6 +979,19 @@ async def garmin_login(body: GarminLoginBody):
 
     cache_bust(member["id"])
 
+    # Trigger a background activity sync so dashboard has data immediately
+    # Reload member from DB to ensure we have the saved token
+    async def _background_sync(mid):
+        await asyncio.sleep(2)  # let the DB write complete
+        db3 = load_db()
+        m3  = next((x for x in db3["members"] if x["id"] == mid), None)
+        if m3:
+            await sync_activities(m3)
+            cache_bust(mid)
+            print(f"[login-sync] Background sync complete for {m3['name']}")
+
+    asyncio.create_task(_background_sync(member["id"]))
+
     return {
         "ok":     True,
         "member": {
@@ -987,7 +1001,7 @@ async def garmin_login(body: GarminLoginBody):
             "emoji":   member["emoji"],
             "color":   member["color"],
             "bg":      member["bg"],
-            "picture": "",
+            "picture": member.get("garmin_picture", ""),
         }
     }
 
