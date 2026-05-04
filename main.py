@@ -657,6 +657,7 @@ def fmt_member(m: dict, idx: int, s: dict) -> dict:
         runKcalFactor=run_kcal_factor,
         bmi=current_bmi,
         weightLog=weight_log,
+        isAdmin=m.get("is_admin", False),
         types=s.get("types",[]), monthly=s.get("monthly",[]),
         recentActs=s.get("recentActs",[]),
         week=w, weekCalories=wc)
@@ -1069,7 +1070,16 @@ class HeightBody(BaseModel):
     height_cm: float
     admin_name: str = ""  # kept for backward compat, ignored
 
-@app.post("/api/members/{mid}/height")
+@app.post("/api/admin/members/{mid}/toggle-admin")
+async def toggle_admin(mid: int):
+    db = load_db()
+    m = next((x for x in db["members"] if x["id"] == mid), None)
+    if not m: raise HTTPException(404, "Member not found")
+    m["is_admin"] = not m.get("is_admin", False)
+    save_db(db); cache_bust(mid)
+    return {"ok": True, "is_admin": m["is_admin"], "name": m["name"]}
+
+
 async def set_height(mid: int, body: HeightBody):
     if not (100 <= body.height_cm <= 250):
         raise HTTPException(400, "Height must be between 100–250 cm")
