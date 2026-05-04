@@ -1958,7 +1958,7 @@ function dynTotalPts(u) {
   const f = u.runKcalFactor || 1;
   return dynPts(c.run,f) + dynPts(c.ride,f) + dynPts(c.virtual,f) + dynPts(c.swim,f) + dynPts(c.walk,f);
 }
-function fmtKj(v){ return (v||0) > 0 ? Math.round((v||0)/4.184).toLocaleString() : '—'; } // kJ→kcal for display
+function fmtKj(v){ return (v||0) > 0 ? Math.round((v||0)*0.646).toLocaleString() : '—'; } // kJ→kcal (metabolic, empirical factor)
 function dynCell(km, kj, pts) {
   if (!km || km < 0.005) return '—';
   const kjStr = kj > 0
@@ -2397,7 +2397,7 @@ function renderDetail(suffix=''){
               <div class="detail-item-lbl" style="color:var(--violet)">Avg. running kcal/km factor (YTD)</div>
               <div class="detail-item-val" style="color:var(--violet);font-size:1.2rem">
                 ${u.runKcalFactor != null
-                  ? `${(u.runKcalFactor/4.184).toFixed(2)} <span style="font-size:0.75rem;font-weight:600;color:var(--text2)">kcal/km</span>`
+                  ? `${(u.runKcalFactor*0.646).toFixed(2)} <span style="font-size:0.75rem;font-weight:600;color:var(--text2)">kcal/km</span>`
                   : `<span style="font-size:0.9rem;color:var(--muted);font-weight:600">No data</span>`}
               </div>
             </div>` : ''}
@@ -2491,7 +2491,7 @@ function renderDetail(suffix=''){
                   if (isRun) { const s=movSecs/a.dist_km; paceStr=Math.floor(s/60)+':'+(String(Math.round(s%60)).padStart(2,'0'))+'/km'; }
                   else paceStr = (a.dist_km/(movSecs/3600)).toFixed(1)+'km/h';
                 }
-                const kjStr = a.kj > 0 ? Math.round(a.kj/4.184) : '—'; // kJ→kcal
+                const kjStr = a.kj > 0 ? Math.round(a.kj*0.646) : '—'; // kJ→kcal (metabolic)
                 const delBtn = isAdmin ? `<button onclick="deleteActivity(${u.id},'${a.id}')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.9rem;padding:2px 4px;opacity:0.5;transition:opacity .15s" onmouseover="this.style.opacity=1;this.style.color='#ef4444'" onmouseout="this.style.opacity=0.5;this.style.color='var(--muted)'" title="Delete activity">🗑️</button>` : '';
                 const hidden = thisIdx >= 15 ? 'class="act-extra" style="display:none;border-bottom:1px solid var(--border)"' : 'style="border-bottom:1px solid var(--border)"';
                 return `<tr ${hidden} onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
