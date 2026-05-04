@@ -1018,22 +1018,23 @@ async def get_team(range_: str = Query("thismonth", alias="range")):
     result = []
 
     for idx, m in enumerate(db["members"]):
-        # Serve from cache if available — cache is busted on sync
-        cached = cache_get(m["id"], range_)
-        if cached:
-            result.append(cached)
-            continue
-
-        # Load stored activities
-        stored = load_acts(m["id"])
+        # Load stored activities to check freshness
+        stored     = load_acts(m["id"])
         last_fetch = stored.get("last_fetch", 0)
         needs_sync = (not stored["activities"]) or (now - last_fetch > SYNC_STALE_SECS)
+
+        # Serve from cache only if data is fresh
+        if not needs_sync:
+            cached = cache_get(m["id"], range_)
+            if cached:
+                result.append(cached)
+                continue
 
         if needs_sync:
             try:
                 print(f"[get_team] Stale data for {m['name']} (last_fetch {now - last_fetch}s ago) — syncing")
                 year_acts = await sync_activities(m)
-                cache_bust(m["id"])  # bust ALL period caches so stale data isn't served
+                cache_bust(m["id"])
             except Exception as e:
                 print(f"[warn] sync failed for {m['name']}: {e}")
                 year_acts = stored.get("activities", [])
