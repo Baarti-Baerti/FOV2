@@ -1087,6 +1087,11 @@ async def set_height(mid: int, body: HeightBody):
     m = next((x for x in db["members"] if x["id"] == mid), None)
     if not m: raise HTTPException(404, "Member not found")
     m["height_m"] = round(body.height_cm / 100, 3)
+    # Recalculate BMI for all existing weight entries now that we have height
+    height_m = m["height_m"]
+    for entry in m.get("weight_log", []):
+        if entry.get("weight_kg"):
+            entry["bmi"] = round(entry["weight_kg"] / (height_m ** 2), 1)
     save_db(db); cache_bust(mid)
     return {"ok": True, "height_m": m["height_m"]}
 
