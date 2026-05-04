@@ -2442,7 +2442,10 @@ function renderDetail(suffix=''){
             ${(() => {
               // Build combined list: activities + weight entries, sorted by date desc
               const actRows = periodActs.map(a => ({ type: 'act', sortKey: a.date, data: a }));
-              const wtRows  = (u.weightLog||[]).map(w => ({ type: 'weight', sortKey: w.date + 'T00:00:00Z', data: w }));
+              // Filter weight entries to selected period using same date filter as activities
+              const wtRows  = (u.weightLog||[])
+                .filter(w => actMf({ date: w.date + 'T12:00:00Z' }))
+                .map(w => ({ type: 'weight', sortKey: w.date + 'T00:00:00Z', data: w }));
               const combined = [...actRows, ...wtRows].sort((a,b) => b.sortKey.localeCompare(a.sortKey));
               let actIdx = 0;
               return combined.map(item => {
