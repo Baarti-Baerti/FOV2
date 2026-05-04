@@ -482,20 +482,26 @@ def monthly_breakdown(acts: list, year: int) -> list:
             except (ValueError, IndexError): pass
 
         # Per-category kJ totals for dynamic scoring (raw device data, no conversion)
+        # Garmin stores calories (kcal), Strava stores kilojoules — normalise to kJ
         run_kj     = 0.0
-        run_km_kj  = 0.0  # km of runs that have kJ data (for factor calculation)
+        run_km_kj  = 0.0  # km of runs that have energy data (for factor calculation)
         cat_kj = {"run": 0.0, "ride": 0.0, "virtual_ride": 0.0, "swim": 0.0, "walk": 0.0}
         for a in month_acts:
             cat  = classify(a.get("sport_type") or a.get("type", ""))
             kj   = a.get("kilojoules") or 0
+            cals = a.get("calories") or 0
             dist = (a.get("distance", 0) or 0) / 1000
+            # Use kJ if available; if not, convert kcal→kJ using empirical factor
+            # (kcal / 0.646 = kJ, inverse of our display conversion kJ * 0.646 = kcal)
+            if not kj and cals:
+                kj = cals / 0.646
             if cat in cat_kj and kj > 0:
                 cat_kj[cat] += kj
             if cat == "run" and dist > 0 and kj > 0:
                 run_kj    += kj
                 run_km_kj += dist
 
-        # kJ/km factor for running — None if no kJ data this month
+        # kJ/km factor for running — None if no energy data this year
         run_kcal_per_km = round(run_kj / run_km_kj, 2) if run_km_kj > 0.5 else None
 
         # ── Rule E: Multi-sport triathlon days (May only) ──────────────────
