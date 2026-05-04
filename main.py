@@ -481,28 +481,27 @@ def monthly_breakdown(acts: list, year: int) -> list:
                     days[idx] = 1
             except (ValueError, IndexError): pass
 
-        # Per-category kJ totals for dynamic scoring (raw device data, no conversion)
-        # Garmin stores calories (kcal), Strava stores kilojoules — normalise to kJ
-        run_kj     = 0.0
-        run_km_kj  = 0.0  # km of runs that have energy data (for factor calculation)
+        # Per-category energy totals for dynamic scoring
+        # Use calories (kcal) directly — no fallback estimation when calories is null
+        # All values stored in kcal
+        run_kcal     = 0.0
+        run_km_kcal  = 0.0
         cat_kj = {"run": 0.0, "ride": 0.0, "virtual_ride": 0.0, "swim": 0.0, "walk": 0.0}
         for a in month_acts:
             cat  = classify(a.get("sport_type") or a.get("type", ""))
-            kj   = a.get("kilojoules") or 0
             cals = a.get("calories") or 0
+            kj   = a.get("kilojoules") or 0
             dist = (a.get("distance", 0) or 0) / 1000
-            # Use kJ if available; if not, convert kcal→kJ using empirical factor
-            # (kcal / 0.646 = kJ, inverse of our display conversion kJ * 0.646 = kcal)
-            if not kj and cals:
-                kj = cals / 0.646
-            if cat in cat_kj and kj > 0:
-                cat_kj[cat] += kj
-            if cat == "run" and dist > 0 and kj > 0:
-                run_kj    += kj
-                run_km_kj += dist
+            # Use calories directly only — no fallback estimation
+            energy = float(cals) if cals else 0.0
+            if cat in cat_kj and energy > 0:
+                cat_kj[cat] += energy
+            if cat == "run" and dist > 0 and energy > 0:
+                run_kcal    += energy
+                run_km_kcal += dist
 
-        # kJ/km factor for running — None if no energy data this year
-        run_kcal_per_km = round(run_kj / run_km_kj, 2) if run_km_kj > 0.5 else None
+        # kcal/km factor for running — None if no energy data this month
+        run_kcal_per_km = round(run_kcal / run_km_kcal, 2) if run_km_kcal > 0.5 else None
 
         # ── Rule E: Multi-sport triathlon days (May only) ──────────────────
         # Olympic: 40km bike + 10km run + 1.5km swim in one calendar day → 2pts
@@ -566,10 +565,10 @@ def monthly_breakdown(acts: list, year: int) -> list:
             swimKm=s["swimKm"], walkKm=s["walkKm"], eligibleWalkKm=s["eligibleWalkKm"], actKcal=0,
             durationSec=s["durationSec"], challengeKm=round(s["challengeKm"], 3),
             goalDay=goal_day,
-            runKcalPerKm=run_kcal_per_km,   # kJ/km factor for running (None if no kJ data)
-            runCalKm=round(run_km_kj, 3),   # km of runs that had kJ data
-            ruleEPts=rule_e_pts,  # 0, 1 (sprint tri), or 2 (olympic tri) — May only
-            # Per-category kJ for dynamic scoring
+            runKcalPerKm=run_kcal_per_km,
+            runCalKm=round(run_km_kcal, 3),   # km of runs that had energy data
+            ruleEPts=rule_e_pts,
+            # Per-category energy (kcal) for dynamic scoring
             runCals=round(cat_kj["run"], 1),
             rideCals=round(cat_kj["ride"], 1),
             virtualCals=round(cat_kj["virtual_ride"], 1),
@@ -1042,8 +1041,8 @@ async def get_team(range_: str = Query("thismonth", alias="range")):
                 "dist_km":       round(float(a.get("distance") or 0) / 1000, 2),
                 "moving_time":   int(a.get("moving_time") or 0),
                 "average_speed": float(a.get("average_speed") or 0),
-                # kj: use kilojoules if available, else convert kcal→kJ for consistent display
-                "kj":            float(a.get("kilojoules") or 0) or float(a.get("calories") or 0) / 0.646,
+                # Use calories directly — no fallback estimation
+                "kj":            float(a.get("calories") or 0),
                 "hr":            float(a.get("average_heartrate") or 0),
             }
             for a in sorted(year_acts, key=_act_ts, reverse=True)
