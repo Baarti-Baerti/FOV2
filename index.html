@@ -2297,7 +2297,11 @@ function renderLB(suffix=''){
            <button class="trash-btn" onclick="event.stopPropagation();openRenameModal(${u.id},'${u.name.replace(/'/g,"\\'")}')">✏️</button>
            <button class="trash-btn" onclick="event.stopPropagation();confirmRemove(${u.id},'${u.name.replace(/'/g,"\\'")}')">🗑️</button>
          </td>`
-      : isAdmin ? '<td></td>' : '';
+      : isAdmin
+      ? `<td style="white-space:nowrap">
+           <button class="trash-btn" onclick="event.stopPropagation();openRenameModal(${u.id},'${u.name.replace(/'/g,"\\'")}')">✏️</button>
+         </td>`
+      : '';
     return `<tr class="${ac}" onclick="pickUser(${u.id})">
       <td>
         <div class="lb-user-cell">
@@ -2674,6 +2678,12 @@ async function executeRename() {
       return;
     }
     closeRenameModal();
+    // If the renamed user is the current user, update their session
+    if (_renameTargetId === currentMember?.id) {
+      currentMember.name = newName;
+      saveSession(currentMember);
+      updateHeaderChip(currentMember);
+    }
     await loadData(currentPeriod, true);
     showBanner(`✅ Renamed to "${newName}"`, 'live');
   } catch(err) {
