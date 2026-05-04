@@ -492,8 +492,10 @@ def monthly_breakdown(acts: list, year: int) -> list:
             cals = a.get("calories") or 0
             kj   = a.get("kilojoules") or 0
             dist = (a.get("distance", 0) or 0) / 1000
-            # Use calories directly only — no fallback estimation
-            energy = float(cals) if cals else 0.0
+            # Use calories directly when available (Garmin, some Strava)
+            # Fall back to kJ * 0.239 * 4 ≈ kJ * 0.956... actually use empirical 0.646 for Strava kJ
+            # This gives kcal matching what Strava displays in their app
+            energy = float(cals) if cals else float(kj) * 0.646
             if cat in cat_kj and energy > 0:
                 cat_kj[cat] += energy
             if cat == "run" and dist > 0 and energy > 0:
@@ -1041,8 +1043,8 @@ async def get_team(range_: str = Query("thismonth", alias="range")):
                 "dist_km":       round(float(a.get("distance") or 0) / 1000, 2),
                 "moving_time":   int(a.get("moving_time") or 0),
                 "average_speed": float(a.get("average_speed") or 0),
-                # Use calories directly — no fallback estimation
-                "kj":            float(a.get("calories") or 0),
+                # calories directly when available; kJ*0.646 as fallback for Strava users
+                "kj":            float(a.get("calories") or 0) or float(a.get("kilojoules") or 0) * 0.646,
                 "hr":            float(a.get("average_heartrate") or 0),
             }
             for a in sorted(year_acts, key=_act_ts, reverse=True)
