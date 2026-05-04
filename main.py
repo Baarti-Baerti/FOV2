@@ -657,7 +657,7 @@ def fmt_member(m: dict, idx: int, s: dict) -> dict:
         runKcalFactor=run_kcal_factor,
         bmi=current_bmi,
         weightLog=weight_log,
-        isAdmin=m.get("is_admin", False),
+        isAdmin=m.get("is_admin", False) or m.get("id") == 1,  # id 1 = Baarti, always admin
         types=s.get("types",[]), monthly=s.get("monthly",[]),
         recentActs=s.get("recentActs",[]),
         week=w, weekCalories=wc)

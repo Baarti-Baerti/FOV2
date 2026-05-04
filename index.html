@@ -1975,8 +1975,9 @@ function dynCell(km, kj, pts) {
 // ── Admin check — outer scope so both renderLB and renderDetail can use it ──
 function checkIsAdmin() {
   if (!currentMember) return false;
-  // Check flag on loaded user data first, fall back to name check for Baarti
   const me = users.find(u => u.id === currentMember.id);
+  // Use isAdmin flag (set server-side) as primary check
+  // Name-based fallback only for Baarti's initial bootstrap before flag is set
   return !!(me?.isAdmin) || (currentMember.name || '').toLowerCase().trim().includes('baarti');
 }
 
@@ -2678,6 +2679,10 @@ async function executeRename() {
       return;
     }
     closeRenameModal();
+    // Update in-memory user objects immediately
+    const renamedUser = users.find(u => u.id === _renameTargetId);
+    if (renamedUser) renamedUser.name = newName;
+    if (selUser?.id === _renameTargetId) selUser.name = newName;
     // If the renamed user is the current user, update their session
     if (_renameTargetId === currentMember?.id) {
       currentMember.name = newName;
