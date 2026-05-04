@@ -215,9 +215,9 @@ async def sync_activities(member: dict) -> list:
     stored     = load_acts(mid)
     last_fetch = stored.get("last_fetch", 0)
 
-    # If paused, just return what we have stored
-    if is_strava_paused():
-        print(f"[sync] PAUSED — skipping fetch for {member['name']}")
+    # If paused, skip Strava users but still sync Garmin users
+    if is_strava_paused() and provider != "garmin":
+        print(f"[sync] PAUSED — skipping Strava fetch for {member['name']}")
         return stored.get("activities", [])
 
     provider = member.get("provider", "strava")
@@ -674,19 +674,18 @@ async def hourly_sync_job():
         await asyncio.sleep(secs_until_next_hour)
 
         print(f"[hourly-sync] Starting sync for all members")
-        if is_strava_paused():
-            print(f"[hourly-sync] PAUSED — skipping")
-            continue
         db = load_db()
         for m in db["members"]:
             try:
+                # Skip Strava users if sync is paused; always sync Garmin users
+                if is_strava_paused() and m.get("provider", "strava") != "garmin":
+                    print(f"[hourly-sync] PAUSED — skipping Strava user {m['name']}")
+                    continue
                 await sync_activities(m)
-                # Bust in-memory cache so next /api/team call reads fresh data
                 cache_bust(m["id"])
                 print(f"[hourly-sync] Synced {m['name']}")
             except Exception as e:
                 print(f"[hourly-sync] Failed for {m['name']}: {e}")
-            # Small delay between members to avoid bursting Strava API
             await asyncio.sleep(2)
         print(f"[hourly-sync] Done")
 
@@ -1338,7 +1337,20 @@ async def clear_cache():
 @app.get("/api/admin/sync")
 async def manual_sync():
     if is_strava_paused():
-        return {"ok": False, "message": "Strava sync is currently paused — toggle it on first"}
+        # Still sync Garmin users even when paused
+        db = load_db()
+        results = []
+        for m in db["members"]:
+            if m.get("provider", "strava") == "garmin":
+                try:
+                    acts = await sync_activities(m)
+                    cache_bust(m["id"])
+                    results.append({"member": m["name"], "activities": len(acts), "ok": True})
+                except Exception as e:
+                    results.append({"member": m["name"], "activities": 0, "ok": False, "error": str(e)})
+            else:
+                results.append({"member": m["name"], "activities": 0, "ok": False, "skipped": "paused"})
+        return {"synced": len(results), "paused": True, "results": results}
     db = load_db()
     results = []
     for m in db["members"]:
