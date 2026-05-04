@@ -302,7 +302,38 @@ async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last
         print(f"[warn] Garmin sync failed for {member['name']}: {type(e).__name__}: {e}")
         return stored.get("activities", [])
 
-    # Normalise Garmin activities to match Strava-like shape
+    print(f"[sync] {member['name']} (Garmin): fetched {len(new_acts or [])} activities")
+
+    # Also sync body composition (weight) data while we have an active session
+    try:
+        def do_weight_sync():
+            yr = datetime.now(timezone.utc).year
+            body_data = client.get_body_composition(f"{yr}-01-01", datetime.now(timezone.utc).strftime("%Y-%m-%d"))
+            return body_data.get("dateWeightList") or []
+
+        loop2 = asyncio.get_event_loop()
+        weight_entries = await loop2.run_in_executor(None, do_weight_sync)
+        if weight_entries:
+            db2 = load_db()
+            m2  = next((x for x in db2["members"] if x["id"] == member["id"]), None)
+            if m2:
+                height_m = m2.get("height_m")
+                existing = {e["date"]: e for e in m2.get("weight_log", [])}
+                for entry in weight_entries:
+                    wg = entry.get("weight") or entry.get("weightInGrams")
+                    if not wg: continue
+                    wkg      = round(wg / 1000, 1)
+                    date_str = (entry.get("calendarDate") or entry.get("date",""))[:10]
+                    if date_str:
+                        bmi = round(wkg / (height_m ** 2), 1) if height_m else None
+                        existing[date_str] = {"date": date_str, "weight_kg": wkg, "bmi": bmi, "source": "garmin"}
+                m2["weight_log"] = sorted(existing.values(), key=lambda e: e["date"], reverse=True)
+                save_db(db2)
+                print(f"[sync] {member['name']} weight: {len(weight_entries)} entries synced")
+    except Exception as we:
+        print(f"[sync] Weight sync failed for {member['name']}: {we}")
+
+    # Normalise Garmin activities
     new_acts = []
     for a in (raw_acts or []):
         act_type   = a.get("activityType", {}).get("typeKey", "other")
@@ -868,6 +899,23 @@ async def garmin_login(body: GarminLoginBody):
     if not token_store:
         raise HTTPException(500, "Garmin login succeeded but session token could not be saved. Please try again in a few minutes.")
 
+    # Fetch Garmin body composition (weight/BMI) for current year
+    garmin_weight_log = []
+    try:
+        yr = datetime.now(timezone.utc).year
+        body_data = client.get_body_composition(f"{yr}-01-01", datetime.now(timezone.utc).strftime("%Y-%m-%d"))
+        entries = body_data.get("dateWeightList") or []
+        for entry in (entries if isinstance(entries, list) else []):
+            weight_grams = entry.get("weight") or entry.get("weightInGrams")
+            if not weight_grams: continue
+            weight_kg = round(weight_grams / 1000, 1)
+            date_str  = (entry.get("calendarDate") or entry.get("date", ""))[:10]
+            if date_str:
+                garmin_weight_log.append({"date": date_str, "weight_kg": weight_kg, "bmi": None, "source": "garmin"})
+        print(f"[garmin] Fetched {len(garmin_weight_log)} weight entries for {name}")
+    except Exception as we:
+        print(f"[garmin] Could not fetch body composition for {name}: {we}")
+
     async with _db_lock:
         db      = load_db()
         members = db["members"]
@@ -896,6 +944,21 @@ async def garmin_login(body: GarminLoginBody):
             members.append(member)
             db["next_id"] += 1
             print(f"[signup] New Garmin member #{member['id']}: {member['name']}")
+
+        # Merge Garmin weight entries into weight_log
+        if garmin_weight_log:
+            height_m = member.get("height_m")
+            existing_log = {e["date"]: e for e in member.get("weight_log", [])}
+            for entry in garmin_weight_log:
+                bmi = round(entry["weight_kg"] / (height_m ** 2), 1) if height_m else None
+                existing_log[entry["date"]] = {
+                    "date":      entry["date"],
+                    "weight_kg": entry["weight_kg"],
+                    "bmi":       bmi,
+                    "source":    "garmin",
+                }
+            member["weight_log"] = sorted(existing_log.values(), key=lambda e: e["date"], reverse=True)
+            print(f"[garmin] Merged {len(garmin_weight_log)} weight entries for {member['name']}")
 
         # Atomic save
         import shutil as _shutil
