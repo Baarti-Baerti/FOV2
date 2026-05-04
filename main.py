@@ -302,8 +302,6 @@ async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last
         print(f"[warn] Garmin sync failed for {member['name']}: {type(e).__name__}: {e}")
         return stored.get("activities", [])
 
-    print(f"[sync] {member['name']} (Garmin): fetched {len(new_acts or [])} activities")
-
     # Also sync body composition (weight) data while we have an active session
     try:
         def do_weight_sync():
