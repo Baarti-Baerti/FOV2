@@ -2935,7 +2935,7 @@ function renderPoints(){
       if (isCurrent) {
         const val = km != null ? km.toFixed(2) : '…';
         const col = km >= GOAL ? '#059669' : '#f59e0b';
-        return `<td title="${MONTH_NAMES[m-1]}: ${val} eq.km (in progress, goal ${GOAL}km)${breakdown}" style="font-size:1.02rem;color:${col}">${val}${bmiLine}</td>`;
+        return `<td title="${MONTH_NAMES[m-1]}: ${val} eq.km (in progress, goal ${GOAL}km)${breakdown}" style="font-size:1.02rem;font-weight:800;color:${col}">${val}${bmiLine}</td>`;
       }
       if (!isPast) {
         return `<td style="color:#e2e8f8;font-size:1.02rem">·<div style="font-size:.72rem;line-height:1.2;margin-top:2px;color:transparent">·</div><div style="font-size:.68rem;line-height:1.2;color:transparent">·</div></td>`;
@@ -2951,15 +2951,7 @@ function renderPoints(){
     const hasD  = ruleDWinners.includes(u.id);
     const impD  = ruleDImprovement[u.id]; // % drop
     const total = totalPoints[u.id] || 0;
-    const janBmiVal  = (u.monthly||[]).find(m => m.year===currentYear && m.month===1)?.weightBmi;
-    const curBmiVal  = (u.monthly||[]).find(m => m.year===currentYear && m.month===currentMonth)?.weightBmi;
-    const pctDropD   = (janBmiVal && curBmiVal && curBmiVal !== janBmiVal)
-      ? ((janBmiVal - curBmiVal) / janBmiVal * 100) : null;
-    const bmiSubline = janBmiVal
-      ? `<div style="font-size:.82rem;color:var(--muted);font-weight:700;margin-top:2px">
-           ⚖️ Jan: ${janBmiVal.toFixed(1)}${curBmiVal && currentMonth > 1 ? ` → <span style="color:${curBmiVal < janBmiVal ? '#059669' : '#ef4444'}">${curBmiVal.toFixed(1)}</span>${pctDropD !== null ? ` <span style="font-size:.72rem">(${pctDropD>0?'↓':'↑'}${Math.abs(pctDropD).toFixed(1)}%)</span>` : ''}` : ''}
-         </div>`
-      : '';
+    const bmiSubline = ''; // Jan BMI removed from user row
 
     return `<tr>
       <td>
