@@ -1814,10 +1814,18 @@ function applyData(team, period, isLive) {
     if (currentMember && isLive) {
       const me = users.find(u => u.id === currentMember.id);
       const hasHeight = me && me.height_m && me.height_m > 0;
-      const alreadyAsked = sessionStorage.getItem('height_prompted');
-      if (!hasHeight && !alreadyAsked) {
-        sessionStorage.setItem('height_prompted', '1');
-        setTimeout(() => openHeightModal(), 1200);
+      if (!hasHeight) {
+        // Only prompt once per day — use localStorage so it persists across page loads
+        const lastPrompted = localStorage.getItem('height_prompted_date');
+        const today = new Date().toISOString().slice(0, 10);
+        if (lastPrompted !== today) {
+          localStorage.setItem('height_prompted_date', today);
+          setTimeout(() => openHeightModal(), 1200);
+        }
+      } else {
+        // Height is set — clear any stale prompt flag
+        localStorage.removeItem('height_prompted_date');
+        sessionStorage.removeItem('height_prompted');
       }
     }
   }
@@ -3531,6 +3539,7 @@ async function submitHeight() {
     // Clear server cache so height appears immediately
     await fetch(`${API_BASE}/api/admin/clear-cache`, { method: 'GET' });
     closeHeightModal();
+    localStorage.removeItem('height_prompted_date');
     sessionStorage.removeItem('height_prompted');
     // Reload — fresh fetch will overwrite cache naturally
     await loadData(currentPeriod, true);
