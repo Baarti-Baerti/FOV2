@@ -364,6 +364,31 @@ async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last
             "name":             a.get("activityName", sport_type),
         })
 
+    # Also sync height from Garmin profile
+    try:
+        def do_height_sync():
+            settings = client.get_userprofile_settings()
+            height_cm = (settings.get("userInfo", {}) or {}).get("height") or settings.get("height")
+            return float(height_cm) if height_cm and 100 <= float(height_cm) <= 250 else None
+
+        loop3 = asyncio.get_event_loop()
+        height_cm = await loop3.run_in_executor(None, do_height_sync)
+        if height_cm:
+            db3 = load_db()
+            m3  = next((x for x in db3["members"] if x["id"] == member["id"]), None)
+            if m3:
+                new_height_m = round(height_cm / 100, 3)
+                if m3.get("height_m") != new_height_m:
+                    m3["height_m"] = new_height_m
+                    # Recalculate BMI for all weight entries
+                    for entry in m3.get("weight_log", []):
+                        if entry.get("weight_kg") and not entry.get("bmi"):
+                            entry["bmi"] = round(entry["weight_kg"] / (new_height_m ** 2), 1)
+                    save_db(db3)
+                    print(f"[sync] {member['name']} height updated: {height_cm}cm")
+    except Exception as he:
+        print(f"[sync] Height sync failed for {member['name']}: {he}")
+
     print(f"[sync] {member['name']} (Garmin): fetched {len(new_acts)} new activities")
     return _merge_and_save(member["id"], stored, new_acts, now, yr_start)
 
@@ -949,8 +974,8 @@ async def garmin_login(body: GarminLoginBody):
             member["provider"]           = "garmin"
             if garmin_picture:
                 member["garmin_picture"] = garmin_picture
-            # Update height from Garmin if not already set or if Garmin has it
-            if garmin_height_m and not member.get("height_m"):
+            # Always update height from Garmin (overrides manual entries)
+            if garmin_height_m:
                 member["height_m"] = garmin_height_m
         else:
             idx    = len(members)

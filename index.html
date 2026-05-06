@@ -1814,8 +1814,9 @@ function applyData(team, period, isLive) {
     if (currentMember && isLive) {
       const me = users.find(u => u.id === currentMember.id);
       const hasHeight = me && me.height_m && me.height_m > 0;
-      if (!hasHeight) {
-        // Only prompt once per day — use localStorage so it persists across page loads
+      const isGarmin  = me?.provider === 'garmin';
+      if (!hasHeight && !isGarmin) {
+        // Only prompt Strava users — Garmin height is pulled automatically
         const lastPrompted = localStorage.getItem('height_prompted_date');
         const today = new Date().toISOString().slice(0, 10);
         if (lastPrompted !== today) {
@@ -1823,7 +1824,6 @@ function applyData(team, period, isLive) {
           setTimeout(() => openHeightModal(), 1200);
         }
       } else {
-        // Height is set — clear any stale prompt flag
         localStorage.removeItem('height_prompted_date');
         sessionStorage.removeItem('height_prompted');
       }
