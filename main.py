@@ -329,6 +329,7 @@ async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last
                         existing[date_str] = {"date": date_str, "weight_kg": wkg, "bmi": bmi, "source": "garmin"}
                 m2["weight_log"] = sorted(existing.values(), key=lambda e: e["date"], reverse=True)
                 save_db(db2)
+                cache_bust(member["id"])  # ensure fresh weight data is served
                 print(f"[sync] {member['name']} weight: {len(weight_entries)} entries synced")
     except Exception as we:
         print(f"[sync] Weight sync failed for {member['name']}: {we}")
@@ -385,6 +386,7 @@ async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last
                         if entry.get("weight_kg") and not entry.get("bmi"):
                             entry["bmi"] = round(entry["weight_kg"] / (new_height_m ** 2), 1)
                     save_db(db3)
+                    cache_bust(member["id"])
                     print(f"[sync] {member['name']} height updated: {height_cm}cm")
     except Exception as he:
         print(f"[sync] Height sync failed for {member['name']}: {he}")
