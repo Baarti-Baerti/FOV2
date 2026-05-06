@@ -654,7 +654,7 @@ def fmt_member(m: dict, idx: int, s: dict) -> dict:
     # Build monthly BMI map: for each month, find the last weight entry in that month
     # (i.e. the entry with the highest date that is still within that month)
     monthly_bmi = {}  # { (year, month): bmi }
-    if height_m and weight_log:
+    if weight_log:  # no longer requires height_m — bmi comes directly from Garmin entries
         for entry in weight_log:
             try:
                 entry_date = datetime.fromisoformat(entry["date"]).date()
