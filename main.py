@@ -504,14 +504,15 @@ def monthly_breakdown(acts: list, year: int) -> list:
         run_kcal_per_km = round(run_kcal / run_km_kcal, 2) if run_km_kcal > 0.5 else None
 
         # ── Rule E: Multi-sport triathlon days (May only) ──────────────────
-        # Olympic: 40km bike + 10km run + 1.5km swim in one calendar day → 2pts
-        # Sprint:  20km bike + 5km run + 0.75km swim in one calendar day → 1pt
+        # Olympic: 40km bike (single session) + 10km run + 1.5km swim in one calendar day → 2pts
+        # Sprint:  20km bike (single session) + 5km run + 0.75km swim in one calendar day → 1pt
+        # Virtual biking does NOT count. Bike distance must be in one session.
         # Maximum 2pts regardless of how many sprint days achieved
         rule_e_pts = 0
         if m == 5:  # May only
-            # Group activities by local calendar day
             from collections import defaultdict
-            day_acts = defaultdict(lambda: {"run":0.0,"ride":0.0,"swim":0.0})
+            # Track per day: max single ride km (real only), total run km, total swim km
+            day_acts = defaultdict(lambda: {"max_ride": 0.0, "run": 0.0, "swim": 0.0})
             for a in month_acts:
                 cat  = classify(a.get("sport_type") or a.get("type",""))
                 dist = (a.get("distance",0) or 0) / 1000
@@ -520,19 +521,19 @@ def monthly_breakdown(acts: list, year: int) -> list:
                     day_key = datetime.fromisoformat(ts.replace("Z","+00:00")).strftime("%Y-%m-%d")
                 except Exception:
                     continue
-                if cat == "run":
+                if cat == "ride":  # real biking only — virtual_ride excluded
+                    day_acts[day_key]["max_ride"] = max(day_acts[day_key]["max_ride"], dist)
+                elif cat == "run":
                     day_acts[day_key]["run"] += dist
-                elif cat in ("ride","virtual_ride"):
-                    day_acts[day_key]["ride"] += dist
                 elif cat == "swim":
                     day_acts[day_key]["swim"] += dist
 
             got_olympic = False
             got_sprint  = False
             for day, d in day_acts.items():
-                if d["ride"] >= 40 and d["run"] >= 10 and d["swim"] >= 1.5:
+                if d["max_ride"] >= 40 and d["run"] >= 10 and d["swim"] >= 1.5:
                     got_olympic = True
-                elif d["ride"] >= 20 and d["run"] >= 5 and d["swim"] >= 0.75:
+                elif d["max_ride"] >= 20 and d["run"] >= 5 and d["swim"] >= 0.75:
                     got_sprint = True
 
             if got_olympic:
