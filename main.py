@@ -323,7 +323,9 @@ async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last
                     wkg      = round(wg / 1000, 1)
                     date_str = (entry.get("calendarDate") or entry.get("date",""))[:10]
                     if date_str:
-                        bmi = round(wkg / (height_m ** 2), 1) if height_m else None
+                        # Use Garmin's own BMI value if available, else calculate from height
+                        garmin_bmi = entry.get("bmi")
+                        bmi = round(float(garmin_bmi), 1) if garmin_bmi else (round(wkg / (height_m ** 2), 1) if height_m else None)
                         existing[date_str] = {"date": date_str, "weight_kg": wkg, "bmi": bmi, "source": "garmin"}
                 m2["weight_log"] = sorted(existing.values(), key=lambda e: e["date"], reverse=True)
                 save_db(db2)
@@ -873,21 +875,32 @@ async def garmin_login(body: GarminLoginBody):
         garmin_id = email
         profile   = name
 
-    # Fetch profile picture from social profile
+    # Fetch Garmin profile picture from social profile
     garmin_picture = ""
+    garmin_height_m = None
     try:
         social = client.client.connectapi("/userprofile-service/socialProfile")
-        # Try common field names for avatar URL
         garmin_picture = (
             social.get("profileImageUrlMedium") or
             social.get("profileImageUrlLarge") or
             social.get("profileImageUrlSmall") or
-            social.get("profileImage") or
-            ""
+            social.get("profileImage") or ""
         )
         print(f"[garmin] Profile picture for {name}: {garmin_picture[:60] if garmin_picture else 'none'}")
     except Exception as pe:
         print(f"[garmin] Could not fetch profile picture for {name}: {pe}")
+
+    # Fetch height from user profile settings
+    try:
+        profile_settings = client.get_userprofile_settings()
+        # Height is in cm in Garmin profile
+        height_cm = (profile_settings.get("userInfo", {}) or {}).get("height") or \
+                    profile_settings.get("height")
+        if height_cm and 100 <= float(height_cm) <= 250:
+            garmin_height_m = round(float(height_cm) / 100, 3)
+            print(f"[garmin] Height for {name}: {height_cm}cm = {garmin_height_m}m")
+    except Exception as he:
+        print(f"[garmin] Could not fetch height for {name}: {he}")
 
     # Serialize the session tokens for storage
     # garth.dumps() returns a base64 string (not JSON) — store it as-is
@@ -918,7 +931,10 @@ async def garmin_login(body: GarminLoginBody):
             weight_kg = round(weight_grams / 1000, 1)
             date_str  = (entry.get("calendarDate") or entry.get("date", ""))[:10]
             if date_str:
-                garmin_weight_log.append({"date": date_str, "weight_kg": weight_kg, "bmi": None, "source": "garmin"})
+                # Use Garmin's own BMI if available
+                garmin_bmi = entry.get("bmi")
+                bmi = round(float(garmin_bmi), 1) if garmin_bmi else None
+                garmin_weight_log.append({"date": date_str, "weight_kg": weight_kg, "bmi": bmi, "source": "garmin"})
         print(f"[garmin] Fetched {len(garmin_weight_log)} weight entries for {name}")
     except Exception as we:
         print(f"[garmin] Could not fetch body composition for {name}: {we}")
@@ -933,6 +949,9 @@ async def garmin_login(body: GarminLoginBody):
             member["provider"]           = "garmin"
             if garmin_picture:
                 member["garmin_picture"] = garmin_picture
+            # Update height from Garmin if not already set or if Garmin has it
+            if garmin_height_m and not member.get("height_m"):
+                member["height_m"] = garmin_height_m
         else:
             idx    = len(members)
             member = {
@@ -945,7 +964,7 @@ async def garmin_login(body: GarminLoginBody):
                 "emoji":              _EMOJIS[idx % len(_EMOJIS)],
                 "color":              _COLORS[idx % len(_COLORS)],
                 "bg":                 _BG[idx    % len(_BG)],
-                "height_m":           None,
+                "height_m":           garmin_height_m,  # auto-populated from Garmin
                 "created_at":         datetime.now(timezone.utc).isoformat(),
             }
             members.append(member)
@@ -957,7 +976,8 @@ async def garmin_login(body: GarminLoginBody):
             height_m = member.get("height_m")
             existing_log = {e["date"]: e for e in member.get("weight_log", [])}
             for entry in garmin_weight_log:
-                bmi = round(entry["weight_kg"] / (height_m ** 2), 1) if height_m else None
+                # Use Garmin's BMI if available, else calculate from height
+                bmi = entry.get("bmi") or (round(entry["weight_kg"] / (height_m ** 2), 1) if height_m else None)
                 existing_log[entry["date"]] = {
                     "date":      entry["date"],
                     "weight_kg": entry["weight_kg"],
