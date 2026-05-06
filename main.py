@@ -1085,11 +1085,17 @@ async def get_team(range_: str = Query("thismonth", alias="range")):
                 print(f"[get_team] Stale data for {m['name']} (last_fetch {now - last_fetch}s ago) — syncing")
                 year_acts = await sync_activities(m)
                 cache_bust(m["id"])
+                # Reload member from DB to pick up weight/profile changes written during sync
+                fresh_db = load_db()
+                m = next((x for x in fresh_db["members"] if x["id"] == m["id"]), m)
             except Exception as e:
                 print(f"[warn] sync failed for {m['name']}: {e}")
                 year_acts = stored.get("activities", [])
-        else:
+        # Always reload member from DB to ensure latest weight_log and profile data
+        if not needs_sync:
             year_acts = stored["activities"]
+            fresh_db = load_db()
+            m = next((x for x in fresh_db["members"] if x["id"] == m["id"]), m)
 
         # Filter to requested period — no API call needed
         period_acts = [a for a in year_acts if after <= _act_ts(a) <= before]
