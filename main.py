@@ -329,7 +329,11 @@ async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last
                         existing[date_str] = {"date": date_str, "weight_kg": wkg, "bmi": bmi, "source": "garmin"}
                 m2["weight_log"] = sorted(existing.values(), key=lambda e: e["date"], reverse=True)
                 save_db(db2)
-                cache_bust(member["id"])  # ensure fresh weight data is served
+                cache_bust(member["id"])
+                # Update last_fetch in activity store so frontend freshness check detects new data
+                stored2 = load_acts(member["id"])
+                stored2["last_fetch"] = int(time.time())
+                save_acts(member["id"], stored2)
                 print(f"[sync] {member['name']} weight: {len(weight_entries)} entries synced")
     except Exception as we:
         print(f"[sync] Weight sync failed for {member['name']}: {we}")
