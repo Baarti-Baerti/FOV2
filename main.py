@@ -1541,8 +1541,19 @@ async def debug_db():
         "next_id": db["next_id"],
         "member_count": len(db["members"]),
         "members": [
-            {"id": m["id"], "name": m["name"], "strava_id": m.get("strava_id"),
-             "created_at": m.get("created_at")}
+            {
+                "id":           m["id"],
+                "name":         m["name"],
+                "provider":     m.get("provider", "strava"),
+                "strava_id":    m.get("strava_id"),
+                "garmin_id":    m.get("garmin_id"),
+                "height_m":     m.get("height_m"),
+                "height_cm":    round(m["height_m"] * 100) if m.get("height_m") else None,
+                "weight_log_count": len(m.get("weight_log", [])),
+                "latest_weight": m["weight_log"][0] if m.get("weight_log") else None,
+                "is_admin":     m.get("is_admin", False),
+                "created_at":   m.get("created_at"),
+            }
             for m in db["members"]
         ]
     }
