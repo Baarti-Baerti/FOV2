@@ -1576,6 +1576,7 @@ function normaliseUser(raw, idx) {
     swimKm:       raw.swimKm       || 0,
     skiKm:        raw.skiKm        || 0,
     walkKm:       raw.walkKm       || 0,
+    eligibleRunKm:  raw.eligibleRunKm  != null ? raw.eligibleRunKm  : null,
     eligibleWalkKm: raw.eligibleWalkKm || 0,
     runKcalFactor:  raw.runKcalFactor  ?? null,
     recentActs:     raw.recentActs     || [],
@@ -2112,11 +2113,28 @@ function renderLB(suffix=''){
   const COLS = [
     { key:'convKm',      label:'Points',       icon:'⭐', fmt: u => userPointsKm(u).toFixed(2),                                                          unit:'' },
     { key:'runKm',       label:'Run',          icon:'🏃', fmt: u => {
-        const km = u.runKm||0;
-        const pts = km; // ×1
-        if (km < 0.005) return '—';
-        return fmtKm(km) + '<span style="font-size:0.72rem;color:var(--muted);font-weight:600;margin-left:1px">km</span>' +
-          `<div style="font-size:0.65rem;font-weight:700;margin-top:2px;color:var(--violet)">⭐ ${pts.toFixed(2)} pts</div>`;
+        const total = fmtKm(u.runKm) + ((u.runKm||0) > 0.005 ? '<span style="font-size:0.72rem;color:var(--muted);font-weight:600;margin-left:1px">km</span>' : '');
+        const today = new Date();
+        const cy = today.getFullYear(), cm = today.getMonth() + 1;
+        let mf;
+        if (currentPeriod === 'thismonth')      mf = m => m.year===cy && m.month===cm;
+        else if (currentPeriod === 'lastmonth') { const lm=cm===1?12:cm-1,ly=cm===1?cy-1:cy; mf=m=>m.year===ly&&m.month===lm; }
+        else if (currentPeriod.startsWith('month-')) { const mo=parseInt(currentPeriod.split('-')[1]); mf=m=>m.year===cy&&m.month===mo; }
+        else if (currentPeriod==='q1') mf=m=>m.year===cy&&m.month>=1&&m.month<=3;
+        else if (currentPeriod==='q2') mf=m=>m.year===cy&&m.month>=4&&m.month<=6;
+        else if (currentPeriod==='q3') mf=m=>m.year===cy&&m.month>=7&&m.month<=9;
+        else if (currentPeriod==='q4') mf=m=>m.year===cy&&m.month>=10&&m.month<=12;
+        else mf=m=>m.year===cy;
+        const elig  = (u.monthly||[]).filter(mf).reduce((s,m) => s + (m.eligibleRunKm != null ? m.eligibleRunKm : (m.runKm||0)), 0);
+        const score = elig; // ×1
+        if ((u.runKm||0) < 0.005) return '—';
+        if (elig <= 0.005) return total;
+        // Only show eligible note if different from total
+        const showElig = Math.abs(elig - (u.runKm||0)) > 0.05;
+        return total +
+          `<div style="font-size:0.65rem;font-weight:700;margin-top:2px;line-height:1.5">` +
+          (showElig ? `<span style="color:var(--mint)">✓ ${elig.toFixed(2)} elig.</span><span style="color:var(--violet);margin-left:5px">⭐ ${score.toFixed(2)} pts</span>` : `<span style="color:var(--violet)">⭐ ${score.toFixed(2)} pts</span>`) +
+          `</div>`;
       }, unit:'' },
     { key:'cycleKm',     label:'Bike',         icon:'🚴', fmt: u => {
         const km = u.cycleKm||0;

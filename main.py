@@ -707,7 +707,7 @@ def fmt_member(m: dict, idx: int, s: dict) -> dict:
         bg=m.get("bg")       or _BG[idx%len(_BG)],
         picture=m.get("garmin_picture","") if m.get("provider") == "garmin" else m.get("strava_picture",""), height_m=height_m,
         **{k: s.get(k,0) for k in ("km","runKm","cycleKm","virtualKm","swimKm","walkKm",
-                                    "durationSec","workouts","challengeKm","eligibleWalkKm")},
+                                    "durationSec","workouts","challengeKm","eligibleWalkKm","eligibleRunKm")},
         runKcalFactor=run_kcal_factor,
         bmi=current_bmi,
         weightLog=weight_log,
