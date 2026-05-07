@@ -302,11 +302,17 @@ async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last
         print(f"[warn] Garmin sync failed for {member['name']}: {type(e).__name__}: {e}")
         return stored.get("activities", [])
 
-    # Also sync body composition (weight) data while we have an active session
+    # Also sync body composition (weight) data — create fresh client with same token
     try:
         def do_weight_sync():
+            from garminconnect import Garmin
+            client_w = Garmin()
+            if isinstance(token_store, str):
+                client_w.client.loads(token_store)
+            else:
+                import json as _j; client_w.client.loads(_j.dumps(token_store))
             yr = datetime.now(timezone.utc).year
-            body_data = client.get_body_composition(f"{yr}-01-01", datetime.now(timezone.utc).strftime("%Y-%m-%d"))
+            body_data = client_w.get_body_composition(f"{yr}-01-01", datetime.now(timezone.utc).strftime("%Y-%m-%d"))
             return body_data.get("dateWeightList") or []
 
         loop2 = asyncio.get_event_loop()
