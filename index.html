@@ -2495,9 +2495,10 @@ function renderDetail(suffix=''){
                   : cat==='Walk'||cat==='Hike' ? '🚶' : '🏋️';
                 const distStr = a.dist_km > 0 ? a.dist_km.toFixed(2)+'km' : '—';
                 const WALK_MIN_SPEED = 6500/3600;
-                const WALK_MIN_TIME  = 30*60 - 30; // 30min minus 30s tolerance for Strava rounding
+                const WALK_MIN_TIME  = 30*60 - 30;
+                const RUN_MIN_SPEED  = 1000/(9*60); // 9 min/km minimum pace
                 let pts = 0;
-                if      (cat==='Run'||cat==='TrailRun')        pts = a.dist_km;
+                if      (cat==='Run'||cat==='TrailRun')        { if ((a.average_speed||0) >= RUN_MIN_SPEED) pts = a.dist_km; }
                 else if (cat==='Ride'||cat==='GravelRide'||cat==='MountainBikeRide'||cat==='EBikeRide') pts = a.dist_km/5;
                 else if (cat==='VirtualRide')                  pts = a.dist_km/4;
                 else if (cat==='Swim')                         pts = a.dist_km*4;
@@ -3036,7 +3037,7 @@ function renderPoints(){
 
   const legend = `<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:18px;font-size:0.7rem;font-weight:700;color:var(--muted)">
     <span><span style="color:#059669">green</span> = ≥${GOAL} eq.km (goal hit, +1pt) · <span style="color:#ef4444">red</span> = goal missed · values = equivalent km</span>
-    <span>🏃 run 1:1 · 🚴 bike ÷5 · 💻 virtual ÷4 · 🏊 swim ×4 · 🚶 walk ÷3 if &gt;30min &amp; &gt;6.5km/h</span>
+    <span>🏃 run 1:1 (min pace 9min/km) · 🚴 bike ÷5 · 💻 virtual ÷4 · 🏊 swim ×4 · 🚶 walk ÷3 if &gt;30min &amp; &gt;6.5km/h</span>
     <span style="color:#818cf8">A: +1pt / qualifying month</span>
     <span style="color:#34d399">B: most YTD eq.km = +2pts</span>
     <span style="color:#f472b6">C: sole leader in Rule A = +2pts (no bonus if tied)</span>

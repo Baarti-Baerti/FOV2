@@ -434,13 +434,21 @@ MONTHLY_GOAL_KM    = 66.67        # challenge goal per month
 WALK_MIN_SPEED_MS  = 6500 / 3600  # 6.5 km/h in m/s
 WALK_MIN_MOVING_S  = 30 * 60 - 30  # 30 min minus 30s tolerance (Strava rounding)
 
+RUN_MAX_PACE_SEC_PER_KM = 9 * 60   # 9 min/km — slower runs don't earn points
+RUN_MIN_SPEED_MS = 1000 / RUN_MAX_PACE_SEC_PER_KM  # = 1.852 m/s
+
 def challenge_km_for_activity(a: dict) -> float:
     """Return the challenge-km contribution of a single activity.
+    Run: counts at dist×1 only if average_speed >= 1/9km/min (9 min/km pace or faster).
     Walk/Hike: counts at dist/3 only if moving_time >= 30 min AND average_speed >= 6.5 km/h.
     """
     cat  = classify(a.get("sport_type") or a.get("type", ""))
     dist = (a.get("distance", 0) or 0) / 1000  # metres -> km
-    if   cat == "run":          return dist
+    if cat == "run":
+        average_speed = a.get("average_speed", 0) or 0
+        if average_speed >= RUN_MIN_SPEED_MS:
+            return dist
+        return 0.0
     elif cat == "ride":         return dist / 5
     elif cat == "virtual_ride": return dist / 4
     elif cat == "swim":         return dist * 4
