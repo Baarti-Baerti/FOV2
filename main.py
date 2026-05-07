@@ -419,7 +419,13 @@ def _merge_and_save(mid: int, stored: dict, new_acts: list, now: int, yr_start: 
 def _act_ts(a: dict) -> int:
     """Get unix timestamp from activity start date."""
     ts = a.get("start_date_local") or a.get("start_date", "")
+    if not ts:
+        return 0
     try:
+        # Normalise: replace space with T, ensure Z suffix handled
+        ts = ts.strip().replace(" ", "T")
+        if not ts.endswith("Z") and "+" not in ts[10:]:
+            ts += "Z"
         return int(datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp())
     except (ValueError, TypeError):
         return 0
