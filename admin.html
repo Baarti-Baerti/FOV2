@@ -373,22 +373,24 @@
     <div class="section">
       <div class="section-title">Per-Member Actions</div>
       <div class="member-actions">
-        <select class="member-select" id="memberSelect">
-          <option value="">Select member…</option>
-        </select>
         <div class="member-btn-grid">
           <button class="action-btn" onclick="memberAction('activities')">
             <span class="btn-method method-get">GET</span> Activities
           </button>
-          <button class="action-btn" onclick="memberAction('activities-live')">
+          <button class="action-btn" id="liveActsBtn" onclick="memberAction('activities-live')">
             <span class="btn-method method-get">GET</span> Live acts
           </button>
-          <button class="action-btn" onclick="memberAction('debug-sync')">
-            <span class="btn-method method-get">GET</span> Debug sync
+          <button class="action-btn" id="garminDebugBtn" onclick="memberAction('debug-garmin')" style="display:none">
+            <span class="btn-method method-get">GET</span> Debug Garmin
           </button>
           <button class="action-btn danger" onclick="memberAction('reset-sync')">
             <span class="btn-method method-get">GET</span> Reset sync
           </button>
+        </div>
+        <div style="margin-top:4px">
+          <select id="memberSelect" class="member-select" onchange="updateMemberButtons()">
+            <option value="">Select member…</option>
+          </select>
         </div>
         <div style="display:flex;gap:6px;margin-top:4px">
           <input id="actLimit" type="number" value="10" min="1" max="100"
@@ -623,9 +625,12 @@ function renderMemberList(store) {
     const ageH = (now - (m.last_fetch || 0)) / 3600;
     const dotClass = !m.file_exists ? 'dot-err' : ageH > 3 ? 'dot-warn' : 'dot-ok';
     const ageStr = m.last_fetch ? (ageH < 1 ? Math.round(ageH*60) + 'm' : Math.round(ageH) + 'h') + ' ago' : 'never';
-    return `<div class="member-row" onclick="quickViewMember(${m.id}, '${m.member}')">
+    const providerBadge = m.provider === 'garmin'
+      ? `<span style="font-size:.65rem;background:#e0f2fe;color:#0369a1;border-radius:4px;padding:1px 5px;font-weight:800;margin-left:4px">GRM</span>`
+      : `<span style="font-size:.65rem;background:#fff3e0;color:#c2410c;border-radius:4px;padding:1px 5px;font-weight:800;margin-left:4px">STR</span>`;
+    return `<div class="member-row" onclick="quickViewMember(${m.id}, '${m.member}', '${m.provider||'strava'}')">
       <div class="member-dot ${dotClass}"></div>
-      <div class="member-name">${m.member}</div>
+      <div class="member-name">${m.member}${providerBadge}</div>
       <div class="member-count">${(m.stored_count || 0)} acts</div>
       <div class="member-meta">${ageStr}</div>
     </div>`;
@@ -634,13 +639,29 @@ function renderMemberList(store) {
   const sel = document.getElementById('memberSelect');
   const cur = sel.value;
   sel.innerHTML = '<option value="">Select member…</option>' +
-    store.map(m => `<option value="${m.id}">${m.member} (#${m.id})</option>`).join('');
+    store.map(m => `<option value="${m.id}" data-provider="${m.provider||'strava'}">${m.member} (#${m.id}) [${m.provider||'strava'}]</option>`).join('');
   if (cur) sel.value = cur;
   members = store;
+  updateMemberButtons();
 }
 
-function quickViewMember(id, name) {
+function getSelectedProvider() {
+  const sel = document.getElementById('memberSelect');
+  const opt = sel.options[sel.selectedIndex];
+  return opt ? (opt.dataset.provider || 'strava') : 'strava';
+}
+
+function updateMemberButtons() {
+  const provider = getSelectedProvider();
+  const liveBtn = document.getElementById('liveActsBtn');
+  const garminBtn = document.getElementById('garminDebugBtn');
+  if (liveBtn) liveBtn.style.display = provider === 'garmin' ? 'none' : '';
+  if (garminBtn) garminBtn.style.display = provider === 'garmin' ? '' : 'none';
+}
+
+function quickViewMember(id, name, provider) {
   document.getElementById('memberSelect').value = id;
+  updateMemberButtons();
   callApi(`/api/admin/debug-activities/${id}?limit=10`, 'GET', `Activities — ${name}`);
 }
 
@@ -650,14 +671,18 @@ function memberAction(action) {
   if (!id) { showToast('Select a member first', 'err'); return; }
   const name = sel.options[sel.selectedIndex].text;
   const limit = document.getElementById('actLimit').value || 10;
+  const provider = getSelectedProvider();
   const paths = {
     'activities':      [`/api/admin/debug-activities/${id}?limit=${limit}`, `Activities (stored) — ${name}`],
-    'activities-live': [`/api/admin/debug-activities/${id}?limit=${limit}&live=1`, `Activities (live Strava) — ${name}`],
-    'debug-sync':      [`/api/admin/debug-sync/${id}`, `Debug Sync — ${name}`],
+    'activities-live': provider === 'garmin'
+      ? [`/api/admin/debug-garmin/${id}`, `Live Garmin Data — ${name}`]
+      : [`/api/admin/debug-activities/${id}?limit=${limit}&live=1`, `Activities (live Strava) — ${name}`],
+    'debug-garmin':    [`/api/admin/debug-garmin/${id}`, `Debug Garmin — ${name}`],
     'reset-sync':      [`/api/admin/reset-sync/${id}`, `Reset Sync — ${name}`],
   };
-  const [path, label] = paths[action];
-  callApi(path, 'GET', label);
+  const entry = paths[action];
+  if (!entry) { showToast('Unknown action', 'err'); return; }
+  callApi(entry[0], 'GET', entry[1]);
 }
 
 async function toggleStravaPause() {
@@ -666,15 +691,11 @@ async function toggleStravaPause() {
 }
 
 function forceRefreshDashboard() {
-  const dashOrigin = window.location.origin + window.location.pathname.replace('admin.html', '');
-  const wins = window.opener;
   try {
-    // Try to message any open dashboard window
-    localStorage.removeItem('fo_teamdata_v1');
-    localStorage.removeItem('fo_backend_ts_v1');
+    // Clear all known cache keys
+    ['fo_teamdata_v1','fo_backend_ts_v1','fo_teamdata_v2','fo_backend_ts_v2'].forEach(k => localStorage.removeItem(k));
     showToast('Cache cleared — refresh the dashboard tab', 'ok');
   } catch(e) {}
-  // Also call clear-cache on backend
   callApi('/api/admin/clear-cache', 'GET', 'Clear Backend Cache + Force Dashboard Refresh');
 }
 

@@ -1550,12 +1550,13 @@ async def debug_store():
         stored = load_acts(m["id"])
         acts = stored.get("activities", [])
         result.append({
-            "member": m["name"],
-            "id": m["id"],
+            "member":       m["name"],
+            "id":           m["id"],
+            "provider":     m.get("provider", "strava"),
             "stored_count": len(acts),
-            "last_fetch": stored.get("last_fetch", 0),
-            "file_exists": os.path.exists(acts_path(m["id"])),
-            "sample": acts[0] if acts else None,
+            "last_fetch":   stored.get("last_fetch", 0),
+            "file_exists":  os.path.exists(acts_path(m["id"])),
+            "sample":       acts[0] if acts else None,
         })
     return result
 
