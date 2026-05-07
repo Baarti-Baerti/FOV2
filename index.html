@@ -2965,9 +2965,9 @@ function renderPoints(){
         `<div style="font-size:.72rem;font-weight:700;line-height:1.2;margin-top:2px;color:${bmi ? (bmi<18.5?'#f59e0b':bmi<25?'#059669':bmi<30?'#f59e0b':'#ef4444') : 'transparent'}">${bmi ? bmi.toFixed(1) : '·'}</div>`
         + `<div style="font-size:.68rem;font-weight:700;line-height:1.2;color:${pctDrop !== null ? (pctDrop>0?'#059669':pctDrop<0?'#ef4444':'var(--muted)') : 'transparent'}">${pctDrop !== null ? (pctDrop>0?'↓':'↑')+Math.abs(pctDrop).toFixed(1)+'%' : '·'}</div>`;
 
-      // Build breakdown tooltip — only show activities that contributed to challengeKm
       const rawParts = [];
-      if ((mData?.runKm||0) > 0.05)     rawParts.push(`🏃 ${mData.runKm.toFixed(3)}km`);
+      const eligRun = mData?.eligibleRunKm != null ? mData.eligibleRunKm : (mData?.runKm || 0);
+      if (eligRun > 0.05)             rawParts.push(`🏃 ${eligRun.toFixed(3)}km eligible`);
       if ((mData?.cycleKm||0) > 0.05)   rawParts.push(`🚴 ${mData.cycleKm.toFixed(3)}km÷5`);
       if ((mData?.virtualKm||0) > 0.05) rawParts.push(`💻 ${mData.virtualKm.toFixed(3)}km÷4`);
       if ((mData?.swimKm||0) > 0.05)    rawParts.push(`🏊 ${mData.swimKm.toFixed(3)}km×4`);
@@ -3012,14 +3012,14 @@ function renderPoints(){
       <td style="border-left:2px solid var(--border);font-weight:800;color:var(--text2)" title="${(()=>{
         const cy = currentYear;
         const months = (u.monthly||[]).filter(m=>m.year===cy);
-        const run   = months.reduce((s,m)=>s+(m.runKm||0),0);
+        const run   = months.reduce((s,m)=>s+(m.eligibleRunKm!=null?m.eligibleRunKm:(m.runKm||0)),0);
         const bike  = months.reduce((s,m)=>s+(m.cycleKm||0),0);
         const virt  = months.reduce((s,m)=>s+(m.virtualKm||0),0);
         const swim  = months.reduce((s,m)=>s+(m.swimKm||0),0);
         // Qualifying walk km — use backend-computed eligibleWalkKm for accuracy
         const qualWalk = months.reduce((s,m) => s + (m.eligibleWalkKm||0), 0);
         const parts = [];
-        if (run      > 0.05) parts.push('🏃 '+run.toFixed(3)+'km ÷1');
+        if (run      > 0.05) parts.push('🏃 '+run.toFixed(3)+'km eligible ÷1');
         if (bike     > 0.05) parts.push('🚴 '+bike.toFixed(3)+'km ÷5 = '+(bike/5).toFixed(3));
         if (virt     > 0.05) parts.push('💻 '+virt.toFixed(3)+'km ÷4 = '+(virt/4).toFixed(3));
         if (swim     > 0.05) parts.push('🏊 '+swim.toFixed(3)+'km ×4 = '+(swim*4).toFixed(3));

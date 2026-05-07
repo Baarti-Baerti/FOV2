@@ -467,6 +467,7 @@ _COUNTED_CATS = {"run", "ride", "virtual_ride", "swim", "walk"}
 def aggregate(acts: list) -> dict:
     run = ride = vride = swim = walk = 0.0
     eligible_walk = 0.0   # walk km that pass the speed+duration filter
+    eligible_run  = 0.0   # run km that meet the 9min/km pace threshold
     secs = 0      # only time from counted activity types
     types = set()
     for a in acts:
@@ -476,7 +477,12 @@ def aggregate(acts: list) -> dict:
         types.add(a.get("sport_type") or a.get("type") or "Unknown")
         if cat in _COUNTED_CATS:
             secs += a.get("elapsed_time", 0) or 0
-        if   cat == "run":          run   += d
+        if   cat == "run":
+            run += d
+            # Only count toward eligible if pace meets threshold
+            average_speed = a.get("average_speed", 0) or 0
+            if average_speed >= RUN_MIN_SPEED_MS:
+                eligible_run += d
         elif cat == "ride":         ride  += d
         elif cat == "virtual_ride": vride += d
         elif cat == "swim":         swim  += d
@@ -490,11 +496,12 @@ def aggregate(acts: list) -> dict:
 
     def km(v): return round(v / 1000, 3)
     rk, ck_, vk, sk, wk = km(run), km(ride), km(vride), km(swim), km(walk)
+    erk = km(eligible_run)
     ewk = km(eligible_walk)
     ckm = round(sum(challenge_km_for_activity(a) for a in acts), 3)
     counted_workouts = sum(1 for a in acts if classify(a.get("sport_type") or a.get("type","")) in _COUNTED_CATS)
     return dict(runKm=rk, cycleKm=ck_, virtualKm=vk, swimKm=sk, walkKm=wk,
-                eligibleWalkKm=ewk,
+                eligibleRunKm=erk, eligibleWalkKm=ewk,
                 km=round(rk+ck_+vk+sk+wk, 3), durationSec=secs,
                 workouts=counted_workouts, challengeKm=ckm,
                 types=sorted(types))
