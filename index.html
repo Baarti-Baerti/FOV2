@@ -3146,11 +3146,12 @@ function reAggregateFromMonthly(team, p) {
       swimKm:      acc.swimKm     + (m.swimKm     || 0),
       walkKm:      acc.walkKm     + (m.walkKm     || 0),
       eligibleWalkKm: acc.eligibleWalkKm + (m.eligibleWalkKm || 0),
+      eligibleRunKm:  acc.eligibleRunKm  + (m.eligibleRunKm  || 0),
       calories:    acc.calories   + (m.cal         || 0),
       workouts:    acc.workouts   + (m.sess        || 0),
       durationSec: acc.durationSec+ (m.durationSec || 0),
       challengeKm: acc.challengeKm+ (m.challengeKm != null ? m.challengeKm : calcChallengeKm(m)),
-    }), { runKm:0, cycleKm:0, virtualKm:0, swimKm:0, walkKm:0, eligibleWalkKm:0,
+    }), { runKm:0, cycleKm:0, virtualKm:0, swimKm:0, walkKm:0, eligibleWalkKm:0, eligibleRunKm:0,
           calories:0, workouts:0, durationSec:0, challengeKm:0 });
 
     agg.km = agg.runKm + agg.cycleKm + agg.virtualKm + agg.swimKm + agg.walkKm;
