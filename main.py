@@ -369,7 +369,7 @@ async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last
             "distance":         dist_m,
             "moving_time":      int((a.get("movingDuration") or a.get("duration") or 0)),
             "elapsed_time":     int((a.get("duration") or 0)),
-            "average_speed":    (a.get("averageSpeed") or 0) / 3.6,  # km/h → m/s
+            "average_speed":    float(a.get("averageSpeed") or 0),  # Garmin returns m/s directly
             "calories":         a.get("calories") or 0,
             "kilojoules":       None,
             "name":             a.get("activityName", sport_type),
