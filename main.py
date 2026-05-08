@@ -443,16 +443,27 @@ WALK_MIN_MOVING_S  = 30 * 60 - 30  # 30 min minus 30s tolerance (Strava rounding
 RUN_MAX_PACE_SEC_PER_KM = 9 * 60   # 9 min/km — slower runs don't earn points
 RUN_MIN_SPEED_MS = 1000 / RUN_MAX_PACE_SEC_PER_KM  # = 1.852 m/s
 
+def _run_speed(a: dict) -> float:
+    """Return best estimate of run speed in m/s.
+    Uses average_speed if available, otherwise calculates from distance/moving_time."""
+    spd = a.get("average_speed", 0) or 0
+    if spd > 0:
+        return float(spd)
+    dist = a.get("distance", 0) or 0
+    mt   = a.get("moving_time", 0) or 0
+    if dist > 0 and mt > 0:
+        return dist / mt  # m/s
+    return 0.0
+
 def challenge_km_for_activity(a: dict) -> float:
     """Return the challenge-km contribution of a single activity.
-    Run: counts at dist×1 only if average_speed >= 1/9km/min (9 min/km pace or faster).
+    Run: counts at dist×1 only if pace <= 9min/km (uses distance/time if average_speed missing).
     Walk/Hike: counts at dist/3 only if moving_time >= 30 min AND average_speed >= 6.5 km/h.
     """
     cat  = classify(a.get("sport_type") or a.get("type", ""))
     dist = (a.get("distance", 0) or 0) / 1000  # metres -> km
     if cat == "run":
-        average_speed = a.get("average_speed", 0) or 0
-        if average_speed >= RUN_MIN_SPEED_MS:
+        if _run_speed(a) >= RUN_MIN_SPEED_MS:
             return dist
         return 0.0
     elif cat == "ride":         return dist / 5
@@ -485,9 +496,7 @@ def aggregate(acts: list) -> dict:
             secs += a.get("elapsed_time", 0) or 0
         if   cat == "run":
             run += d
-            # Only count toward eligible if pace meets threshold
-            average_speed = a.get("average_speed", 0) or 0
-            if average_speed >= RUN_MIN_SPEED_MS:
+            if _run_speed(a) >= RUN_MIN_SPEED_MS:
                 eligible_run += d
         elif cat == "ride":         ride  += d
         elif cat == "virtual_ride": vride += d
