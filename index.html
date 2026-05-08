@@ -2514,9 +2514,12 @@ function renderDetail(suffix=''){
                 const distStr = a.dist_km > 0 ? a.dist_km.toFixed(2)+'km' : '—';
                 const WALK_MIN_SPEED = 6500/3600;
                 const WALK_MIN_TIME  = 30*60 - 30;
-                const RUN_MIN_SPEED  = 1000/(9*60); // 9 min/km minimum pace
+                const RUN_MIN_SPEED  = 1000/(9*60); // 9 min/km minimum pace (from May 2025)
+                const actDate = new Date(a.date);
+                const paceRuleApplies = actDate.getFullYear() > 2026 ||
+                  (actDate.getFullYear() === 2026 && actDate.getMonth() >= 4); // month 4 = May
                 let pts = 0;
-                if      (cat==='Run'||cat==='TrailRun')        { if ((a.average_speed||0) >= RUN_MIN_SPEED) pts = a.dist_km; }
+                if      (cat==='Run'||cat==='TrailRun')        { if (!paceRuleApplies || (a.average_speed||0) >= RUN_MIN_SPEED) pts = a.dist_km; }
                 else if (cat==='Ride'||cat==='GravelRide'||cat==='MountainBikeRide'||cat==='EBikeRide') pts = a.dist_km/5;
                 else if (cat==='VirtualRide')                  pts = a.dist_km/4;
                 else if (cat==='Swim')                         pts = a.dist_km*4;

@@ -455,6 +455,18 @@ def _run_speed(a: dict) -> float:
         return dist / mt  # m/s
     return 0.0
 
+def _pace_rule_applies(a: dict) -> bool:
+    """9min/km pace rule applies from May 2025 onwards (all months in 2026+)."""
+    ts = a.get("start_date_local") or a.get("start_date", "")
+    try:
+        ts = ts.strip().replace(" ", "T")
+        if not ts.endswith("Z") and "+" not in ts[10:]:
+            ts += "Z"
+        dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        return dt.year > 2026 or (dt.year == 2026 and dt.month >= 5)
+    except (ValueError, TypeError):
+        return True  # apply rule if date unknown
+
 def challenge_km_for_activity(a: dict) -> float:
     """Return the challenge-km contribution of a single activity.
     Run: counts at dist×1 only if pace <= 9min/km (uses distance/time if average_speed missing).
@@ -463,7 +475,7 @@ def challenge_km_for_activity(a: dict) -> float:
     cat  = classify(a.get("sport_type") or a.get("type", ""))
     dist = (a.get("distance", 0) or 0) / 1000  # metres -> km
     if cat == "run":
-        if _run_speed(a) >= RUN_MIN_SPEED_MS:
+        if not _pace_rule_applies(a) or _run_speed(a) >= RUN_MIN_SPEED_MS:
             return dist
         return 0.0
     elif cat == "ride":         return dist / 5
@@ -496,7 +508,7 @@ def aggregate(acts: list) -> dict:
             secs += a.get("elapsed_time", 0) or 0
         if   cat == "run":
             run += d
-            if _run_speed(a) >= RUN_MIN_SPEED_MS:
+            if not _pace_rule_applies(a) or _run_speed(a) >= RUN_MIN_SPEED_MS:
                 eligible_run += d
         elif cat == "ride":         ride  += d
         elif cat == "virtual_ride": vride += d
