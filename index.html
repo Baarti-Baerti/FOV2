@@ -1874,10 +1874,11 @@ function switchPage(p,btn){
   document.querySelectorAll('.nav-tab').forEach(x=>x.classList.remove('active'));
   document.getElementById('page-'+p).classList.add('active');
   btn.classList.add('active');
+  // Check for fresh backend data whenever switching to scored tabs
+  if (p==='points' || p==='details' || p==='dynamic') checkBackendFreshness();
   if(p==='monthly') renderMonthly();
   if(p==='details') { renderLB(); renderDetail(); }
   if(p==='dynamic') {
-    // Auto-select first user with a calorie factor if current selection has none
     if (!selUser || selUser.runKcalFactor == null) {
       const first = users.find(u => u.runKcalFactor != null);
       if (first) selUser = first;
@@ -3458,7 +3459,7 @@ async function checkBackendFreshness() {
     // What was the backend ts last time we pulled data?
     const knownBackendTs = parseInt(localStorage.getItem(LS_BACKEND_TS) || '0', 10);
 
-    if (backendMaxTs > knownBackendTs + 60) {
+    if (backendMaxTs > knownBackendTs) {
       // Backend has synced more recently than last time we fetched — reload
       console.log(`[freshness] Backend newer (${backendMaxTs} > ${knownBackendTs}) — refreshing`);
       persistClear();
@@ -3468,9 +3469,9 @@ async function checkBackendFreshness() {
   } catch(e) { /* ignore network errors */ }
 }
 
-// Check freshness on load and every 5 minutes
+// Check freshness on load and every 60 seconds
 checkBackendFreshness();
-setInterval(checkBackendFreshness, 5 * 60 * 1000);
+setInterval(checkBackendFreshness, 60 * 1000);
 
 // Then fetch fresh data from backend (also runs in parallel)
 loadData('thismonth');
