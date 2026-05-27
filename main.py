@@ -1402,14 +1402,16 @@ async def debug_garmin(mid: int):
         raw = await loop.run_in_executor(None, do_test_fetch)
         sample = [
             {
-                "name":           a.get("activityName"),
-                "type":           a.get("activityType", {}).get("typeKey"),
-                "date":           a.get("startTimeLocal"),
-                "raw_distance":   a.get("distance"),   # raw value from Garmin API
-                "dist_km_if_m":   round((a.get("distance") or 0) / 1000, 2),   # if Garmin returns metres
-                "dist_km_if_km":  round((a.get("distance") or 0), 2),          # if Garmin returns km
-                "duration_m":     round((a.get("duration") or 0) / 60, 1),
-                "averageSpeed":   a.get("averageSpeed"),
+                "name":              a.get("activityName"),
+                "type":              a.get("activityType", {}).get("typeKey"),
+                "type_id":           a.get("activityType", {}).get("typeId"),
+                "parent_type_id":    a.get("activityType", {}).get("parentTypeId"),
+                "date":              a.get("startTimeLocal"),
+                "raw_distance":      a.get("distance"),
+                "dist_km_if_m":      round((a.get("distance") or 0) / 1000, 2),
+                "dist_km_if_km":     round((a.get("distance") or 0), 2),
+                "duration_m":        round((a.get("duration") or 0) / 60, 1),
+                "averageSpeed":      a.get("averageSpeed"),
             }
             for a in (raw or [])[:10]
         ]
