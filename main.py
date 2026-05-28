@@ -914,38 +914,80 @@ class GarminLoginBody(BaseModel):
     email:    str
     password: str
 
+class GarminMFABody(BaseModel):
+    mfa_token: str
+    mfa_code:  str
+
+# Temporary in-memory MFA session store: token → {client, email, name, expires}
+_mfa_sessions: dict = {}
+MFA_SESSION_TTL = 300  # 5 minutes to enter MFA code
+
 @app.post("/api/garmin/login")
 async def garmin_login(body: GarminLoginBody):
-    """
-    Authenticate with Garmin Connect using email/password.
-    Credentials are used only to obtain a session token — never stored.
-    """
-    import asyncio
+    """Authenticate with Garmin. If MFA is required, returns needs_mfa=True with a mfa_token."""
     from garminconnect import Garmin, GarminConnectAuthenticationError
-
     name  = body.name.strip()
     email = body.email.strip()
-    if not name:
-        raise HTTPException(400, "Name is required")
-    if not email or not body.password:
-        raise HTTPException(400, "Email and password are required")
+    if not name:  raise HTTPException(400, "Name is required")
+    if not email or not body.password: raise HTTPException(400, "Email and password are required")
 
-    # Run blocking garminconnect login in thread pool
     def do_login():
-        client = Garmin(email, body.password)
-        client.login()
-        return client
+        client = Garmin(email, body.password, return_on_mfa=True)
+        result = client.login()
+        return client, result
 
     try:
-        loop   = asyncio.get_event_loop()
-        client = await loop.run_in_executor(None, do_login)
+        loop = asyncio.get_event_loop()
+        client, result = await loop.run_in_executor(None, do_login)
     except GarminConnectAuthenticationError:
         raise HTTPException(401, "Invalid Garmin email or password")
     except Exception as e:
-        err = str(e).lower()
-        if "mfa" in err or "2fa" in err or "factor" in err or "verification" in err:
-            raise HTTPException(202, "MFA required — please check your email for a code")
         raise HTTPException(502, f"Garmin login failed: {str(e)}")
+
+    # MFA required — stash the live client and return a token to the frontend
+    needs_mfa = result == "needs_mfa" or (isinstance(result, tuple) and result[0] == "needs_mfa")
+    if needs_mfa:
+        import secrets
+        mfa_token = secrets.token_hex(16)
+        _mfa_sessions[mfa_token] = {
+            "client":  client,
+            "email":   email,
+            "name":    name,
+            "expires": time.time() + MFA_SESSION_TTL,
+        }
+        return {"ok": False, "needs_mfa": True, "mfa_token": mfa_token}
+
+    return await _complete_garmin_login(client, email, name)
+
+@app.post("/api/garmin/mfa")
+async def garmin_mfa(body: GarminMFABody):
+    """Complete Garmin login by submitting the MFA/OTP code."""
+    session = _mfa_sessions.get(body.mfa_token)
+    if not session:
+        raise HTTPException(400, "MFA session not found — please log in again")
+    if time.time() > session["expires"]:
+        _mfa_sessions.pop(body.mfa_token, None)
+        raise HTTPException(400, "MFA session expired — please log in again")
+
+    client = session["client"]
+    email  = session["email"]
+    name   = session["name"]
+
+    def do_resume():
+        client.resume_login(mfa_code=body.mfa_code.strip())
+        return client
+
+    try:
+        loop = asyncio.get_event_loop()
+        client = await loop.run_in_executor(None, do_resume)
+    except Exception as e:
+        raise HTTPException(401, f"MFA verification failed: {str(e)}")
+    finally:
+        _mfa_sessions.pop(body.mfa_token, None)
+
+    return await _complete_garmin_login(client, email, name)
+
+async def _complete_garmin_login(client, email: str, name: str):
 
     # Get user profile for garmin_id and picture
     try:

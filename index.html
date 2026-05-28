@@ -1364,7 +1364,27 @@
 
       <!-- hidden stubs so goToStep() doesn't break -->
       <div id="step1"   style="display:none"></div>
-      <div id="stepMfa" style="display:none"></div>
+      <div id="stepMfa" style="display:none">
+        <div class="modal-header" style="background:linear-gradient(135deg,#e0f2fe,#bae6fd)">
+          <span class="modal-header-icon">🔐</span>
+          <h2 style="color:#0c4a6e">Two-Factor Authentication</h2>
+          <p style="color:#0369a1">Garmin sent a verification code to your email or phone. Enter it below.</p>
+        </div>
+        <div class="modal-body" style="padding:24px 28px 28px">
+          <div class="field">
+            <label>Verification Code</label>
+            <input type="text" id="mfaCodeInput" placeholder="e.g. 123456"
+              maxlength="8" autocomplete="one-time-code" inputmode="numeric"
+              style="letter-spacing:.2em;font-size:1.2rem;text-align:center"
+              onkeydown="if(event.key==='Enter') submitMfa()">
+          </div>
+          <div class="modal-msg" id="mfaMsg" style="margin-bottom:12px"></div>
+          <div style="display:flex;gap:12px">
+            <button class="btn-secondary" onclick="goToStep('2g')" style="flex:1">Back</button>
+            <button class="btn-primary" id="mfaBtn" onclick="submitMfa()" style="flex:1">Verify ✓</button>
+          </div>
+        </div>
+      </div>
 
       <!-- ── STEP 2: Strava pending (redirecting…) ── -->
       <div id="step2" style="display:none;text-align:center;padding:20px 0">
@@ -3721,6 +3741,16 @@ async function submitGarminLogin() {
       return;
     }
 
+    // MFA required
+    if (data.needs_mfa) {
+      window._garminMfaToken = data.mfa_token;
+      goToStep('mfa');
+      setTimeout(() => document.getElementById('mfaCodeInput')?.focus(), 100);
+      btn.disabled = false;
+      text.textContent = 'Connect Garmin ⌚';
+      return;
+    }
+
     const member = data.member;
     saveSession(member);
     loadData(currentPeriod, true).then(() => {
@@ -3732,6 +3762,44 @@ async function submitGarminLogin() {
     showModalMsg(`Could not reach server: ${err.message}`, 'error');
     btn.disabled  = false;
     text.textContent = 'Connect Garmin ⌚';
+  }
+}
+
+async function submitMfa() {
+  const code = (document.getElementById('mfaCodeInput').value || '').trim();
+  const msg  = document.getElementById('mfaMsg');
+  const btn  = document.getElementById('mfaBtn');
+  if (!code) { msg.innerHTML = '<span style="color:#b91c1c">Please enter the verification code.</span>'; return; }
+  if (!window._garminMfaToken) { msg.innerHTML = '<span style="color:#b91c1c">Session lost — please log in again.</span>'; goToStep('2g'); return; }
+
+  btn.disabled = true; btn.textContent = 'Verifying…';
+  msg.innerHTML = '';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/garmin/mfa`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ mfa_token: window._garminMfaToken, mfa_code: code }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      msg.innerHTML = `<span style="color:#b91c1c">${data.detail || 'Verification failed'}</span>`;
+      btn.disabled = false; btn.textContent = 'Verify ✓';
+      return;
+    }
+
+    window._garminMfaToken = null;
+    const member = data.member;
+    saveSession(member);
+    loadData(currentPeriod, true).then(() => {
+      showSuccessScreen(member, false, 'garmin');
+      goToStep(3);
+    });
+
+  } catch(err) {
+    msg.innerHTML = `<span style="color:#b91c1c">Could not reach server: ${err.message}</span>`;
+    btn.disabled = false; btn.textContent = 'Verify ✓';
   }
 }
 
