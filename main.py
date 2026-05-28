@@ -944,16 +944,19 @@ async def garmin_login(body: GarminLoginBody):
     except Exception as e:
         raise HTTPException(502, f"Garmin login failed: {str(e)}")
 
-    # MFA required — stash the live client and return a token to the frontend
+    # MFA required — result is ("needs_mfa", client_state_dict)
     needs_mfa = result == "needs_mfa" or (isinstance(result, tuple) and result[0] == "needs_mfa")
     if needs_mfa:
         import secrets
         mfa_token = secrets.token_hex(16)
+        # client_state contains login_params needed for resume_login
+        client_state = result[1] if isinstance(result, tuple) and len(result) > 1 else {}
         _mfa_sessions[mfa_token] = {
-            "client":  client,
-            "email":   email,
-            "name":    name,
-            "expires": time.time() + MFA_SESSION_TTL,
+            "client":       client,
+            "client_state": client_state,
+            "email":        email,
+            "name":         name,
+            "expires":      time.time() + MFA_SESSION_TTL,
         }
         return {"ok": False, "needs_mfa": True, "mfa_token": mfa_token}
 
@@ -969,12 +972,13 @@ async def garmin_mfa(body: GarminMFABody):
         _mfa_sessions.pop(body.mfa_token, None)
         raise HTTPException(400, "MFA session expired — please log in again")
 
-    client = session["client"]
-    email  = session["email"]
-    name   = session["name"]
+    client       = session["client"]
+    client_state = session.get("client_state", {})
+    email        = session["email"]
+    name         = session["name"]
 
     def do_resume():
-        client.resume_login(mfa_code=body.mfa_code.strip())
+        client.resume_login(client_state, body.mfa_code.strip())
         return client
 
     try:
