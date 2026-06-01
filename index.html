@@ -2594,6 +2594,7 @@ function renderDetail(suffix=''){
                     <td style="padding:6px 0 6px 0;text-align:right">${delBtn}</td>
                   </tr>`;
                 }
+                if (item.type === 'weight') {
                   const w = item.data;
                   const bmiColor = !w.bmi ? 'var(--muted)' : w.bmi<18.5?'#f59e0b':w.bmi<25?'#059669':w.bmi<30?'#f59e0b':'#ef4444';
                   const delBtn = isAdmin ? `<button onclick="deleteWeightEntry(${u.id},'${w.date}')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.9rem;padding:2px 4px;opacity:0.5;transition:opacity .15s" onmouseover="this.style.opacity=1;this.style.color='#ef4444'" onmouseout="this.style.opacity=0.5;this.style.color='var(--muted)'" title="Delete weight entry">🗑️</button>` : '';
