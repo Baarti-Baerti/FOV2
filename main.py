@@ -671,9 +671,10 @@ def monthly_breakdown(acts: list, year: int, member: dict = None) -> list:
         # ≥120km = 3pts, 100–119km = 2pts, 80–99km = 1pt (uses eligible run km)
         rule_g_pts = 0
         if m == 6:
-            if   eligible_run >= 120: rule_g_pts = 3
-            elif eligible_run >= 100: rule_g_pts = 2
-            elif eligible_run >= 80:  rule_g_pts = 1
+            elig_run_km = s.get("eligibleRunKm", s.get("runKm", 0)) or 0
+            if   elig_run_km >= 120: rule_g_pts = 3
+            elif elig_run_km >= 100: rule_g_pts = 2
+            elif elig_run_km >= 80:  rule_g_pts = 1
 
         # ── goalDay: which calendar day did cumulative challenge-km first hit the goal? ──
         goal_day = None
