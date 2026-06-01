@@ -567,7 +567,7 @@ def aggregate(acts: list) -> dict:
                 types=sorted(types))
 
 
-def monthly_breakdown(acts: list, year: int) -> list:
+def monthly_breakdown(acts: list, year: int, member: dict = None) -> list:
     buckets = {m: [] for m in range(1, 13)}
     for a in acts:
         ts = a.get("start_date_local") or a.get("start_date", "")
@@ -659,7 +659,7 @@ def monthly_breakdown(acts: list, year: int) -> list:
         # 300k+ total AND 0 days <10k = 2pts, 1-2 days <10k = 1pt, 3+ = 0pts
         rule_f_pts = 0
         if m == 6:
-            step_log    = member.get("step_log", [])
+            step_log    = (member or {}).get("step_log", [])
             month_steps = [e for e in step_log if e.get("date","")[:7] == f"{yr}-{m:02d}"]
             total_steps = sum(e.get("steps", 0) for e in month_steps)
             days_under  = sum(1 for e in month_steps if e.get("steps", 0) < 10000)
@@ -1275,7 +1275,7 @@ async def get_team(range_: str = Query("thismonth", alias="range")):
         period_acts = [a for a in year_acts if after <= _act_ts(a) <= before]
 
         s = aggregate(period_acts)
-        s["monthly"] = monthly_breakdown(year_acts, yr)
+        s["monthly"] = monthly_breakdown(year_acts, yr, m)
         w, wc = week_bits(year_acts)
         s["_w"] = w; s["_wc"] = wc
         # Include ALL year activities so frontend can filter for any selected period
