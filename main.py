@@ -375,7 +375,40 @@ async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last
             "name":             a.get("activityName", sport_type),
         })
 
-    # Also sync height from Garmin profile
+    # Also sync daily steps from Garmin
+    try:
+        def do_steps_sync():
+            yr     = datetime.now(timezone.utc).year
+            start  = f"{yr}-01-01"
+            end    = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            client_s = Garmin()
+            if isinstance(token_store, str):
+                client_s.client.loads(token_store)
+            else:
+                import json as _j; client_s.client.loads(_j.dumps(token_store))
+            return client_s.get_daily_steps(start, end)
+
+        loop4       = asyncio.get_event_loop()
+        step_entries = await loop4.run_in_executor(None, do_steps_sync)
+
+        if step_entries:
+            db4 = load_db()
+            m4  = next((x for x in db4["members"] if x["id"] == member["id"]), None)
+            if m4:
+                existing_steps = {e["date"]: e for e in m4.get("step_log", [])}
+                updated = 0
+                for entry in step_entries:
+                    date_str = entry.get("calendarDate") or entry.get("startGMT","")[:10]
+                    steps    = entry.get("totalSteps") or entry.get("steps") or 0
+                    if date_str and steps > 0:
+                        existing_steps[date_str] = {"date": date_str, "steps": int(steps), "source": "garmin"}
+                        updated += 1
+                m4["step_log"] = sorted(existing_steps.values(), key=lambda e: e["date"], reverse=True)
+                save_db(db4)
+                cache_bust(member["id"])
+                print(f"[sync] {member['name']} steps: {updated} days synced")
+    except Exception as se:
+        print(f"[sync] Steps sync failed for {member['name']}: {se}")
     try:
         def do_height_sync():
             settings = client.get_userprofile_settings()
@@ -621,6 +654,27 @@ def monthly_breakdown(acts: list, year: int) -> list:
                 rule_e_pts = 2
             elif got_sprint:
                 rule_e_pts = 1
+
+        # ── Rule F: Steps challenge (June only) ─────────────────────────────
+        # 300k+ total AND 0 days <10k = 2pts, 1-2 days <10k = 1pt, 3+ = 0pts
+        rule_f_pts = 0
+        if m == 6:
+            step_log    = member.get("step_log", [])
+            month_steps = [e for e in step_log if e.get("date","")[:7] == f"{yr}-{m:02d}"]
+            total_steps = sum(e.get("steps", 0) for e in month_steps)
+            days_under  = sum(1 for e in month_steps if e.get("steps", 0) < 10000)
+            if total_steps >= 300000:
+                if   days_under == 0: rule_f_pts = 2
+                elif days_under <= 2: rule_f_pts = 1
+
+        # ── Rule G: Running km bonus (June only) ─────────────────────────────
+        # ≥120km = 3pts, 100–119km = 2pts, 80–99km = 1pt (uses eligible run km)
+        rule_g_pts = 0
+        if m == 6:
+            if   eligible_run >= 120: rule_g_pts = 3
+            elif eligible_run >= 100: rule_g_pts = 2
+            elif eligible_run >= 80:  rule_g_pts = 1
+
         # ── goalDay: which calendar day did cumulative challenge-km first hit the goal? ──
         goal_day = None
         if month_acts:
@@ -651,6 +705,8 @@ def monthly_breakdown(acts: list, year: int) -> list:
             runKcalPerKm=run_kcal_per_km,
             runCalKm=round(run_km_kcal, 3),   # km of runs that had energy data
             ruleEPts=rule_e_pts,
+            ruleFPts=rule_f_pts,
+            ruleGPts=rule_g_pts,
             # Per-category energy (kcal) for dynamic scoring
             runCals=round(cat_kj["run"], 1),
             rideCals=round(cat_kj["ride"], 1),
@@ -738,7 +794,8 @@ def fmt_member(m: dict, idx: int, s: dict) -> dict:
         runKcalFactor=run_kcal_factor,
         bmi=current_bmi,
         weightLog=weight_log,
-        isAdmin=m.get("is_admin", False) or m.get("id") == 1,  # id 1 = Baarti, always admin
+        isAdmin=m.get("is_admin", False) or m.get("id") == 1,
+        stepLog=m.get("step_log", []),
         types=s.get("types",[]), monthly=s.get("monthly",[]),
         recentActs=s.get("recentActs",[]),
         week=w, weekCalories=wc)
@@ -1065,6 +1122,20 @@ async def _complete_garmin_login(client, email: str, name: str):
     except Exception as we:
         print(f"[garmin] Could not fetch body composition for {name}: {we}")
 
+    # Fetch daily steps for current year
+    garmin_step_log = []
+    try:
+        yr        = datetime.now(timezone.utc).year
+        step_data = client.get_daily_steps(f"{yr}-01-01", datetime.now(timezone.utc).strftime("%Y-%m-%d"))
+        for entry in (step_data or []):
+            date_str = entry.get("calendarDate") or entry.get("startGMT","")[:10]
+            steps    = entry.get("totalSteps") or entry.get("steps") or 0
+            if date_str and steps > 0:
+                garmin_step_log.append({"date": date_str, "steps": int(steps), "source": "garmin"})
+        print(f"[garmin] Fetched {len(garmin_step_log)} step entries for {name}")
+    except Exception as se:
+        print(f"[garmin] Could not fetch steps for {name}: {se}")
+
     async with _db_lock:
         db      = load_db()
         members = db["members"]
@@ -1112,6 +1183,14 @@ async def _complete_garmin_login(client, email: str, name: str):
                 }
             member["weight_log"] = sorted(existing_log.values(), key=lambda e: e["date"], reverse=True)
             print(f"[garmin] Merged {len(garmin_weight_log)} weight entries for {member['name']}")
+
+        # Merge Garmin step entries into step_log
+        if garmin_step_log:
+            existing_steps = {e["date"]: e for e in member.get("step_log", [])}
+            for entry in garmin_step_log:
+                existing_steps[entry["date"]] = entry
+            member["step_log"] = sorted(existing_steps.values(), key=lambda e: e["date"], reverse=True)
+            print(f"[garmin] Merged {len(garmin_step_log)} step entries for {member['name']}")
 
         # Atomic save
         import shutil as _shutil
@@ -1339,6 +1418,51 @@ async def delete_weight_entry(mid: int, date: str):
         raise HTTPException(404, f"Weight entry for {date} not found")
     save_db(db)
     cache_bust(mid)
+    return {"ok": True}
+
+
+# ── Step log endpoints ──────────────────────────────────────────────────────
+class StepBody(BaseModel):
+    date:  str   # "YYYY-MM-DD"
+    steps: int
+
+@app.post("/api/members/{mid}/steps")
+async def log_steps(mid: int, body: StepBody):
+    if not (0 <= body.steps <= 100000):
+        raise HTTPException(400, "Steps must be between 0 and 100,000")
+    try:
+        entry_date = datetime.fromisoformat(body.date).date()
+    except ValueError:
+        raise HTTPException(400, "Invalid date format")
+    yr    = datetime.now(timezone.utc).year
+    today = datetime.now(timezone.utc).date()
+    if entry_date < date(yr, 1, 1) or entry_date > today:
+        raise HTTPException(400, f"Date must be between Jan 1 {yr} and today")
+
+    db = load_db()
+    m  = next((x for x in db["members"] if x["id"] == mid), None)
+    if not m: raise HTTPException(404, "Member not found")
+    if "step_log" not in m: m["step_log"] = []
+
+    existing = next((e for e in m["step_log"] if e["date"] == body.date), None)
+    if existing:
+        existing["steps"] = body.steps
+    else:
+        m["step_log"].append({"date": body.date, "steps": body.steps})
+    m["step_log"].sort(key=lambda e: e["date"], reverse=True)
+    save_db(db); cache_bust(mid)
+    return {"ok": True, "steps": body.steps, "date": body.date}
+
+@app.delete("/api/admin/members/{mid}/steps/{date_str}")
+async def delete_step_entry(mid: int, date_str: str):
+    db = load_db()
+    m  = next((x for x in db["members"] if x["id"] == mid), None)
+    if not m: raise HTTPException(404, "Member not found")
+    before = len(m.get("step_log", []))
+    m["step_log"] = [e for e in m.get("step_log", []) if e.get("date") != date_str]
+    if len(m["step_log"]) == before:
+        raise HTTPException(404, f"Step entry for {date_str} not found")
+    save_db(db); cache_bust(mid)
     return {"ok": True}
 
 

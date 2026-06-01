@@ -1201,6 +1201,15 @@
         ⚖️ Log Weight
       </button>
     </div>
+    <div id="logStepsWrap" style="display:none">
+      <button onclick="openStepsModal()"
+        style="font-family:'Nunito',sans-serif;font-weight:800;font-size:0.78rem;
+               padding:5px 12px;border-radius:20px;border:2px solid #bbf7d0;
+               background:#dcfce7;color:#14532d;cursor:pointer;transition:all 0.2s"
+        title="Log your daily steps">
+        🦶 Log Steps
+      </button>
+    </div>
     <!-- Admin: Strava sync toggle (only visible to Baarti) -->
     <div id="stravaToggleWrap" style="display:none">
       <a href="admin.html"
@@ -1245,6 +1254,23 @@
           <span style="background:rgba(255,255,255,0.15);color:#fff;font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:99px;border:1px solid rgba(255,255,255,0.25)">🏊 Sprint: 20km ride / 5km run / 0.75km swim = +1pt</span>
           <span style="background:rgba(255,255,255,0.15);color:#fff;font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:99px;border:1px solid rgba(255,255,255,0.25)">🔥 Olympic: 40km ride / 10km run / 1.5km swim = +2pts</span>
           <span style="background:rgba(255,255,255,0.15);color:#e0f2fe;font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:99px;border:1px solid rgba(255,255,255,0.2)">All in one day · max 2pts</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- June Challenges banner — only shown in June -->
+  <div id="juneBanner" style="display:none;position:relative;margin:16px 16px 0;border-radius:16px;overflow:hidden;background:linear-gradient(135deg,#16a34a 0%,#15803d 40%,#14532d 100%);padding:20px 24px;box-shadow:0 4px 24px rgba(22,163,74,0.35)">
+    <div style="position:absolute;top:-20px;right:-20px;font-size:7rem;opacity:0.08;line-height:1">👟🏃🦶</div>
+    <div style="position:relative;display:flex;align-items:center;gap:16px">
+      <div style="font-size:2.8rem;line-height:1;flex-shrink:0">☀️</div>
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.18rem;color:#fff;letter-spacing:-0.01em;line-height:1.2">June Run & Walk Blitz</div>
+        <div style="font-size:.82rem;color:#bbf7d0;font-weight:600;margin-top:3px;letter-spacing:.01em">Steps. Kilometres. Sweat.</div>
+        <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
+          <span style="background:rgba(255,255,255,0.15);color:#fff;font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:99px;border:1px solid rgba(255,255,255,0.25)">🦶 300k steps · 0 days &lt;10k = +2pts</span>
+          <span style="background:rgba(255,255,255,0.15);color:#fff;font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:99px;border:1px solid rgba(255,255,255,0.25)">🦶 300k steps · ≤2 days &lt;10k = +1pt</span>
+          <span style="background:rgba(255,255,255,0.15);color:#fff;font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:99px;border:1px solid rgba(255,255,255,0.25)">🏃 ≥120km = +3pts · ≥100km = +2pts · ≥80km = +1pt</span>
         </div>
       </div>
     </div>
@@ -1504,7 +1530,34 @@
   </div>
 </div>
 
-<!-- ── WEIGHT LOG MODAL ── -->
+<!-- ── STEPS LOG MODAL ── -->
+<div class="modal-overlay" id="stepsModal">
+  <div class="modal-box" style="max-width:360px">
+    <div class="modal-header" style="background:linear-gradient(135deg,#dcfce7,#bbf7d0)">
+      <span class="modal-header-icon">🦶</span>
+      <h2 style="color:#14532d">Log Steps</h2>
+      <p style="color:#166534;font-size:1.0rem">Track your daily steps for the June challenge.</p>
+      <p id="stepsModalNote" style="color:#166534;font-size:.8rem;margin-top:2px"></p>
+      <button class="modal-close" onclick="closeStepsModal()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:24px 28px 28px">
+      <div class="field">
+        <label>Date</label>
+        <input type="date" id="stepsDateInput" onkeydown="if(event.key==='Enter') submitSteps()">
+      </div>
+      <div class="field">
+        <label>Steps</label>
+        <input type="number" id="stepsInput" placeholder="e.g. 12500" min="0" max="100000" step="100"
+          onkeydown="if(event.key==='Enter') submitSteps()">
+      </div>
+      <div class="modal-msg" id="stepsModalMsg" style="margin-bottom:12px"></div>
+      <div style="display:flex;gap:12px">
+        <button class="btn-secondary" onclick="closeStepsModal()" style="flex:1">Cancel</button>
+        <button class="btn-primary" onclick="submitSteps()" style="flex:1" id="stepsBtn">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="weightModal">
   <div class="modal-box" style="max-width:360px">
     <div class="modal-header" style="background:linear-gradient(135deg,#fef9c3,#fde68a)">
@@ -1604,6 +1657,7 @@ function normaliseUser(raw, idx) {
     steps:        raw.steps        || 0,
     bmi:          raw.bmi          || null,
     weightLog:    raw.weightLog    || [],
+    stepLog:      raw.stepLog      || [],
     isAdmin:      raw.isAdmin      || false,
     height_m:     raw.height_m     || null,
     types:        raw.types        || raw.activity_types || [],
@@ -1861,6 +1915,7 @@ function applyData(team, period, isLive) {
   // (catches cases where updateHeaderChip ran before users were loaded)
   if (currentMember) {
     document.getElementById('logWeightWrap').style.display = 'block';
+    document.getElementById('logStepsWrap').style.display  = 'block';
   }
   // Re-check admin status now that users array is populated
   initStravaToggle();
@@ -2202,6 +2257,19 @@ function renderLB(suffix=''){
           `<span style="color:var(--violet);margin-left:5px">⭐ ${score.toFixed(2)} pts</span>` +
           `</div>`;
       }, unit:'' },
+    { key:'steps',       label:'Steps',        icon:'🦶', fmt: u => {
+        // Show total steps logged in June (current year)
+        const yr = new Date().getFullYear();
+        const juneSteps = (u.stepLog||[])
+          .filter(s => s.date && s.date.startsWith(`${yr}-06`))
+          .reduce((sum, s) => sum + (s.steps||0), 0);
+        if (juneSteps === 0) return '—';
+        const daysUnder = (u.stepLog||[])
+          .filter(s => s.date && s.date.startsWith(`${yr}-06`) && s.steps < 10000).length;
+        const color = daysUnder === 0 ? '#16a34a' : daysUnder <= 2 ? '#f59e0b' : '#ef4444';
+        return `<span style="color:${color};font-weight:800">${juneSteps.toLocaleString()}</span>` +
+          `<div style="font-size:.65rem;color:var(--muted);margin-top:1px">${daysUnder === 0 ? '✓ all days ≥10k' : `${daysUnder} day${daysUnder>1?'s':''} under 10k`}</div>`;
+      }, unit:'' },
     { key:'km',          label:'Original',     icon:'📏', fmt: u => fmtKm((u.runKm||0)+(u.cycleKm||0)+(u.virtualKm||0)+(u.swimKm||0)+(u.walkKm||0)),    unit:'km' },
     { key:'durationSec', label:'Time',         icon:'⏱',  fmt: u => fmtDuration(userDurationSec(u)),                                                      unit:''   },
     { key:'goalDay',     label:'Days to Goal', icon:'🎯', fmt: u => { const d=userDaysToGoal(u); return d!=null ? `${d}` : '—'; },                        unit:''   },
@@ -2505,10 +2573,27 @@ function renderDetail(suffix=''){
               const wtRows  = (u.weightLog||[])
                 .filter(w => actMf({ date: w.date + 'T12:00:00Z' }))
                 .map(w => ({ type: 'weight', sortKey: w.date + 'T00:00:00Z', data: w }));
-              const combined = [...actRows, ...wtRows].sort((a,b) => b.sortKey.localeCompare(a.sortKey));
+              // Filter step entries to selected period
+              const stRows  = (u.stepLog||[])
+                .filter(s => actMf({ date: s.date + 'T12:00:00Z' }))
+                .map(s => ({ type: 'steps', sortKey: s.date + 'T01:00:00Z', data: s }));
+              const combined = [...actRows, ...wtRows, ...stRows].sort((a,b) => b.sortKey.localeCompare(a.sortKey));
               let actIdx = 0;
               return combined.map(item => {
-                if (item.type === 'weight') {
+                if (item.type === 'steps') {
+                  const s = item.data;
+                  const under10k = s.steps < 10000;
+                  const delBtn = isAdmin ? `<button onclick="deleteStepsEntry(${u.id},'${s.date}')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.9rem;padding:2px 4px;opacity:0.5;transition:opacity .15s" onmouseover="this.style.opacity=1;this.style.color='#ef4444'" onmouseout="this.style.opacity=0.5;this.style.color='var(--muted)'" title="Delete step entry">🗑️</button>` : '';
+                  return `<tr style="border-bottom:1px solid var(--border);background:rgba(22,163,74,0.04)" onmouseover="this.style.background='rgba(22,163,74,0.10)'" onmouseout="this.style.background='rgba(22,163,74,0.04)'">
+                    <td style="padding:6px 10px 6px 0;white-space:nowrap;color:var(--text2)"><span style="font-weight:700">${new Date(s.date+'T12:00:00Z').toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</span></td>
+                    <td style="padding:6px 10px 6px 0;text-align:center;font-size:1rem">🦶</td>
+                    <td style="padding:6px 10px 6px 0;font-weight:600;color:var(--muted)">Steps</td>
+                    <td style="padding:6px 10px 6px 0;text-align:right;font-weight:700;color:${under10k?'#ef4444':'#16a34a'}">${(s.steps||0).toLocaleString()}</td>
+                    <td style="padding:6px 10px 6px 0;text-align:right;font-size:.75rem;color:${under10k?'#ef4444':'var(--muted)'};">${under10k?'⚠️ under 10k':'✓'}</td>
+                    <td colspan="2" style="padding:6px 0 6px 0"></td>
+                    <td style="padding:6px 0 6px 0;text-align:right">${delBtn}</td>
+                  </tr>`;
+                }
                   const w = item.data;
                   const bmiColor = !w.bmi ? 'var(--muted)' : w.bmi<18.5?'#f59e0b':w.bmi<25?'#059669':w.bmi<30?'#f59e0b':'#ef4444';
                   const delBtn = isAdmin ? `<button onclick="deleteWeightEntry(${u.id},'${w.date}')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.9rem;padding:2px 4px;opacity:0.5;transition:opacity .15s" onmouseover="this.style.opacity=1;this.style.color='#ef4444'" onmouseout="this.style.opacity=0.5;this.style.color='var(--muted)'" title="Delete weight entry">🗑️</button>` : '';
@@ -2579,6 +2664,20 @@ function renderDetail(suffix=''){
     </div>` : ''}`;
 }
 
+async function deleteStepsEntry(mid, date) {
+  if (!confirm(`Delete step entry for ${date}? This cannot be undone.`)) return;
+  const savedUserId = selUser?.id;
+  try {
+    const r = await fetch(`${API_BASE}/api/admin/members/${mid}/steps/${date}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error((await r.json()).detail || 'Delete failed');
+    showBanner('🗑️ Step entry deleted', 'live');
+    await loadData(currentPeriod, true);
+    if (savedUserId) { const u = users.find(u => u.id === savedUserId); if (u) { selUser = u; renderDetail(); } }
+  } catch(e) {
+    showBanner(`⚠️ ${e.message}`, 'error');
+  }
+}
+
 async function deleteActivity(mid, actId) {
   if (!confirm('Delete this activity permanently? This cannot be undone.')) return;
   const savedUserId = selUser?.id;
@@ -2604,6 +2703,57 @@ async function deleteWeightEntry(mid, date) {
     if (savedUserId) { const u = users.find(u => u.id === savedUserId); if (u) { selUser = u; renderDetail(); renderDetail('dynamic'); } }
   } catch(e) {
     showBanner(`⚠️ ${e.message}`, 'error');
+  }
+}
+
+function openStepsModal() {
+  const today = new Date().toISOString().slice(0,10);
+  const yr    = new Date().getFullYear();
+  const jun1  = `${yr}-06-01`;
+  const input = document.getElementById('stepsDateInput');
+  input.value = today;
+  input.min   = jun1;
+  input.max   = today;
+  document.getElementById('stepsInput').value = '';
+  document.getElementById('stepsModalMsg').innerHTML = '';
+  const note  = document.getElementById('stepsModalNote');
+  const me    = users.find(u => u.id === currentMember?.id);
+  if (note) note.textContent = me?.provider === 'garmin'
+    ? '⌚ Your steps are synced automatically from Garmin — manual entries will override synced data.'
+    : '📱 Strava does not provide step data — please log your steps manually.';
+  const btn = document.getElementById('stepsBtn');
+  btn.disabled = false; btn.textContent = 'Save';
+  document.getElementById('stepsModal').classList.add('open');
+  setTimeout(() => document.getElementById('stepsInput')?.focus(), 100);
+}
+function closeStepsModal() {
+  document.getElementById('stepsModal').classList.remove('open');
+  const btn = document.getElementById('stepsBtn');
+  btn.disabled = false; btn.textContent = 'Save';
+}
+async function submitSteps() {
+  const dateVal = document.getElementById('stepsDateInput').value;
+  const steps   = parseInt(document.getElementById('stepsInput').value);
+  const msg     = document.getElementById('stepsModalMsg');
+  if (!dateVal) { msg.innerHTML = '<span style="color:#b91c1c">Please select a date.</span>'; return; }
+  if (!steps || steps < 0 || steps > 100000) { msg.innerHTML = '<span style="color:#b91c1c">Please enter a valid step count (0–100,000).</span>'; return; }
+  if (!currentMember?.id) { msg.innerHTML = '<span style="color:#b91c1c">Not logged in.</span>'; return; }
+  const btn = document.getElementById('stepsBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const r = await fetch(`${API_BASE}/api/members/${currentMember.id}/steps`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ steps, date: dateVal }),
+    });
+    if (!r.ok) throw new Error((await r.json()).detail || 'Error saving steps');
+    closeStepsModal();
+    await loadData(currentPeriod, true);
+    showBanner(`🦶 Steps logged: ${steps.toLocaleString()} on ${dateVal}`, 'live');
+  } catch(e) {
+    msg.innerHTML = `<span style="color:#b91c1c">${e.message}</span>`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save';
   }
 }
 
@@ -2838,9 +2988,11 @@ function renderPoints(){
   const currentMonth = today.getMonth() + 1; // 1-12
   const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-  // Show May banner only in May
-  const mayBanner = document.getElementById('mayBanner');
-  if (mayBanner) mayBanner.style.display = currentMonth === 5 ? 'block' : 'none';
+  // Show month-specific banners
+  const mayBanner  = document.getElementById('mayBanner');
+  const juneBanner = document.getElementById('juneBanner');
+  if (mayBanner)  mayBanner.style.display  = currentMonth === 5 ? 'block' : 'none';
+  if (juneBanner) juneBanner.style.display = currentMonth === 6 ? 'block' : 'none';
 
   // In dynamic mode, only show users with a calorie factor
   const pointsUsers = isDynamic ? users.filter(u => u.runKcalFactor != null) : users;
@@ -2956,6 +3108,20 @@ function renderPoints(){
     ruleEPoints[u.id] = mayData?.ruleEPts || 0;
   });
 
+  // Rule F: Steps challenge (June only)
+  const ruleFPoints = {};
+  pointsUsers.forEach(u => {
+    const juneData = (u.monthly||[]).find(m => m.year===currentYear && m.month===6);
+    ruleFPoints[u.id] = juneData?.ruleFPts || 0;
+  });
+
+  // Rule G: Running km bonus (June only)
+  const ruleGPoints = {};
+  pointsUsers.forEach(u => {
+    const juneData = (u.monthly||[]).find(m => m.year===currentYear && m.month===6);
+    ruleGPoints[u.id] = juneData?.ruleGPts || 0;
+  });
+
   // Total points
   const totalPoints = {};
   pointsUsers.forEach(u => {
@@ -2964,7 +3130,9 @@ function renderPoints(){
       (ruleBWinners.includes(u.id) ? 2 : 0) +
       (ruleCWinners.includes(u.id) ? 2 : 0) +
       (ruleDWinners.includes(u.id) ? 1 : 0) +
-      (ruleEPoints[u.id] || 0);
+      (ruleEPoints[u.id] || 0) +
+      (ruleFPoints[u.id] || 0) +
+      (ruleGPoints[u.id] || 0);
   });
 
   const sorted = [...pointsUsers].sort((a,b) => (totalPoints[b.id]||0) - (totalPoints[a.id]||0));
@@ -2986,6 +3154,8 @@ function renderPoints(){
     <th style="color:#f472b6" title="Rule C: most Rule A points (+2pts)">C</th>
     <th style="color:#fb923c" title="Rule D: biggest BMI % drop vs January in current month (+1pt)">D</th>
     <th style="color:#06b6d4" title="Rule E (May only): Sprint tri (20km single ride/5km run/0.75km swim) = +1pt · Olympic tri (40km single ride/10km run/1.5km swim) = +2pts · no virtual biking · max 2pts">E</th>
+    <th style="color:#16a34a" title="Rule F (June only): 300k+ steps · 0 days under 10k = +2pts · ≤2 days under 10k = +1pt · log daily steps via 🦶 button">F</th>
+    <th style="color:#f59e0b" title="Rule G (June only): ≥120km eligible run = +3pts · ≥100km = +2pts · ≥80km = +1pt">G</th>
     <th style="border-left:2px solid var(--border)">Total 🏅</th>
   </tr>`;
 
@@ -3073,6 +3243,8 @@ function renderPoints(){
       <td style="color:${hasC?'#f472b6':'var(--muted)'};font-weight:${hasC?900:600}">${hasC?'+2':'—'}</td>
       <td style="color:${hasD?'#fb923c':'var(--muted)'};font-weight:${hasD?900:600}" title="${impD!=null?'BMI % drop vs Jan: −'+impD.toFixed(1)+'%':'No BMI data for Jan & current month'}">${hasD?'+1':'—'}</td>
       <td style="color:${ruleEPoints[u.id]>0?'#06b6d4':'var(--muted)'};font-weight:${ruleEPoints[u.id]>0?900:600}" title="${ruleEPoints[u.id]===2?'🏊‍♂️ Olympic triathlon day achieved!':ruleEPoints[u.id]===1?'🏊 Sprint triathlon day achieved!':'No triathlon day in May'}">${ruleEPoints[u.id]>0?'+'+ruleEPoints[u.id]:'—'}</td>
+      <td style="color:${ruleFPoints[u.id]>0?'#16a34a':'var(--muted)'};font-weight:${ruleFPoints[u.id]>0?900:600}" title="${ruleFPoints[u.id]===2?'🦶 Perfect steps month!':ruleFPoints[u.id]===1?'🦶 Steps goal with ≤2 missed days':'Steps challenge not achieved'}">${ruleFPoints[u.id]>0?'+'+ruleFPoints[u.id]:'—'}</td>
+      <td style="color:${ruleGPoints[u.id]>0?'#f59e0b':'var(--muted)'};font-weight:${ruleGPoints[u.id]>0?900:600}" title="${ruleGPoints[u.id]===3?'🏃 ≥120km run!':ruleGPoints[u.id]===2?'🏃 ≥100km run':ruleGPoints[u.id]===1?'🏃 ≥80km run':'Running km bonus not achieved'}">${ruleGPoints[u.id]>0?'+'+ruleGPoints[u.id]:'—'}</td>
       <td style="border-left:2px solid var(--border)"><span class="pts-total">${total}</span></td>
     </tr>`;
   }).join('');
@@ -3085,6 +3257,8 @@ function renderPoints(){
     <span style="color:#f472b6">C: sole leader in Rule A = +2pts (no bonus if tied)</span>
     <span style="color:#fb923c">D: biggest BMI % drop vs January (current month) = +1pt (no bonus if tied)</span>
     <span style="color:#06b6d4">E (May): sprint tri (20km single ride / 5km run / 0.75km swim in one day) = +1pt · olympic tri (40km single ride / 10km run / 1.5km swim) = +2pts · no virtual biking · max 2pts</span>
+    <span style="color:#16a34a">F (June): log daily steps via 🦶 · 300k+ total · 0 days &lt;10k = +2pts · ≤2 days &lt;10k = +1pt</span>
+    <span style="color:#f59e0b">G (June): eligible run km · ≥120km = +3pts · ≥100km = +2pts · ≥80km = +1pt</span>
     <span style="color:var(--violet)">Current month shown in progress, not yet scored · hover cells for raw breakdown</span>
   </div>`;
 
@@ -3524,8 +3698,9 @@ function updateHeaderChip(member) {
   wrap.innerHTML = `<span class="chip-avatar-emoji" style="background:${member.bg}">${member.emoji}</span>`;
   nameEl.textContent = member.name.split(' ')[0];
   chip.classList.add('visible');
-  // Show Log Weight button for all logged-in users
+  // Show Log Weight and Log Steps buttons for all logged-in users
   document.getElementById('logWeightWrap').style.display = 'block';
+  document.getElementById('logStepsWrap').style.display  = 'block';
 }
 
 // ── Open / close modal ────────────────────────────────────────────
