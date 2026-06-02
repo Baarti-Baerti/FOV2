@@ -672,7 +672,7 @@ def monthly_breakdown(acts: list, year: int, member: dict = None) -> list:
         rule_f_pts = 0
         if m == 6:
             step_log    = (member or {}).get("step_log", [])
-            month_steps = [e for e in step_log if e.get("date","")[:7] == f"{yr}-{m:02d}"]
+            month_steps = [e for e in step_log if e.get("date","")[:7] == f"{year}-{m:02d}"]
             total_steps = sum(e.get("steps", 0) for e in month_steps)
             days_under  = sum(1 for e in month_steps if e.get("steps", 0) < 10000)
             if total_steps >= 300000:
