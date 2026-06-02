@@ -405,7 +405,11 @@ async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last
                     date_str = entry.get("calendarDate") or entry.get("startGMT","")[:10]
                     steps    = entry.get("totalSteps") or entry.get("steps") or 0
                     if date_str and steps > 0:
-                        existing_steps[date_str] = {"date": date_str, "steps": int(steps), "source": "garmin"}
+                        existing_steps[date_str] = {
+                            "date":   str(date_str),
+                            "steps":  int(steps),
+                            "source": "garmin",
+                        }
                         updated += 1
                 m4["step_log"] = sorted(existing_steps.values(), key=lambda e: e["date"], reverse=True)
                 save_db(db4)
@@ -804,7 +808,7 @@ def fmt_member(m: dict, idx: int, s: dict) -> dict:
         bmi=current_bmi,
         weightLog=weight_log,
         isAdmin=m.get("is_admin", False) or m.get("id") == 1,
-        stepLog=m.get("step_log", []),
+        stepLog=[ {"date": str(e.get("date","")), "steps": int(e.get("steps",0)), "source": str(e.get("source","manual"))} for e in m.get("step_log", []) ],
         types=s.get("types",[]), monthly=s.get("monthly",[]),
         recentActs=s.get("recentActs",[]),
         week=w, weekCalories=wc)
