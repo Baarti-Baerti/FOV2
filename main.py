@@ -861,6 +861,16 @@ async def lifespan(app):
     task.cancel()
 
 app = FastAPI(title="Fette Otter API", version="1.0.0", lifespan=lifespan)
+
+@app.middleware("http")
+async def log_exceptions(request, call_next):
+    import traceback
+    try:
+        return await call_next(request)
+    except Exception as e:
+        print(f"[ERROR] {request.method} {request.url.path}: {type(e).__name__}: {e}")
+        print(traceback.format_exc())
+        raise
 app.add_middleware(CORSMiddleware, allow_origins=["*"],
                    allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
