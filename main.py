@@ -1527,7 +1527,45 @@ async def reset_sync_member(mid: int):
     cache_bust(mid)
     return {"ok": True, "member": m["name"], "message": f"Reset complete for {m['name']} — run /api/admin/sync to fetch their data"}
 
-@app.get("/api/admin/debug-garmin/{mid}")
+@app.get("/api/admin/debug-steps/{mid}")
+async def debug_steps(mid: int):
+    db = load_db()
+    m  = next((x for x in db["members"] if x["id"] == mid), None)
+    if not m: raise HTTPException(404, "Member not found")
+    if m.get("provider") != "garmin":
+        return {"error": "Not a Garmin member", "provider": m.get("provider")}
+    token_store = m.get("garmin_token_store")
+    if not token_store:
+        return {"error": "No token stored"}
+
+    def do_fetch():
+        from garminconnect import Garmin
+        from datetime import datetime, timezone
+        c = Garmin()
+        if isinstance(token_store, str): c.client.loads(token_store)
+        else:
+            import json as _j; c.client.loads(_j.dumps(token_store))
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        # Fetch just last 7 days to keep it lightweight
+        from datetime import timedelta
+        start = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%d")
+        return c.get_daily_steps(start, today)
+
+    try:
+        loop   = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, do_fetch)
+        sample = (result or [])[:5]
+        return {
+            "member":        m["name"],
+            "total_entries": len(result or []),
+            "sample":        sample,
+            "stored_step_log_count": len(m.get("step_log", [])),
+            "stored_sample": m.get("step_log", [])[:3],
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
 async def debug_garmin(mid: int):
     """Debug Garmin sync for a specific member — shows token status and raw fetch attempt."""
     import asyncio
