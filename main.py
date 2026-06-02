@@ -378,6 +378,7 @@ async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last
     # Also sync daily steps from Garmin
     try:
         def do_steps_sync():
+            from garminconnect import Garmin
             yr     = datetime.now(timezone.utc).year
             start  = f"{yr}-01-01"
             end    = datetime.now(timezone.utc).strftime("%Y-%m-%d")
