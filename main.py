@@ -1318,6 +1318,14 @@ async def get_team(range_: str = Query("thismonth", alias="range")):
             for a in sorted(year_acts, key=_act_ts, reverse=True)
         ]
         entry = fmt_member(m, idx, s)
+        # Verify entry is JSON-serialisable before caching
+        try:
+            json.dumps(entry)
+        except Exception as je:
+            print(f"[ERROR] fmt_member result not serialisable for {m['name']}: {je}")
+            # Strip stepLog and try again
+            entry["stepLog"] = []
+            entry["weightLog"] = []
         cache_set(m["id"], range_, entry)
         result.append(entry)
 
