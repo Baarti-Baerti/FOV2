@@ -388,13 +388,16 @@ async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last
                 import json as _j; client_s.client.loads(_j.dumps(token_store))
             return client_s.get_daily_steps(start, end)
 
-        loop4       = asyncio.get_event_loop()
+        loop4        = asyncio.get_event_loop()
         step_entries = await loop4.run_in_executor(None, do_steps_sync)
+        print(f"[sync] {member['name']} steps: fetched {len(step_entries or [])} entries from Garmin")
 
         if step_entries:
             db4 = load_db()
             m4  = next((x for x in db4["members"] if x["id"] == member["id"]), None)
-            if m4:
+            if not m4:
+                print(f"[warn] steps sync: member {member['id']} not found in DB")
+            else:
                 existing_steps = {e["date"]: e for e in m4.get("step_log", [])}
                 updated = 0
                 for entry in step_entries:
@@ -406,9 +409,13 @@ async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last
                 m4["step_log"] = sorted(existing_steps.values(), key=lambda e: e["date"], reverse=True)
                 save_db(db4)
                 cache_bust(member["id"])
-                print(f"[sync] {member['name']} steps: {updated} days synced")
+                print(f"[sync] {member['name']} steps: {updated} days saved to DB")
+        else:
+            print(f"[sync] {member['name']} steps: no entries returned")
     except Exception as se:
+        import traceback
         print(f"[sync] Steps sync failed for {member['name']}: {se}")
+        print(traceback.format_exc())
     try:
         def do_height_sync():
             settings = client.get_userprofile_settings()
