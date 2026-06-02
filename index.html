@@ -2258,17 +2258,22 @@ function renderLB(suffix=''){
           `</div>`;
       }, unit:'' },
     { key:'steps',       label:'Steps',        icon:'🦶', fmt: u => {
-        // Show total steps logged in June (current year)
         const yr = new Date().getFullYear();
-        const juneSteps = (u.stepLog||[])
-          .filter(s => s.date && s.date.startsWith(`${yr}-06`))
-          .reduce((sum, s) => sum + (s.steps||0), 0);
+        const today = new Date();
+        // Only count days in June that have already passed (not today, not future)
+        const juneEntries = (u.stepLog||[]).filter(s => {
+          if (!s.date || !s.date.startsWith(`${yr}-06`)) return false;
+          const d = new Date(s.date + 'T23:59:59Z');
+          return d < today;
+        });
+        const juneSteps   = juneEntries.reduce((sum, s) => sum + (s.steps||0), 0);
+        const daysReached = juneEntries.filter(s => s.steps >= 10000).length;
+        const daysPast    = juneEntries.length; // days with recorded data that are past
         if (juneSteps === 0) return '—';
-        const daysUnder = (u.stepLog||[])
-          .filter(s => s.date && s.date.startsWith(`${yr}-06`) && s.steps < 10000).length;
-        const color = daysUnder === 0 ? '#16a34a' : daysUnder <= 2 ? '#f59e0b' : '#ef4444';
+        const color = daysReached === daysPast && daysPast > 0 ? '#16a34a'
+          : (daysPast - daysReached) <= 2 ? '#f59e0b' : '#ef4444';
         return `<span style="color:${color};font-weight:800">${juneSteps.toLocaleString()}</span>` +
-          `<div style="font-size:.65rem;color:var(--muted);margin-top:1px">${daysUnder === 0 ? '✓ all days ≥10k' : `${daysUnder} day${daysUnder>1?'s':''} under 10k`}</div>`;
+          `<div style="font-size:.65rem;color:${color};font-weight:700;margin-top:1px">${daysReached}/${daysPast} days ≥10k</div>`;
       }, unit:'' },
     { key:'km',          label:'Original',     icon:'📏', fmt: u => fmtKm((u.runKm||0)+(u.cycleKm||0)+(u.virtualKm||0)+(u.swimKm||0)+(u.walkKm||0)),    unit:'km' },
     { key:'durationSec', label:'Time',         icon:'⏱',  fmt: u => fmtDuration(userDurationSec(u)),                                                      unit:''   },
