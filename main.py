@@ -666,27 +666,8 @@ def monthly_breakdown(acts: list, year: int, member: dict = None) -> list:
                 rule_e_pts = 2
             elif got_sprint:
                 rule_e_pts = 1
-
-        # ── Rule F: Steps challenge (June only) ─────────────────────────────
-        # 300k+ total AND 0 days <10k = 2pts, 1-2 days <10k = 1pt, 3+ = 0pts
         rule_f_pts = 0
-        if m == 6:
-            step_log    = (member or {}).get("step_log", [])
-            month_steps = [e for e in step_log if e.get("date","")[:7] == f"{year}-{m:02d}"]
-            total_steps = sum(e.get("steps", 0) for e in month_steps)
-            days_under  = sum(1 for e in month_steps if e.get("steps", 0) < 10000)
-            if total_steps >= 300000:
-                if   days_under == 0: rule_f_pts = 2
-                elif days_under <= 2: rule_f_pts = 1
-
-        # ── Rule G: Running km bonus (June only) ─────────────────────────────
-        # ≥120km = 3pts, 100–119km = 2pts, 80–99km = 1pt (uses eligible run km)
         rule_g_pts = 0
-        if m == 6:
-            elig_run_km = s.get("eligibleRunKm", s.get("runKm", 0)) or 0
-            if   elig_run_km >= 120: rule_g_pts = 3
-            elif elig_run_km >= 100: rule_g_pts = 2
-            elif elig_run_km >= 80:  rule_g_pts = 1
 
         # ── goalDay: which calendar day did cumulative challenge-km first hit the goal? ──
         goal_day = None

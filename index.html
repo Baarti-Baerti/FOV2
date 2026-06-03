@@ -1259,108 +1259,6 @@
     </div>
   </div>
 
-  <!-- June Challenges banner — only shown in June -->
-  <div id="juneBanner" style="display:none;position:relative;margin:16px 16px 0;border-radius:16px;overflow:hidden;background:linear-gradient(135deg,#16a34a 0%,#15803d 40%,#14532d 100%);padding:20px 24px;box-shadow:0 4px 24px rgba(22,163,74,0.35)">
-    <div style="position:absolute;top:-20px;right:-20px;font-size:7rem;opacity:0.08;line-height:1">👟🏃🦶</div>
-    <div style="position:relative;display:flex;align-items:center;gap:16px">
-      <div style="font-size:2.8rem;line-height:1;flex-shrink:0">☀️</div>
-      <div>
-        <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.18rem;color:#fff;letter-spacing:-0.01em;line-height:1.2">June Run & Walk Blitz</div>
-        <div style="font-size:.82rem;color:#bbf7d0;font-weight:600;margin-top:3px;letter-spacing:.01em">Steps. Kilometres. Sweat.</div>
-        <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
-          <span style="background:rgba(255,255,255,0.15);color:#fff;font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:99px;border:1px solid rgba(255,255,255,0.25)">🦶 300k steps · 0 days &lt;10k = +2pts</span>
-          <span style="background:rgba(255,255,255,0.15);color:#fff;font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:99px;border:1px solid rgba(255,255,255,0.25)">🦶 300k steps · &le;2 days &lt;10k = +1pt</span>
-          <span style="background:rgba(255,255,255,0.15);color:#fff;font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:99px;border:1px solid rgba(255,255,255,0.25)">🏃 &ge;120km = +3pts · &ge;100km = +2pts · &ge;80km = +1pt</span>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="panel points-panel" id="pointsPanel">
-    <div class="panel-header">
-      <span class="panel-title">🏅 Points</span>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div style="display:flex;gap:3px;background:var(--surface2);border:1.5px solid var(--border);border-radius:24px;padding:3px">
-          <button id="scoringModeStatic"
-            onclick="setScoringMode('static')"
-            style="font-family:'Nunito',sans-serif;font-weight:700;font-size:0.78rem;padding:4px 12px;border-radius:20px;border:none;cursor:pointer;background:var(--violet);color:#fff;box-shadow:0 2px 8px rgba(129,140,248,0.35)">
-            📊 Static
-          </button>
-          <button id="scoringModeDynamic"
-            onclick="setScoringMode('dynamic')"
-            style="font-family:'Nunito',sans-serif;font-weight:700;font-size:0.78rem;padding:4px 12px;border-radius:20px;border:none;cursor:pointer;background:transparent;color:var(--muted)">
-            ⚡ Dynamic
-          </button>
-        </div>
-        <span class="panel-badge" id="pointsBadge">YTD</span>
-      </div>
-    </div>
-    <div id="pointsContent" style="padding:0 22px 20px"></div>
-  </div>
-</div><!-- end page-points -->
-
-<!-- ══ MONTHLY PROGRESS PAGE ══ -->
-<div class="page" id="page-monthly">
-  <div class="monthly-page">
-    <div id="mpUserRow" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px;align-items:center"></div>
-    <div class="mp-charts" id="mpCharts"></div>
-  </div>
-</div><!-- end page-monthly -->
-
-<!-- ══ DETAILS PAGE ══ -->
-<div class="page" id="page-details">
-  <div class="details-selector-bar">
-    <div class="week-selector" id="weekSelector"></div>
-  </div>
-  <div class="details-content">
-    <!-- Leaderboard full width -->
-    <div class="panel" style="margin-bottom:20px">
-      <div class="panel-header">
-        <span class="panel-title">📊 Static Scoring Leaderboard</span>
-      </div>
-      <div id="leaderboard"></div>
-    </div>
-    <!-- User detail callout below -->
-    <div class="user-detail panel" id="userDetail"></div>
-  </div>
-</div><!-- end page-details -->
-
-<div class="page" id="page-dynamic">
-  <div class="details-selector-bar">
-    <div class="week-selector" id="weekSelectorDynamic"></div>
-  </div>
-  <div class="details-content">
-    <!-- Leaderboard full width -->
-    <div class="panel" style="margin-bottom:20px">
-      <div class="panel-header">
-        <span class="panel-title">⚡ Dynamic Scoring Leaderboard</span>
-      </div>
-      <div id="leaderboard-dynamic"></div>
-    </div>
-    <!-- User detail callout below -->
-    <div class="user-detail panel" id="userDetail-dynamic"></div>
-  </div>
-</div><!-- end page-dynamic -->
-
-</div><!-- end everything -->
-
-<!-- ── JOIN FAB ── -->
-<button class="join-fab" id="joinFab" onclick="openJoinModal()">
-  <span class="fab-icon">🦦</span> Join Fette Otter
-</button>
-
-<!-- ── JOIN MODAL ── -->
-<div class="modal-overlay" id="joinModal">
-  <div class="modal-box">
-    <div class="modal-header">
-      <span class="modal-header-icon">🦦</span>
-      <h2>Join Fette Otter</h2>
-      <p id="modalHeaderSub">Connect your fitness account to join</p>
-      <button class="modal-close" onclick="closeJoinModal()">✕</button>
-    </div>
-    <div class="modal-body">
-
-      <div class="modal-msg" id="modalMsg"></div>
-
 
 
       <!-- ── STEP 0: Name + provider choice ── -->
@@ -2258,22 +2156,55 @@ function renderLB(suffix=''){
           `</div>`;
       }, unit:'' },
     { key:'steps',       label:'Steps',        icon:'🦶', fmt: u => {
-        const yr = new Date().getFullYear();
+        const yr    = new Date().getFullYear();
         const today = new Date();
-        // Only count days in June that have already passed (not today, not future)
-        const juneEntries = (u.stepLog||[]).filter(s => {
-          if (!s.date || !s.date.startsWith(`${yr}-06`)) return false;
-          const d = new Date(s.date + 'T23:59:59Z');
-          return d < today;
+        today.setHours(23,59,59,0);
+
+        // Helper: days in a given month
+        const daysInMonth = (y, m) => new Date(y, m, 0).getDate();
+
+        // Get step entries filtered by current period
+        const stepEntries = (u.stepLog||[]).filter(s => {
+          if (!s.date) return false;
+          const d = new Date(s.date + 'T12:00:00Z');
+          const sy = d.getFullYear(), sm = d.getMonth()+1;
+          if (currentPeriod === 'thismonth') { const cm = today.getMonth()+1; return sy===yr && sm===cm; }
+          if (currentPeriod === 'lastmonth') { const lm=today.getMonth()===0?12:today.getMonth(), ly=today.getMonth()===0?yr-1:yr; return sy===ly && sm===lm; }
+          if (currentPeriod.startsWith('month-')) { const mo=parseInt(currentPeriod.split('-')[1]); return sy===yr && sm===mo; }
+          if (currentPeriod==='q1') return sy===yr && sm>=1 && sm<=3;
+          if (currentPeriod==='q2') return sy===yr && sm>=4 && sm<=6;
+          if (currentPeriod==='q3') return sy===yr && sm>=7 && sm<=9;
+          if (currentPeriod==='q4') return sy===yr && sm>=10 && sm<=12;
+          return sy===yr; // ytd
         });
-        const juneSteps   = juneEntries.reduce((sum, s) => sum + (s.steps||0), 0);
-        const daysReached = juneEntries.filter(s => s.steps >= 10000).length;
-        const daysPast    = juneEntries.length; // days with recorded data that are past
-        if (juneSteps === 0) return '—';
-        const color = daysReached === daysPast && daysPast > 0 ? '#16a34a'
-          : (daysPast - daysReached) <= 2 ? '#f59e0b' : '#ef4444';
-        return `<span style="color:${color};font-weight:800">${juneSteps.toLocaleString()}</span>` +
-          `<div style="font-size:.65rem;color:${color};font-weight:700;margin-top:1px">${daysReached}/${daysPast} days ≥10k</div>`;
+
+        if (stepEntries.length === 0) return '—';
+
+        const totalSteps  = stepEntries.reduce((s,e) => s+(e.steps||0), 0);
+        const daysHit     = stepEntries.filter(e => e.steps >= 10000).length;
+
+        // Y = total days in the period (not just logged days)
+        let totalDays = 0;
+        const cm = today.getMonth()+1, cy = today.getFullYear();
+        if (currentPeriod === 'thismonth') {
+          // Count only days up to today
+          totalDays = today.getDate();
+        } else if (currentPeriod === 'lastmonth') {
+          const lm=cm===1?12:cm-1, ly=cm===1?cy-1:cy;
+          totalDays = daysInMonth(ly, lm);
+        } else if (currentPeriod.startsWith('month-')) {
+          const mo=parseInt(currentPeriod.split('-')[1]);
+          totalDays = mo < cm ? daysInMonth(yr, mo) : (mo===cm ? today.getDate() : 0);
+        } else if (currentPeriod==='q1') totalDays = cm>3?90:cm===1?today.getDate():cm===2?31+today.getDate():59+today.getDate();
+        else if (currentPeriod==='q2') totalDays = cm>6?91:cm===4?today.getDate():cm===5?30+today.getDate():cm===6?61+today.getDate():0;
+        else if (currentPeriod==='q3') totalDays = cm>9?92:cm===7?today.getDate():cm===8?31+today.getDate():cm===9?62+today.getDate():0;
+        else if (currentPeriod==='q4') totalDays = cm===10?today.getDate():cm===11?31+today.getDate():cm===12?61+today.getDate():92;
+        else totalDays = Math.floor((today - new Date(`${yr}-01-01`)) / 86400000) + 1; // ytd
+
+        const pct   = totalDays > 0 ? daysHit / totalDays : 0;
+        const color = pct >= 0.9 ? '#16a34a' : pct >= 0.7 ? '#f59e0b' : '#ef4444';
+        return `<span style="font-weight:800;color:${color}">${totalSteps.toLocaleString()}</span>` +
+          `<div style="font-size:.65rem;font-weight:700;color:${color};margin-top:1px">${daysHit}/${totalDays} days ≥10k</div>`;
       }, unit:'' },
     { key:'km',          label:'Original',     icon:'📏', fmt: u => fmtKm((u.runKm||0)+(u.cycleKm||0)+(u.virtualKm||0)+(u.swimKm||0)+(u.walkKm||0)),    unit:'km' },
     { key:'durationSec', label:'Time',         icon:'⏱',  fmt: u => fmtDuration(userDurationSec(u)),                                                      unit:''   },
@@ -2996,9 +2927,7 @@ function renderPoints(){
 
   // Show month-specific banners
   const mayBanner  = document.getElementById('mayBanner');
-  const juneBanner = document.getElementById('juneBanner');
-  if (mayBanner)  mayBanner.style.display  = currentMonth === 5 ? 'block' : 'none';
-  if (juneBanner) juneBanner.style.display = currentMonth === 6 ? 'block' : 'none';
+  if (mayBanner) mayBanner.style.display = currentMonth === 5 ? 'block' : 'none';
 
   // In dynamic mode, only show users with a calorie factor
   const pointsUsers = isDynamic ? users.filter(u => u.runKcalFactor != null) : users;
@@ -3114,20 +3043,6 @@ function renderPoints(){
     ruleEPoints[u.id] = mayData?.ruleEPts || 0;
   });
 
-  // Rule F: Steps challenge (June only)
-  const ruleFPoints = {};
-  pointsUsers.forEach(u => {
-    const juneData = (u.monthly||[]).find(m => m.year===currentYear && m.month===6);
-    ruleFPoints[u.id] = juneData?.ruleFPts || 0;
-  });
-
-  // Rule G: Running km bonus (June only)
-  const ruleGPoints = {};
-  pointsUsers.forEach(u => {
-    const juneData = (u.monthly||[]).find(m => m.year===currentYear && m.month===6);
-    ruleGPoints[u.id] = juneData?.ruleGPts || 0;
-  });
-
   // Total points
   const totalPoints = {};
   pointsUsers.forEach(u => {
@@ -3136,9 +3051,7 @@ function renderPoints(){
       (ruleBWinners.includes(u.id) ? 2 : 0) +
       (ruleCWinners.includes(u.id) ? 2 : 0) +
       (ruleDWinners.includes(u.id) ? 1 : 0) +
-      (ruleEPoints[u.id] || 0) +
-      (ruleFPoints[u.id] || 0) +
-      (ruleGPoints[u.id] || 0);
+      (ruleEPoints[u.id] || 0);
   });
 
   const sorted = [...pointsUsers].sort((a,b) => (totalPoints[b.id]||0) - (totalPoints[a.id]||0));
@@ -3160,8 +3073,6 @@ function renderPoints(){
     <th style="color:#f472b6" title="Rule C: most Rule A points (+2pts)">C</th>
     <th style="color:#fb923c" title="Rule D: biggest BMI % drop vs January in current month (+1pt)">D</th>
     <th style="color:#06b6d4" title="Rule E (May only): Sprint tri (20km single ride/5km run/0.75km swim) = +1pt · Olympic tri (40km single ride/10km run/1.5km swim) = +2pts · no virtual biking · max 2pts">E</th>
-    <th style="color:#16a34a" title="Rule F (June only): 300k+ steps · 0 days under 10k = +2pts · ≤2 days under 10k = +1pt · log daily steps via 🦶 button">F</th>
-    <th style="color:#f59e0b" title="Rule G (June only): ≥120km eligible run = +3pts · ≥100km = +2pts · ≥80km = +1pt">G</th>
     <th style="border-left:2px solid var(--border)">Total 🏅</th>
   </tr>`;
 
@@ -3249,8 +3160,6 @@ function renderPoints(){
       <td style="color:${hasC?'#f472b6':'var(--muted)'};font-weight:${hasC?900:600}">${hasC?'+2':'—'}</td>
       <td style="color:${hasD?'#fb923c':'var(--muted)'};font-weight:${hasD?900:600}" title="${impD!=null?'BMI % drop vs Jan: −'+impD.toFixed(1)+'%':'No BMI data for Jan & current month'}">${hasD?'+1':'—'}</td>
       <td style="color:${ruleEPoints[u.id]>0?'#06b6d4':'var(--muted)'};font-weight:${ruleEPoints[u.id]>0?900:600}" title="${ruleEPoints[u.id]===2?'🏊‍♂️ Olympic triathlon day achieved!':ruleEPoints[u.id]===1?'🏊 Sprint triathlon day achieved!':'No triathlon day in May'}">${ruleEPoints[u.id]>0?'+'+ruleEPoints[u.id]:'—'}</td>
-      <td style="color:${ruleFPoints[u.id]>0?'#16a34a':'var(--muted)'};font-weight:${ruleFPoints[u.id]>0?900:600}" title="${ruleFPoints[u.id]===2?'🦶 Perfect steps month!':ruleFPoints[u.id]===1?'🦶 Steps goal with ≤2 missed days':'Steps challenge not achieved'}">${ruleFPoints[u.id]>0?'+'+ruleFPoints[u.id]:'—'}</td>
-      <td style="color:${ruleGPoints[u.id]>0?'#f59e0b':'var(--muted)'};font-weight:${ruleGPoints[u.id]>0?900:600}" title="${ruleGPoints[u.id]===3?'🏃 ≥120km run!':ruleGPoints[u.id]===2?'🏃 ≥100km run':ruleGPoints[u.id]===1?'🏃 ≥80km run':'Running km bonus not achieved'}">${ruleGPoints[u.id]>0?'+'+ruleGPoints[u.id]:'—'}</td>
       <td style="border-left:2px solid var(--border)"><span class="pts-total">${total}</span></td>
     </tr>`;
   }).join('');
@@ -3263,44 +3172,6 @@ function renderPoints(){
       <span style="margin-left:auto;font-size:.7rem;color:var(--muted);font-weight:600">hover column headers for details · goal = ${GOAL} eq.km/month</span>
     </div>
     <div style="padding:16px 18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">
-
-      <div style="border-radius:10px;padding:12px 14px;background:rgba(129,140,248,0.08);border:1px solid rgba(129,140,248,0.2)">
-        <div style="font-size:.72rem;font-weight:800;color:#818cf8;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">⭐ Rule A — Monthly Points</div>
-        <div style="font-size:.8rem;color:var(--text2);font-weight:600;line-height:1.5">+1pt for each month you hit <span style="color:#818cf8;font-weight:800">${GOAL} eq.km</span></div>
-        <div style="font-size:.72rem;color:var(--muted);margin-top:4px;line-height:1.4">🏃 run ×1 · 🚴 bike ÷5 · 💻 virtual ÷4 · 🏊 swim ×4 · 🚶 walk ÷3 (≥30min &amp; ≥6.5km/h) · run pace ≤9min/km from May 2026</div>
-      </div>
-
-      <div style="border-radius:10px;padding:12px 14px;background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.2)">
-        <div style="font-size:.72rem;font-weight:800;color:#34d399;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">🏆 Rule B — Distance King</div>
-        <div style="font-size:.8rem;color:var(--text2);font-weight:600;line-height:1.5">Most YTD equivalent km = <span style="color:#34d399;font-weight:800">+2pts</span></div>
-      </div>
-
-      <div style="border-radius:10px;padding:12px 14px;background:rgba(244,114,182,0.08);border:1px solid rgba(244,114,182,0.2)">
-        <div style="font-size:.72rem;font-weight:800;color:#f472b6;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">👑 Rule C — Sole Leader</div>
-        <div style="font-size:.8rem;color:var(--text2);font-weight:600;line-height:1.5">Sole leader in Rule A = <span style="color:#f472b6;font-weight:800">+2pts</span></div>
-        <div style="font-size:.72rem;color:var(--muted);margin-top:4px">No bonus if tied</div>
-      </div>
-
-      <div style="border-radius:10px;padding:12px 14px;background:rgba(251,146,60,0.08);border:1px solid rgba(251,146,60,0.2)">
-        <div style="font-size:.72rem;font-weight:800;color:#fb923c;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">⚖️ Rule D — BMI Drop</div>
-        <div style="font-size:.8rem;color:var(--text2);font-weight:600;line-height:1.5">Biggest BMI % drop vs January = <span style="color:#fb923c;font-weight:800">+1pt</span></div>
-        <div style="font-size:.72rem;color:var(--muted);margin-top:4px">No bonus if tied</div>
-      </div>
-
-      <div style="border-radius:10px;padding:12px 14px;background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.2)">
-        <div style="font-size:.72rem;font-weight:800;color:#06b6d4;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">🏊 Rule E — Triathlon (May)</div>
-        <div style="font-size:.8rem;color:var(--text2);font-weight:600;line-height:1.5">Sprint tri in one day = <span style="color:#06b6d4;font-weight:800">+1pt</span> · Olympic = <span style="color:#06b6d4;font-weight:800">+2pts</span></div>
-        <div style="font-size:.72rem;color:var(--muted);margin-top:4px;line-height:1.4">Sprint: 20km ride / 5km run / 0.75km swim · Olympic: 40km / 10km / 1.5km · no virtual biking · max 2pts</div>
-      </div>
-
-      <div style="border-radius:10px;padding:12px 14px;background:rgba(22,163,74,0.08);border:1px solid rgba(22,163,74,0.2)">
-        <div style="font-size:.72rem;font-weight:800;color:#16a34a;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">🦶 Rule F — Steps (June)</div>
-        <div style="font-size:.8rem;color:var(--text2);font-weight:600;line-height:1.5">300k+ steps · 0 days under 10k = <span style="color:#16a34a;font-weight:800">+2pts</span> · ≤2 days = <span style="color:#16a34a;font-weight:800">+1pt</span></div>
-        <div style="font-size:.72rem;color:var(--muted);margin-top:4px">Garmin synced automatically · Strava log via 🦶 button</div>
-      </div>
-
-      <div style="border-radius:10px;padding:12px 14px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2)">
-        <div style="font-size:.72rem;font-weight:800;color:#f59e0b;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">🏃 Rule G — Run Bonus (June)</div>
         <div style="font-size:.8rem;color:var(--text2);font-weight:600;line-height:1.5">≥120km = <span style="color:#f59e0b;font-weight:800">+3pts</span> · ≥100km = <span style="color:#f59e0b;font-weight:800">+2pts</span> · ≥80km = <span style="color:#f59e0b;font-weight:800">+1pt</span></div>
         <div style="font-size:.72rem;color:var(--muted);margin-top:4px">Eligible km only (pace ≤9min/km)</div>
       </div>
