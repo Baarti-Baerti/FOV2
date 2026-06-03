@@ -1259,9 +1259,42 @@
     </div>
   </div>
 
+  <div class="panel points-panel" id="pointsPanel">
+    <div class="panel-header">
+      <span class="panel-title">🏅 Points</span>
+      <div id="scoringToggle" style="display:flex;gap:6px"></div>
+    </div>
+    <div id="pointsContent"></div>
+  </div>
 
+</div><!-- end page-points -->
 
-      <!-- ── STEP 0: Name + provider choice ── -->
+<div class="page" id="page-details">
+  <div id="leaderboard"></div>
+  <div id="userDetail"></div>
+</div>
+
+<div class="page" id="page-dynamic">
+  <div id="leaderboard-dynamic"></div>
+  <div id="userDetail-dynamic"></div>
+</div>
+
+<div class="page" id="page-monthly">
+  <div id="mpCharts"></div>
+</div>
+
+</div><!-- end everything wrapper -->
+
+<!-- ── Join / login modal overlay ── -->
+<div class="modal-overlay" id="joinModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-header-icon">🦦</span>
+      <h2>Join Fette Otter</h2>
+      <p>Track your fitness, compete with friends.</p>
+      <button class="modal-close" onclick="closeJoinModal()">✕</button>
+    </div>
+    <div class="modal-body" id="joinModalBody">
       <div id="step0">
         <div class="field">
           <label>Your name</label>
@@ -1284,7 +1317,7 @@
             </div>
           </button>
         </div>
-      </div>
+      </div><!-- end step0 -->
 
       <!-- hidden stubs so goToStep() doesn't break -->
       <div id="step1"   style="display:none"></div>
