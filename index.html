@@ -1612,7 +1612,7 @@ function normaliseUser(raw, idx) {
 
 // ── Shared state ──────────────────────────────────────────────────
 let users = [];
-let selUser = null, curMetric = 'convKm', selMonth = 0, selMoUser = null;
+let selUser = null, curMetric = 'convKm', curSortDir = 'desc', selMonth = 0, selMoUser = null;
 let usingLiveData = false;
 
 const DAYS = ['M','T','W','T','F','S','S'];
@@ -2305,7 +2305,10 @@ function renderLB(suffix=''){
   const usersToShow = suffix === 'dynamic'
     ? users.filter(u => u.runKcalFactor != null)
     : users;
-  const sorted = [...usersToShow].sort((a,b) => metricVal(b, suffix === 'dynamic' ? 'dynTotal' : curMetric) - metricVal(a, suffix === 'dynamic' ? 'dynTotal' : curMetric));
+  const sorted = [...usersToShow].sort((a,b) => {
+    const diff = metricVal(b, suffix === 'dynamic' ? 'dynTotal' : curMetric) - metricVal(a, suffix === 'dynamic' ? 'dynTotal' : curMetric);
+    return curSortDir === 'desc' ? diff : -diff;
+  });
 
   const isMultiMonth = !['thismonth','lastmonth'].includes(currentPeriod) && !currentPeriod.startsWith('month-');
 
@@ -2314,7 +2317,7 @@ function renderLB(suffix=''){
     ${ACTIVE_COLS.map(c => {
       const goalLabel = (c.key === 'goalDay' || c.key === 'dynGoalDay') && isMultiMonth ? 'Avg Days<br>to Goal' : c.label;
       const iconLine = c.icon ? `<div style="font-size:1rem;margin-top:2px">${c.icon}</div>` : '';
-      const sort = c.key === curMetric ? `<span style="color:var(--violet)">▾</span>` : '';
+      const sort = c.key === curMetric ? `<span style="color:var(--violet)">${curSortDir === 'desc' ? '▾' : '▴'}</span>` : '';
       return `<th class="${c.key===curMetric?'sort-active':''}" onclick="setMetricKey('${c.key}')" style="text-align:center;white-space:normal;line-height:1.25;${(c.key==='convKm'||c.key==='dynTotal')?'background:rgba(129,140,248,0.10);color:var(--violet)':''}">
         ${goalLabel} ${sort}${iconLine}
       </th>`;
@@ -2413,7 +2416,12 @@ function renderLB(suffix=''){
 }
 
 function setMetricKey(k){
-  curMetric = k;
+  if (k === curMetric) {
+    curSortDir = curSortDir === 'desc' ? 'asc' : 'desc';
+  } else {
+    curMetric = k;
+    curSortDir = 'desc';
+  }
   renderLB();
 }
 
