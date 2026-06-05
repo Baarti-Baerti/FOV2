@@ -3166,14 +3166,11 @@ function renderPoints(){
     const total = totalPoints[u.id] || 0;
     const bmiSubline = ''; // Jan BMI removed from user row
 
-    return `<tr>
+    return `<tr onclick="pickUser(${u.id})" style="cursor:pointer">
       <td>
-        <div style="display:flex;align-items:center;gap:7px">
-          <div style="width:56px;height:56px;border-radius:14px;background:${u.bg};display:flex;align-items:center;justify-content:center;font-size:2rem;flex-shrink:0;overflow:hidden">${u.picture?`<img src="${u.picture}" style="width:100%;height:100%;object-fit:cover;border-radius:14px">`:u.emoji}</div>
-          <div>
-            <span style="font-weight:800;font-size:.93rem">${u.name}</span>
-            ${bmiSubline}
-          </div>
+        <div class="lb-user-cell">
+          <div class="lb-avatar-sm" style="background:${u.bg}">${u.picture?`<img src="${u.picture}" style="width:100%;height:100%;border-radius:14px;object-fit:cover">`:u.emoji}</div>
+          <div><div class="lb-name">${u.name}${u.provider==='garmin'?'<span style="font-size:.65rem;background:#e0f2fe;color:#0369a1;border-radius:4px;padding:1px 5px;font-weight:800;margin-left:4px">GRM</span>':'<span style="font-size:.65rem;background:#fff3e0;color:#c2410c;border-radius:4px;padding:1px 5px;font-weight:800;margin-left:4px">STR</span>'}</div></div>
         </div>
       </td>
       ${monthCells}
@@ -3269,8 +3266,8 @@ function renderPoints(){
 
   el.innerHTML =
     podiumHTML +
-    `<div class="lb-scroll"><table class="pts-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>` +
-    legend.replace('margin-bottom:18px', 'margin-top:18px');
+    `<div class="panel" style="margin:0 0 16px;padding:0"><div class="lb-scroll" style="padding:0 14px"><table class="pts-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div></div>` +
+    legend;
 }
 function buildPeriodSelector() {
   const today = new Date();
