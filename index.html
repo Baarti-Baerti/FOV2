@@ -1867,9 +1867,11 @@ function applyData(team, period, isLive) {
     localStorage.removeItem('squad_member');
     currentMember = null;
     document.getElementById('currentUserChip').classList.remove('visible');
-    document.getElementById('joinBtnWrap').style.display  = 'block';
+    document.getElementById('joinBtnWrap').style.display   = 'block';
     document.getElementById('logWeightWrap').style.display = 'none';
     document.getElementById('logStepsWrap').style.display  = 'none';
+    // Auto-open join modal so deleted user can re-register
+    setTimeout(() => openJoinModal(), 800);
   }
 
   renderAll();
