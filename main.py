@@ -373,6 +373,7 @@ async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last
             "calories":         a.get("calories") or 0,
             "kilojoules":       None,
             "name":             a.get("activityName", sport_type),
+            "total_elevation_gain": float(a.get("elevationGain") or a.get("totalElevationGain") or 0),
         })
 
     # Also sync daily steps from Garmin
@@ -542,6 +543,7 @@ def aggregate(acts: list) -> dict:
     run = ride = vride = swim = walk = 0.0
     eligible_walk = 0.0   # walk km that pass the speed+duration filter
     eligible_run  = 0.0   # run km that meet the 9min/km pace threshold
+    elev_run = elev_ride = 0.0  # elevation gain in metres per category
     secs = 0      # only time from counted activity types
     types = set()
     for a in acts:
@@ -555,7 +557,10 @@ def aggregate(acts: list) -> dict:
             run += d
             if not _pace_rule_applies(a) or _run_speed(a) >= RUN_MIN_SPEED_MS:
                 eligible_run += d
-        elif cat == "ride":         ride  += d
+            elev_run += float(a.get("total_elevation_gain") or 0)
+        elif cat == "ride":
+            ride += d
+            elev_ride += float(a.get("total_elevation_gain") or 0)
         elif cat == "virtual_ride": vride += d
         elif cat == "swim":         swim  += d
         elif cat == "walk":
@@ -574,6 +579,8 @@ def aggregate(acts: list) -> dict:
     counted_workouts = sum(1 for a in acts if classify(a.get("sport_type") or a.get("type","")) in _COUNTED_CATS)
     return dict(runKm=rk, cycleKm=ck_, virtualKm=vk, swimKm=sk, walkKm=wk,
                 eligibleRunKm=erk, eligibleWalkKm=ewk,
+                elevRun=round(elev_run), elevRide=round(elev_ride),
+                elevTotal=round(elev_run + elev_ride),
                 km=round(rk+ck_+vk+sk+wk, 3), durationSec=secs,
                 workouts=counted_workouts, challengeKm=ckm,
                 types=sorted(types))
@@ -695,6 +702,7 @@ def monthly_breakdown(acts: list, year: int, member: dict = None) -> list:
             swimKm=s["swimKm"], walkKm=s["walkKm"],
             eligibleRunKm=s["eligibleRunKm"], eligibleWalkKm=s["eligibleWalkKm"], actKcal=0,
             durationSec=s["durationSec"], challengeKm=round(s["challengeKm"], 3),
+            elevRun=s.get("elevRun", 0), elevRide=s.get("elevRide", 0), elevTotal=s.get("elevTotal", 0),
             goalDay=goal_day,
             runKcalPerKm=run_kcal_per_km,
             runCalKm=round(run_km_kcal, 3),   # km of runs that had energy data
@@ -784,7 +792,8 @@ def fmt_member(m: dict, idx: int, s: dict) -> dict:
         bg=m.get("bg")       or _BG[idx%len(_BG)],
         picture=m.get("garmin_picture","") if m.get("provider") == "garmin" else m.get("strava_picture",""), height_m=height_m,
         **{k: s.get(k,0) for k in ("km","runKm","cycleKm","virtualKm","swimKm","walkKm",
-                                    "durationSec","workouts","challengeKm","eligibleWalkKm","eligibleRunKm")},
+                                    "durationSec","workouts","challengeKm","eligibleWalkKm","eligibleRunKm",
+                                    "elevRun","elevRide","elevTotal")},
         runKcalFactor=run_kcal_factor,
         bmi=current_bmi,
         weightLog=weight_log,
@@ -1295,6 +1304,7 @@ async def get_team(range_: str = Query("thismonth", alias="range")):
                 # calories directly when available; kJ*0.646 as fallback for Strava users
                 "kj":            float(a.get("calories") or 0) or float(a.get("kilojoules") or 0) * 0.646,
                 "hr":            float(a.get("average_heartrate") or 0),
+                "elev":          float(a.get("total_elevation_gain") or 0),
             }
             for a in sorted(year_acts, key=_act_ts, reverse=True)
         ]
@@ -1741,6 +1751,7 @@ async def debug_activities(mid: int, request: Request, limit: int = 5):
                     "moving_time_m": round((a.get("moving_time") or 0) / 60, 1),
                     "average_speed_ms": a.get("average_speed"),
                     "average_speed_kmh": round((a.get("average_speed") or 0) * 3.6, 2),
+                    "elevation_m":   a.get("total_elevation_gain"),
                     "calories":      a.get("calories"),
                     "kilojoules":    a.get("kilojoules"),
                     "classified_as": classify(a.get("sport_type") or a.get("type") or ""),
