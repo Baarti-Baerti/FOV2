@@ -1317,6 +1317,7 @@
           <label>Your name</label>
           <input type="text" id="nameInput" placeholder="e.g. Alex Chen" onkeydown="if(event.key==='Enter') chooseProvider('strava')">
         </div>
+        <div class="modal-msg" id="modalMsg"></div>
         <p style="font-size:.84rem;color:var(--muted);font-weight:700;text-align:center;margin:18px 0 10px;text-transform:uppercase;letter-spacing:.06em">Connect via</p>
         <div style="display:flex;flex-direction:column;gap:10px">
           <button class="btn-provider btn-strava" onclick="chooseProvider('strava')" style="width:100%;justify-content:center;gap:14px">
@@ -1864,14 +1865,19 @@ function applyData(team, period, isLive) {
   // Clear stale session if the logged-in member no longer exists in the team
   if (currentMember && !users.find(u => u.id === currentMember.id)) {
     console.log(`[session] Member ${currentMember.name} not found — clearing stale session`);
+    const staleName = currentMember.name; // save name before clearing
     localStorage.removeItem('squad_member');
     currentMember = null;
     document.getElementById('currentUserChip').classList.remove('visible');
     document.getElementById('joinBtnWrap').style.display   = 'block';
     document.getElementById('logWeightWrap').style.display = 'none';
     document.getElementById('logStepsWrap').style.display  = 'none';
-    // Auto-open join modal so deleted user can re-register
-    setTimeout(() => openJoinModal(), 800);
+    // Auto-open join modal with name pre-filled
+    setTimeout(() => {
+      openJoinModal();
+      const ni = document.getElementById('nameInput');
+      if (ni && staleName) ni.value = staleName;
+    }, 800);
   }
 
   renderAll();
