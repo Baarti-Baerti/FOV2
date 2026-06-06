@@ -1191,6 +1191,16 @@
     </div>
   </div>
   <div class="header-right">
+    <!-- Join button (shown to non-logged-in users) -->
+    <div id="joinBtnWrap">
+      <button onclick="openJoinModal()"
+        style="font-family:'Nunito',sans-serif;font-weight:800;font-size:0.78rem;
+               padding:5px 14px;border-radius:20px;border:2px solid #818cf8;
+               background:#ede9fe;color:#4c1d95;cursor:pointer;transition:all 0.2s"
+        title="Join Fette Otter">
+        🦦 Join Fette Otter
+      </button>
+    </div>
     <!-- Log Weight button (shown to all logged-in users) -->
     <div id="logWeightWrap" style="display:none">
       <button onclick="openWeightModal()"
@@ -1588,6 +1598,9 @@ function normaliseUser(raw, idx) {
     walkKm:       raw.walkKm       || 0,
     eligibleRunKm:  raw.eligibleRunKm  != null ? raw.eligibleRunKm  : null,
     eligibleWalkKm: raw.eligibleWalkKm || 0,
+    elevRun:        raw.elevRun   || 0,
+    elevRide:       raw.elevRide  || 0,
+    elevTotal:      raw.elevTotal || 0,
     runKcalFactor:  raw.runKcalFactor  ?? null,
     recentActs:     raw.recentActs     || [],
     otherKm:      raw.otherKm      || 0,
@@ -1846,11 +1859,24 @@ function applyData(team, period, isLive) {
   selUser = (prevSelId && users.find(u => u.id === prevSelId)) || users[0];
   if (!selMoUser) selMoUser = users[0];
   if (users[0]?.monthly?.length) selMonth = users[0].monthly.length - 1;
+
+  // Clear stale session if the logged-in member no longer exists in the team
+  if (currentMember && !users.find(u => u.id === currentMember.id)) {
+    console.log(`[session] Member ${currentMember.name} not found — clearing stale session`);
+    localStorage.removeItem('squad_member');
+    currentMember = null;
+    document.getElementById('currentUserChip').classList.remove('visible');
+    document.getElementById('joinBtnWrap').style.display  = 'block';
+    document.getElementById('logWeightWrap').style.display = 'none';
+    document.getElementById('logStepsWrap').style.display  = 'none';
+  }
+
   renderAll();
 
   // Ensure Log Weight button is visible for any logged-in user
   // (catches cases where updateHeaderChip ran before users were loaded)
   if (currentMember) {
+    document.getElementById('joinBtnWrap').style.display   = 'none';
     document.getElementById('logWeightWrap').style.display = 'block';
     document.getElementById('logStepsWrap').style.display  = 'block';
   }
@@ -2245,6 +2271,17 @@ function renderLB(suffix=''){
         return `<span style="font-weight:800;color:${color}">${totalSteps.toLocaleString()}</span>` +
           `<div style="font-size:.65rem;font-weight:700;color:${color};margin-top:1px">${daysHit}/${totalDays} days ≥10k</div>`;
       }, unit:'' },
+    { key:'elevTotal',   label:'Elev',         icon:'⛰️', fmt: u => {
+        const e = u.elevTotal || 0;
+        if (e < 1) return '—';
+        const runPart  = u.elevRun  || 0;
+        const ridePart = u.elevRide || 0;
+        const parts = [];
+        if (runPart  > 0) parts.push(`🏃 ${runPart.toLocaleString()}m`);
+        if (ridePart > 0) parts.push(`🚴 ${ridePart.toLocaleString()}m`);
+        return `<span style="font-weight:800">${e.toLocaleString()}</span>` +
+          `<div style="font-size:.65rem;color:var(--muted);margin-top:1px">${parts.join(' · ')}</div>`;
+      }, unit:'m' },
     { key:'km',          label:'Original',     icon:'📏', fmt: u => fmtKm((u.runKm||0)+(u.cycleKm||0)+(u.virtualKm||0)+(u.swimKm||0)+(u.walkKm||0)),    unit:'km' },
     { key:'durationSec', label:'Time',         icon:'⏱',  fmt: u => fmtDuration(userDurationSec(u)),                                                      unit:''   },
     { key:'goalDay',     label:'Days to Goal', icon:'🎯', fmt: u => { const d=userDaysToGoal(u); return d!=null ? `${d}` : '—'; },                        unit:''   },
@@ -2544,6 +2581,7 @@ function renderDetail(suffix=''){
               <th style="text-align:right;padding:4px 10px 6px 0;color:var(--muted);font-weight:700;font-size:.72rem;letter-spacing:.04em">⭐ Pts</th>
               <th style="text-align:right;padding:4px 10px 6px 0;color:var(--muted);font-weight:700;font-size:.72rem;letter-spacing:.04em">Time</th>
               <th style="text-align:right;padding:4px 10px 6px 0;color:var(--muted);font-weight:700;font-size:.72rem;letter-spacing:.04em">Pace/Speed</th>
+              <th style="text-align:right;padding:4px 10px 6px 0;color:var(--muted);font-weight:700;font-size:.72rem;letter-spacing:.04em">⛰️ Elev</th>
               <th style="text-align:right;padding:4px 0 6px 0;color:var(--muted);font-weight:700;font-size:.72rem;letter-spacing:.04em">kcal</th>
               ${isAdmin ? '<th style="padding:4px 0 6px 0"></th>' : ''}
             </tr>
@@ -2623,7 +2661,8 @@ function renderDetail(suffix=''){
                   if (isRun) { const s=movSecs/a.dist_km; paceStr=Math.floor(s/60)+':'+(String(Math.round(s%60)).padStart(2,'0'))+'/km'; }
                   else paceStr = (a.dist_km/(movSecs/3600)).toFixed(1)+'km/h';
                 }
-                const kjStr = a.kj > 0 ? Math.round(a.kj) : '—'; // already kcal
+                const kjStr   = a.kj > 0 ? Math.round(a.kj) : '—'; // already kcal
+                const elevStr = (a.elev||0) > 0 ? `⛰️ ${Math.round(a.elev)}m` : '—';
                 const delBtn = isAdmin ? `<button onclick="deleteActivity(${u.id},'${a.id}')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.9rem;padding:2px 4px;opacity:0.5;transition:opacity .15s" onmouseover="this.style.opacity=1;this.style.color='#ef4444'" onmouseout="this.style.opacity=0.5;this.style.color='var(--muted)'" title="Delete activity">🗑️</button>` : '';
                 const hidden = thisIdx >= 15 ? 'class="act-extra" style="display:none;border-bottom:1px solid var(--border)"' : 'style="border-bottom:1px solid var(--border)"';
                 return `<tr ${hidden} onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
@@ -2637,6 +2676,7 @@ function renderDetail(suffix=''){
                   <td style="padding:6px 10px 6px 0;text-align:right;font-weight:700;white-space:nowrap;color:var(--violet)">${ptsStr}</td>
                   <td style="padding:6px 10px 6px 0;text-align:right;white-space:nowrap;color:var(--text2)">${durStr}</td>
                   <td style="padding:6px 10px 6px 0;text-align:right;white-space:nowrap;color:var(--muted);font-size:.78rem">${paceStr}</td>
+                  <td style="padding:6px 10px 6px 0;text-align:right;white-space:nowrap;color:var(--emerald,#059669);font-size:.78rem">${elevStr}</td>
                   <td style="padding:6px 0 6px 0;text-align:right;white-space:nowrap;color:var(--sky);font-size:.78rem">${kjStr}</td>
                   ${isAdmin ? `<td style="padding:6px 0 6px 0;text-align:right">${delBtn}</td>` : ''}
                 </tr>`;
@@ -3685,7 +3725,8 @@ function updateHeaderChip(member) {
   wrap.innerHTML = `<span class="chip-avatar-emoji" style="background:${member.bg}">${member.emoji}</span>`;
   nameEl.textContent = member.name.split(' ')[0];
   chip.classList.add('visible');
-  // Show Log Weight and Log Steps buttons for all logged-in users
+  // Hide join button, show action buttons for logged-in users
+  document.getElementById('joinBtnWrap').style.display  = 'none';
   document.getElementById('logWeightWrap').style.display = 'block';
   document.getElementById('logStepsWrap').style.display  = 'block';
 }
