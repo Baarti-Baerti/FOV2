@@ -1848,6 +1848,44 @@ async def debug_store():
     return result
 
 # Debug — inspect raw DB (member names + IDs only, no tokens)
+@app.get("/api/admin/debug-garmin-body/{mid}")
+async def debug_garmin_body(mid: int):
+    db = load_db()
+    m  = next((x for x in db["members"] if x["id"] == mid), None)
+    if not m: raise HTTPException(404, "Member not found")
+    if m.get("provider") != "garmin":
+        return {"error": "Not a Garmin member"}
+    token_store = m.get("garmin_token_store")
+    if not token_store: return {"error": "No token stored"}
+
+    def do_fetch():
+        from garminconnect import Garmin
+        c = Garmin()
+        if isinstance(token_store, str): c.client.loads(token_store)
+        else:
+            import json as _j; c.client.loads(_j.dumps(token_store))
+        yr    = datetime.now(timezone.utc).year
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        body  = c.get_body_composition(f"{yr}-06-01", today)
+        try:    settings = c.get_userprofile_settings()
+        except Exception as e: settings = {"error": str(e)}
+        return body, settings
+
+    try:
+        loop = asyncio.get_event_loop()
+        body, settings = await loop.run_in_executor(None, do_fetch)
+        entries = body.get("dateWeightList") or []
+        return {
+            "member":                m["name"],
+            "body_top_keys":         list(body.keys()),
+            "entry_count":           len(entries),
+            "first_entry_raw":       entries[0] if entries else None,
+            "all_entry_keys":        list(entries[0].keys()) if entries else [],
+            "profile_settings_raw":  settings,
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
 @app.get("/api/admin/debug-db")
 async def debug_db():
     db = load_db()
