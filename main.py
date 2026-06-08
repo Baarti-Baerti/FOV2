@@ -424,8 +424,20 @@ async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last
         print(traceback.format_exc())
     try:
         def do_height_sync():
-            settings = client.get_userprofile_settings()
-            height_cm = (settings.get("userInfo", {}) or {}).get("height") or settings.get("height")
+            from garminconnect import Garmin as _G
+            c = _G(); 
+            if isinstance(token_store, str): c.client.loads(token_store)
+            else:
+                import json as _j; c.client.loads(_j.dumps(token_store))
+            settings = c.get_userprofile_settings()
+            height_cm = (settings.get("userInfo", {}) or {}).get("height") or \
+                        settings.get("height") or \
+                        settings.get("heightInCentimeters")
+            if not height_cm:
+                try:
+                    summary = c.get_user_summary(datetime.now(timezone.utc).strftime("%Y-%m-%d"))
+                    height_cm = summary.get("heightInCentimeters") or summary.get("height")
+                except: pass
             return float(height_cm) if height_cm and 100 <= float(height_cm) <= 250 else None
 
         loop3 = asyncio.get_event_loop()
@@ -437,7 +449,7 @@ async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last
                 new_height_m = round(height_cm / 100, 3)
                 if m3.get("height_m") != new_height_m:
                     m3["height_m"] = new_height_m
-                    # Recalculate BMI for all weight entries
+                    # Recalculate BMI for all weight entries missing BMI
                     for entry in m3.get("weight_log", []):
                         if entry.get("weight_kg") and not entry.get("bmi"):
                             entry["bmi"] = round(entry["weight_kg"] / (new_height_m ** 2), 1)
@@ -1086,15 +1098,22 @@ async def _complete_garmin_login(client, email: str, name: str):
     except Exception as pe:
         print(f"[garmin] Could not fetch profile picture for {name}: {pe}")
 
-    # Fetch height from user profile settings
+    # Fetch height from user profile settings — try multiple paths
     try:
         profile_settings = client.get_userprofile_settings()
-        # Height is in cm in Garmin profile
         height_cm = (profile_settings.get("userInfo", {}) or {}).get("height") or \
-                    profile_settings.get("height")
+                    profile_settings.get("height") or \
+                    profile_settings.get("heightInCentimeters") or \
+                    (profile_settings.get("measurementSystem") and None)  # just a fallback trigger
+        if not height_cm:
+            # Try user summary
+            user_summary = client.get_user_summary(datetime.now(timezone.utc).strftime("%Y-%m-%d"))
+            height_cm = user_summary.get("heightInCentimeters") or user_summary.get("height")
         if height_cm and 100 <= float(height_cm) <= 250:
             garmin_height_m = round(float(height_cm) / 100, 3)
             print(f"[garmin] Height for {name}: {height_cm}cm = {garmin_height_m}m")
+        else:
+            print(f"[garmin] No height found for {name} in profile settings: {profile_settings}")
     except Exception as he:
         print(f"[garmin] Could not fetch height for {name}: {he}")
 
