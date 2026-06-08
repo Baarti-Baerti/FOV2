@@ -1837,13 +1837,11 @@ function applyData(team, period, isLive) {
     } else {
       showBanner(`⚡ ${liveCount}/${team.length} athletes live · ${periodLabel(period)}`, 'warning');
     }
-    // Check if the current user is missing height — prompt once per session
+    // Check if the current user is missing height — prompt once per day
     if (currentMember && isLive) {
       const me = users.find(u => u.id === currentMember.id);
       const hasHeight = me && me.height_m && me.height_m > 0;
-      const isGarmin  = me?.provider === 'garmin';
-      if (!hasHeight && !isGarmin) {
-        // Only prompt Strava users — Garmin height is pulled automatically
+      if (!hasHeight) {
         const lastPrompted = localStorage.getItem('height_prompted_date');
         const today = new Date().toISOString().slice(0, 10);
         if (lastPrompted !== today) {
@@ -2641,7 +2639,7 @@ function renderDetail(suffix=''){
                     <td style="padding:6px 10px 6px 0;font-weight:600;color:var(--muted)">Weight entry</td>
                     <td style="padding:6px 10px 6px 0;text-align:right;font-weight:700;color:#92400e">${w.weight_kg} kg</td>
                     <td style="padding:6px 10px 6px 0;text-align:right;font-weight:700;color:${bmiColor}">${w.bmi ? 'BMI '+w.bmi.toFixed(1) : '—'}</td>
-                    <td colspan="2" style="padding:6px 0 6px 0;color:var(--muted);font-size:.72rem">${(!u.height_m && u.provider !== 'garmin') ? '<span style="color:var(--amber)">Set height to enable BMI</span>' : ''}</td>
+                    <td colspan="2" style="padding:6px 0 6px 0;color:var(--muted);font-size:.72rem">${!u.height_m ? '<span style="color:var(--amber)">Set height to enable BMI</span>' : ''}</td>
                     <td style="padding:6px 0 6px 0;text-align:right">${delBtn}</td>
                   </tr>`;
                 }
