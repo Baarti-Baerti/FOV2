@@ -1924,7 +1924,14 @@ function switchPage(p,btn){
   // Check for fresh backend data whenever switching to scored tabs
   if (p==='points' || p==='details' || p==='dynamic') checkBackendFreshness();
   if(p==='monthly') renderMonthly();
-  if(p==='details') { renderLB(); renderDetail(); }
+  if(p==='details') {
+    // Select the user with the highest challenge km (top of table)
+    if (users.length) {
+      const top = [...users].sort((a,b) => (b.challengeKm||0) - (a.challengeKm||0))[0];
+      if (top) selUser = top;
+    }
+    renderLB(); renderDetail();
+  }
   if(p==='dynamic') {
     if (!selUser || selUser.runKcalFactor == null) {
       const first = users.find(u => u.runKcalFactor != null);
