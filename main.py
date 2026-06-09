@@ -1365,6 +1365,7 @@ async def toggle_admin(mid: int):
     return {"ok": True, "is_admin": m["is_admin"], "name": m["name"]}
 
 
+@app.post("/api/members/{mid}/height")
 async def set_height(mid: int, body: HeightBody):
     if not (100 <= body.height_cm <= 250):
         raise HTTPException(400, "Height must be between 100–250 cm")
@@ -1869,11 +1870,13 @@ async def debug_garmin_body(mid: int):
         body  = c.get_body_composition(f"{yr}-06-01", today)
         try:    settings = c.get_userprofile_settings()
         except Exception as e: settings = {"error": str(e)}
-        return body, settings
+        try:    user_profile = c.get_user_profile()
+        except Exception as e: user_profile = {"error": str(e)}
+        return body, settings, user_profile
 
     try:
         loop = asyncio.get_event_loop()
-        body, settings = await loop.run_in_executor(None, do_fetch)
+        body, settings, user_profile = await loop.run_in_executor(None, do_fetch)
         entries = body.get("dateWeightList") or []
         return {
             "member":                m["name"],
@@ -1882,6 +1885,7 @@ async def debug_garmin_body(mid: int):
             "first_entry_raw":       entries[0] if entries else None,
             "all_entry_keys":        list(entries[0].keys()) if entries else [],
             "profile_settings_raw":  settings,
+            "user_profile_raw":      user_profile,
         }
     except Exception as e:
         return {"error": str(e)}
