@@ -272,7 +272,7 @@ async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last
         return stored.get("activities", [])
 
     after_dt  = datetime.fromtimestamp(
-        yr_start if last_fetch == 0 else max(yr_start, last_fetch - 3 * 3600),
+        yr_start if last_fetch == 0 else max(yr_start, last_fetch - 48 * 3600),
         tz=timezone.utc
     )
     before_dt = datetime.fromtimestamp(now, tz=timezone.utc)
