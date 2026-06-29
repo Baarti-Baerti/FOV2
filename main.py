@@ -1568,6 +1568,40 @@ async def reset_sync_member(mid: int):
     cache_bust(mid)
     return {"ok": True, "member": m["name"], "message": f"Reset complete for {m['name']} — run /api/admin/sync to fetch their data"}
 
+# Self-service sync fix — rate limited per member to prevent abuse
+_fix_sync_cooldowns: dict = {}   # mid -> last_used_timestamp
+FIX_SYNC_COOLDOWN_SECS = 60 * 60  # 1 hour between uses per member
+
+@app.post("/api/members/{mid}/fix-sync")
+async def fix_sync_self_service(mid: int):
+    """Self-service: reset this member's sync state and immediately re-sync them.
+    Rate limited to once every 5 minutes per member to prevent abuse/overload."""
+    db = load_db()
+    m = next((x for x in db["members"] if x["id"] == mid), None)
+    if not m:
+        raise HTTPException(404, "Member not found")
+
+    now_ts = time.time()
+    last_used = _fix_sync_cooldowns.get(mid, 0)
+    if now_ts - last_used < FIX_SYNC_COOLDOWN_SECS:
+        wait_s = int(FIX_SYNC_COOLDOWN_SECS - (now_ts - last_used))
+        raise HTTPException(429, f"Please wait {wait_s}s before trying again")
+    _fix_sync_cooldowns[mid] = now_ts
+
+    # Reset this member's sync state
+    stored = load_acts(mid)
+    stored["last_fetch"] = 0
+    stored["activities"] = []
+    save_acts(mid, stored)
+    cache_bust(mid)
+
+    # Immediately re-sync just this member
+    try:
+        acts = await sync_activities(m)
+        return {"ok": True, "member": m["name"], "activities_synced": len(acts)}
+    except Exception as e:
+        return {"ok": False, "member": m["name"], "error": str(e)}
+
 @app.get("/api/admin/debug-steps/{mid}")
 async def debug_steps(mid: int):
     db = load_db()

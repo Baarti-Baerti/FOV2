@@ -1220,6 +1220,15 @@
         🦶 Log Steps
       </button>
     </div>
+    <div id="fixSyncWrap" style="display:none">
+      <button onclick="fixMySync()" id="fixSyncBtn"
+        style="font-family:'Nunito',sans-serif;font-weight:800;font-size:0.78rem;
+               padding:5px 12px;border-radius:20px;border:2px solid #fecaca;
+               background:#fee2e2;color:#991b1b;cursor:pointer;transition:all 0.2s"
+        title="Missing recent activities? Click to force a fresh sync">
+        🔄 Fix My Sync
+      </button>
+    </div>
     <!-- Admin: Strava sync toggle (only visible to Baarti) -->
     <div id="stravaToggleWrap" style="display:none">
       <a href="admin.html"
@@ -1870,6 +1879,7 @@ function applyData(team, period, isLive) {
     document.getElementById('joinBtnWrap').style.display   = 'block';
     document.getElementById('logWeightWrap').style.display = 'none';
     document.getElementById('logStepsWrap').style.display  = 'none';
+    document.getElementById('fixSyncWrap').style.display   = 'none';
     // Auto-open join modal with name pre-filled
     setTimeout(() => {
       openJoinModal();
@@ -1886,6 +1896,7 @@ function applyData(team, period, isLive) {
     document.getElementById('joinBtnWrap').style.display   = 'none';
     document.getElementById('logWeightWrap').style.display = 'block';
     document.getElementById('logStepsWrap').style.display  = 'block';
+    document.getElementById('fixSyncWrap').style.display   = 'block';
   }
   // Re-check admin status now that users array is populated
   initStravaToggle();
@@ -2792,6 +2803,40 @@ async function submitSteps() {
     msg.innerHTML = `<span style="color:#b91c1c">${e.message}</span>`;
   } finally {
     btn.disabled = false; btn.textContent = 'Save';
+  }
+}
+
+async function fixMySync() {
+  if (!currentMember?.id) { showBanner('Please join first', 'warning'); return; }
+  const btn = document.getElementById('fixSyncBtn');
+  const cooldownKey = `fix_sync_cooldown_${currentMember.id}`;
+  const lastUsed = parseInt(localStorage.getItem(cooldownKey) || '0');
+  const elapsed  = (Date.now() - lastUsed) / 1000;
+  if (elapsed < 3600) {
+    const mins = Math.ceil((3600 - elapsed) / 60);
+    showBanner(`⏳ Please wait ${mins} more minute${mins>1?'s':''} before trying again`, 'warning');
+    return;
+  }
+  btn.disabled = true;
+  const origText = btn.textContent;
+  btn.innerHTML = '<div class="spinner" style="display:inline-block;width:12px;height:12px;border-width:2px"></div> Fixing…';
+  try {
+    const res = await fetch(`${API_BASE}/api/members/${currentMember.id}/fix-sync`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) {
+      showBanner(`⚠️ ${data.detail || 'Could not fix sync — try again later'}`, 'warning');
+    } else if (data.ok) {
+      localStorage.setItem(cooldownKey, String(Date.now()));
+      showBanner(`✅ Sync fixed! ${data.activities_synced || 0} activities refreshed`, 'live');
+      await loadData(currentPeriod, true);
+    } else {
+      showBanner(`⚠️ Sync error: ${data.error || 'unknown'}`, 'warning');
+    }
+  } catch(e) {
+    showBanner(`⚠️ Could not reach server: ${e.message}`, 'warning');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = origText;
   }
 }
 
@@ -3743,6 +3788,7 @@ function updateHeaderChip(member) {
   document.getElementById('joinBtnWrap').style.display  = 'none';
   document.getElementById('logWeightWrap').style.display = 'block';
   document.getElementById('logStepsWrap').style.display  = 'block';
+  document.getElementById('fixSyncWrap').style.display   = 'block';
 }
 
 // ── Open / close modal ────────────────────────────────────────────
