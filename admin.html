@@ -736,7 +736,7 @@ async function generateRecap() {
   btn.disabled = true;
   out.value    = 'Generating recap… this can take a few seconds ✨';
   try {
-    const res  = await fetch(`${API_BASE}/api/admin/monthly-recap?month=${month}&year=${year}`);
+    const res  = await fetch(`${apiBase}/api/admin/monthly-recap?month=${month}&year=${year}`);
     const data = await res.json();
     if (!res.ok || !data.ok) {
       out.value = `⚠️ ${data.error || data.detail || 'Failed to generate recap'}`;
