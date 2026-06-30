@@ -540,9 +540,8 @@ def challenge_km_for_activity(a: dict) -> float:
     elif cat == "virtual_ride": return dist / 4
     elif cat == "swim":         return dist * 4
     elif cat == "walk":
-        moving_time   = a.get("moving_time",   0) or 0
-        average_speed = a.get("average_speed", 0) or 0
-        if moving_time >= WALK_MIN_MOVING_S and average_speed >= WALK_MIN_SPEED_MS:
+        moving_time = a.get("moving_time", 0) or 0
+        if moving_time >= WALK_MIN_MOVING_S:
             return dist / 3
         return 0.0
     return 0.0
@@ -577,10 +576,9 @@ def aggregate(acts: list) -> dict:
         elif cat == "swim":         swim  += d
         elif cat == "walk":
             walk += d
-            # Check eligibility for points
-            moving_time   = a.get("moving_time",   0) or 0
-            average_speed = a.get("average_speed", 0) or 0
-            if moving_time >= WALK_MIN_MOVING_S and average_speed >= WALK_MIN_SPEED_MS:
+            # Check eligibility for points — duration only, no speed requirement
+            moving_time = a.get("moving_time", 0) or 0
+            if moving_time >= WALK_MIN_MOVING_S:
                 eligible_walk += d
 
     def km(v): return round(v / 1000, 3)
@@ -1814,7 +1812,6 @@ async def debug_activities(mid: int, request: Request, limit: int = 5):
                     "eligible_walk": (
                         classify(a.get("sport_type") or a.get("type") or "") == "walk"
                         and (a.get("moving_time") or 0) >= WALK_MIN_MOVING_S
-                        and (a.get("average_speed") or 0) >= WALK_MIN_SPEED_MS
                     ),
                 }
                 for a in (acts if isinstance(acts, list) else [])

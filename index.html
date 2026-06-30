@@ -1968,7 +1968,7 @@ function renderAll(){
 // ════ OVERVIEW ════
 // Converted (points) km — sums m.challengeKm from monthly entries matching the
 // current period. This uses the same backend-computed values as the Points table,
-// including correct walk filtering (>30min, >6.5km/h).
+// including correct walk filtering (>=30min).
 function userPointsKm(u) {
   const today = new Date();
   const cy = today.getFullYear();
@@ -2665,7 +2665,6 @@ function renderDetail(suffix=''){
                   : cat==='VirtualRide' ? '💻' : cat==='Swim' ? '🏊'
                   : cat==='Walk'||cat==='Hike' ? '🚶' : '🏋️';
                 const distStr = a.dist_km > 0 ? a.dist_km.toFixed(2)+'km' : '—';
-                const WALK_MIN_SPEED = 6500/3600;
                 const WALK_MIN_TIME  = 30*60 - 30;
                 const RUN_MIN_SPEED  = 1000/(9*60); // 9 min/km minimum pace (from May 2025)
                 const actDate = new Date(a.date);
@@ -2676,7 +2675,7 @@ function renderDetail(suffix=''){
                 else if (cat==='Ride'||cat==='GravelRide'||cat==='MountainBikeRide'||cat==='EBikeRide') pts = a.dist_km/5;
                 else if (cat==='VirtualRide')                  pts = a.dist_km/4;
                 else if (cat==='Swim')                         pts = a.dist_km*4;
-                else if (cat==='Walk'||cat==='Hike') { const spd=a.average_speed||0,mt=a.moving_time||0; pts=(mt>=WALK_MIN_TIME&&spd>=WALK_MIN_SPEED)?a.dist_km/3:0; }
+                else if (cat==='Walk'||cat==='Hike') { const mt=a.moving_time||0; pts=(mt>=WALK_MIN_TIME)?a.dist_km/3:0; }
                 const ptsStr = pts > 0 ? pts.toFixed(2) : '—';
                 const movSecs = a.moving_time || 0;
                 const durStr = movSecs > 0 ? (movSecs>=3600 ? Math.floor(movSecs/3600)+'h '+Math.floor((movSecs%3600)/60)+'m' : Math.floor(movSecs/60)+'m') : '—';
@@ -3320,7 +3319,7 @@ function renderPoints(){
       <div style="border-radius:10px;padding:12px 14px;background:rgba(129,140,248,0.08);border:1px solid rgba(129,140,248,0.2)">
         <div style="font-size:.72rem;font-weight:800;color:#818cf8;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">⭐ Rule A — Monthly Points</div>
         <div style="font-size:.8rem;color:var(--text2);font-weight:600;line-height:1.5">+1pt for each month you hit <span style="color:#818cf8;font-weight:800">${GOAL} eq.km</span></div>
-        <div style="font-size:.72rem;color:var(--muted);margin-top:4px;line-height:1.4">🏃 run ×1 · 🚴 bike ÷5 · 💻 virtual ÷4 · 🏊 swim ×4 · 🚶 walk ÷3 (≥30min &amp; ≥6.5km/h) · run pace ≤9min/km from May 2026</div>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:4px;line-height:1.4">🏃 run ×1 · 🚴 bike ÷5 · 💻 virtual ÷4 · 🏊 swim ×4 · 🚶 walk ÷3 (≥30min) · run pace ≤9min/km from May 2026</div>
       </div>
 
       <div style="border-radius:10px;padding:12px 14px;background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.2)">
