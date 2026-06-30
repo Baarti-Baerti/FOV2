@@ -1257,6 +1257,7 @@
   <button class="nav-tab" onclick="switchPage('details',this)">📊 Static Scoring</button>
   <button class="nav-tab" onclick="switchPage('dynamic',this)" style="display:none">⚡ Dynamic Scoring</button>
   <button class="nav-tab" onclick="switchPage('monthly',this)">📈 Monthly Progress</button>
+  <button class="nav-tab" onclick="switchPage('summaries',this)">🎙️ Monthly Summaries</button>
 </div>
 
 <!-- ══ POINTS PAGE ══ -->
@@ -1307,6 +1308,14 @@
 <div class="page" id="page-monthly">
   <div style="padding:8px 12px 0" id="mpUserRow"></div>
   <div id="mpCharts"></div>
+</div>
+
+<div class="page" id="page-summaries">
+  <div style="padding:12px 14px 0;display:flex;align-items:center;justify-content:space-between">
+    <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:1rem;color:var(--text)">🎙️ Monthly Summaries</span>
+    <button onclick="loadSummaries()" style="font-size:.72rem;font-weight:700;background:none;border:1px solid var(--border);border-radius:8px;padding:4px 10px;cursor:pointer;color:var(--muted)">↻ Refresh</button>
+  </div>
+  <div id="summariesList" style="padding:12px 14px"></div>
 </div>
 
 </div><!-- end everything wrapper -->
@@ -1933,6 +1942,7 @@ function switchPage(p,btn){
   // Check for fresh backend data whenever switching to scored tabs
   if (p==='points' || p==='details' || p==='dynamic') checkBackendFreshness();
   if(p==='monthly') renderMonthly();
+  if(p==='summaries') loadSummaries();
   if(p==='details') {
     // Select the user with the highest challenge km (top of table)
     if (users.length) {
@@ -3695,6 +3705,42 @@ function renderMonthly() {
 
   document.getElementById('mpUserRow').innerHTML = '';
   document.getElementById('mpCharts').innerHTML = `<div class="mp-charts">${charts}</div>`;
+}
+
+async function loadSummaries() {
+  const el = document.getElementById('summariesList');
+  if (!el) return;
+  el.innerHTML = '<div style="color:var(--muted);font-size:.85rem;padding:20px 0;text-align:center">Loading summaries…</div>';
+  try {
+    const res  = await fetch(`${API_BASE}/api/admin/recaps`);
+    if (!res.ok) throw new Error(`${res.status}`);
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) {
+      el.innerHTML = `<div style="text-align:center;padding:60px 20px">
+        <div style="font-size:3rem;margin-bottom:12px">🎙️</div>
+        <div style="font-weight:800;font-size:1rem;color:var(--text2)">No summaries yet</div>
+        <div style="color:var(--muted);font-size:.82rem;margin-top:6px">Summaries are generated automatically on the 1st of each month, or manually via the admin dashboard.</div>
+      </div>`;
+      return;
+    }
+    el.innerHTML = data.map(r => {
+      const genDate = new Date(r.generated_at).toLocaleDateString('en-GB', {day:'numeric',month:'long',year:'numeric'});
+      // Format recap text preserving line breaks
+      const formatted = (r.recap || '').replace(/\n/g, '<br>');
+      return `<div style="margin-bottom:20px;border-radius:14px;overflow:hidden;border:1px solid var(--border);background:var(--surface)">
+        <div style="padding:14px 18px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px">
+          <div style="font-size:1.6rem;line-height:1">🏆</div>
+          <div>
+            <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1rem;color:var(--text)">${r.month_name} ${r.year}</div>
+            <div style="font-size:.7rem;color:var(--muted);margin-top:1px">Generated ${genDate}${r.sent ? ' · <span style="color:#16a34a;font-weight:700">✓ sent via WhatsApp</span>' : ''}</div>
+          </div>
+        </div>
+        <div style="padding:18px 20px;font-size:.88rem;line-height:1.7;color:var(--text2)">${formatted}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    el.innerHTML = `<div style="color:#ef4444;font-size:.82rem;padding:20px 0;text-align:center">Failed to load summaries: ${e.message}</div>`;
+  }
 }
 
 function pickMpUser(id) {
