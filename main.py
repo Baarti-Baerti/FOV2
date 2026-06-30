@@ -2055,7 +2055,9 @@ async def monthly_recap(month: int = Query(..., ge=1, le=12), year: int = Query(
 @app.get("/api/admin/recaps")
 async def list_recaps():
     db = load_db()
-    return list(reversed(db.get("recaps", [])))
+    recaps = db.get("recaps", [])
+    # Sort by year desc, then month desc (most recent month first)
+    return sorted(recaps, key=lambda r: (r.get("year", 0), r.get("month", 0)), reverse=True)
 
 @app.post("/api/admin/recaps/{recap_id}/send")
 async def send_recap(recap_id: str):
