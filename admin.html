@@ -359,6 +359,23 @@
         <button class="action-btn" onclick="copyRecap()" style="flex:1">
           <span class="btn-method method-get">📋</span> Copy to clipboard
         </button>
+        <button class="action-btn" onclick="sendRecapToWhatsApp()" style="flex:1">
+          <span class="btn-method method-get">↗</span> Open in WhatsApp
+        </button>
+        <button class="action-btn post" onclick="sendRecapViaCallMeBot()" style="flex:1">
+          <span class="btn-method method-post">💬</span> Auto-send now
+        </button>
+      </div>
+      <div style="font-size:.7rem;color:var(--muted);margin-top:6px">
+        Auto-send uses CallMeBot — runs automatically on the 1st of each month at 08:00 UTC. Requires CALLMEBOT_PHONE + CALLMEBOT_APIKEY env vars.
+      </div>
+    </div>
+
+    <!-- RECAP HISTORY -->
+    <div class="section">
+      <div class="section-title">📜 Recap History <button class="action-btn" style="display:inline;padding:2px 8px;font-size:.65rem;margin-left:8px" onclick="loadRecapHistory()">↻ Refresh</button></div>
+      <div id="recapHistoryTable" style="max-height:320px;overflow-y:auto">
+        <div style="color:var(--muted);font-size:.78rem;padding:8px 0">Loading…</div>
       </div>
     </div>
 
@@ -745,12 +762,81 @@ async function generateRecap() {
     } else {
       out.value = data.recap;
       showToast(`Recap for ${data.month} ${data.year} ready!`, 'ok');
+      loadRecapHistory(); // refresh history so the new entry shows, then grab its id
+      setTimeout(async () => {
+        const hist = await (await fetch(`${apiBase}/api/admin/recaps`)).json();
+        const match = hist.find(r => r.month === parseInt(month) && r.year === parseInt(year));
+        if (match) lastRecapId = match.id;
+      }, 300);
     }
   } catch(e) {
     out.value = `⚠️ Could not reach server: ${e.message}`;
   } finally {
     btn.disabled = false;
   }
+}
+
+function sendRecapToWhatsApp() {
+  const out = document.getElementById('recapOutput');
+  if (!out.value) { showToast('Generate a recap first', 'err'); return; }
+  const phone = '491756673326';
+  const url = `https://wa.me/${phone}?text=${encodeURIComponent(out.value)}`;
+  window.open(url, '_blank');
+}
+
+let lastRecapId = null;
+
+async function sendRecapViaCallMeBot() {
+  if (!lastRecapId) { showToast('Generate a recap first', 'err'); return; }
+  try {
+    const res  = await fetch(`${apiBase}/api/admin/recaps/${lastRecapId}/send`, { method: 'POST' });
+    const data = await res.json();
+    if (data.ok) {
+      showToast('Sent via WhatsApp (CallMeBot)!', 'ok');
+      loadRecapHistory();
+    } else {
+      showToast(data.error || 'Send failed — check CallMeBot setup', 'err');
+    }
+  } catch(e) {
+    showToast(`Could not reach server: ${e.message}`, 'err');
+  }
+}
+
+async function loadRecapHistory() {
+  const el = document.getElementById('recapHistoryTable');
+  el.innerHTML = '<div style="color:var(--muted);font-size:.78rem;padding:8px 0">Loading…</div>';
+  try {
+    const res  = await fetch(`${apiBase}/api/admin/recaps`);
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) {
+      el.innerHTML = '<div style="color:var(--muted);font-size:.78rem;padding:8px 0">No recaps generated yet</div>';
+      return;
+    }
+    el.innerHTML = data.map(r => {
+      const genDate = new Date(r.generated_at).toLocaleString();
+      const preview = (r.recap || '').slice(0, 80).replace(/\n/g, ' ') + '…';
+      return `<div style="padding:10px;border-bottom:1px solid var(--border);cursor:pointer" onclick="viewRecap('${r.id}')">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-weight:800;font-size:.82rem">${r.month_name} ${r.year}</span>
+          <span style="font-size:.65rem;color:${r.sent ? '#16a34a' : 'var(--muted)'};font-weight:700">${r.sent ? '✓ sent' : 'not sent'}</span>
+        </div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:2px">${genDate}</div>
+        <div style="font-size:.72rem;color:var(--text2);margin-top:4px">${preview}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    el.innerHTML = `<div style="color:#ef4444;font-size:.78rem;padding:8px 0">Failed to load: ${e.message}</div>`;
+  }
+}
+
+async function viewRecap(id) {
+  const res  = await fetch(`${apiBase}/api/admin/recaps`);
+  const data = await res.json();
+  const entry = data.find(r => r.id === id);
+  if (!entry) return;
+  document.getElementById('recapOutput').value = entry.recap;
+  lastRecapId = entry.id;
+  showToast(`Loaded ${entry.month_name} ${entry.year} recap`, 'ok');
 }
 
 function copyRecap() {
@@ -771,6 +857,7 @@ function copyRecap() {
   document.getElementById('recapMonth').value = String(now.getMonth() + 1);
   document.getElementById('recapYear').value  = String(now.getFullYear());
 })();
+loadRecapHistory();
 
 // Auto-refresh health every 2 min
 refreshHealth();

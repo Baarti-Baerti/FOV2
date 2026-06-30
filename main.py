@@ -859,8 +859,10 @@ async def lifespan(app):
 
     # Start hourly background sync
     task = asyncio.create_task(hourly_sync_job())
+    recap_task = asyncio.create_task(monthly_recap_scheduler())
     yield
     task.cancel()
+    recap_task.cancel()
 
 app = FastAPI(title="Fette Otter API", version="1.0.0", lifespan=lifespan)
 
@@ -1864,10 +1866,10 @@ async def debug_sync(mid: int):
     }
 
 # Debug — check stored activity files
-@app.get("/api/admin/monthly-recap")
-async def monthly_recap(month: int = Query(..., ge=1, le=12), year: int = Query(...)):
+async def _generate_monthly_recap(month: int, year: int) -> dict:
     """Build a structured stats summary for the given month and generate a
-    fun WhatsApp-style 'World Cup moderator' recap text via the Anthropic API."""
+    fun WhatsApp-style 'World Cup moderator' recap text via the Anthropic API.
+    Returns a dict; does NOT store or send — callers do that."""
     db = load_db()
     is_current_month = (year == datetime.now(timezone.utc).year and month == datetime.now(timezone.utc).month)
 
@@ -1880,7 +1882,6 @@ async def monthly_recap(month: int = Query(..., ge=1, le=12), year: int = Query(
         if not mo:
             continue
 
-        # BMI change vs January (or first available month)
         jan = next((x for x in monthly if x["month"] == 1), None)
         bmi_start = jan.get("weightBmi") if jan else None
         bmi_now   = mo.get("weightBmi")
@@ -1888,7 +1889,6 @@ async def monthly_recap(month: int = Query(..., ge=1, le=12), year: int = Query(
         if bmi_start and bmi_now and bmi_start > 0:
             bmi_pct = round((bmi_now - bmi_start) / bmi_start * 100, 1)
 
-        # Step stats for the month
         step_log    = m.get("step_log", [])
         month_steps = [e for e in step_log if e.get("date","")[:7] == f"{year}-{month:02d}"]
         total_steps = sum(e.get("steps", 0) for e in month_steps)
@@ -1911,18 +1911,15 @@ async def monthly_recap(month: int = Query(..., ge=1, le=12), year: int = Query(
             "bmiPctChange":   bmi_pct,
             "totalSteps":     total_steps,
             "daysHit10k":     days_hit10k,
-            "ruleEPts":       mo.get("ruleEPts", 0),  # May triathlon
+            "ruleEPts":       mo.get("ruleEPts", 0),
         })
 
     if not member_stats:
-        raise HTTPException(404, "No data found for that month")
+        return {"ok": False, "error": "No data found for that month"}
 
-    # Rank by challenge km for context
     member_stats.sort(key=lambda x: x["challengeKm"], reverse=True)
-
     month_name = ["", "January","February","March","April","May","June",
                   "July","August","September","October","November","December"][month]
-
     stats_json = json.dumps(member_stats, indent=2)
 
     api_key = os.getenv("ANTHROPIC_API_KEY", "")
@@ -1981,7 +1978,110 @@ Write the WhatsApp recap now."""
     except Exception as e:
         return {"ok": False, "error": f"Claude API call failed: {e}", "stats": member_stats}
 
-    return {"ok": True, "month": month_name, "year": year, "recap": text, "stats": member_stats}
+    return {"ok": True, "month": month_name, "month_num": month, "year": year, "recap": text, "stats": member_stats}
+
+
+def _save_recap(recap_result: dict) -> dict:
+    """Append a recap to the stored history log in the DB."""
+    db = load_db()
+    if "recaps" not in db:
+        db["recaps"] = []
+    entry = {
+        "id":         secrets.token_hex(6),
+        "month":      recap_result.get("month_num"),
+        "month_name": recap_result.get("month"),
+        "year":       recap_result.get("year"),
+        "recap":      recap_result.get("recap", ""),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "sent":       False,
+    }
+    db["recaps"].append(entry)
+    save_db(db)
+    return entry
+
+
+async def _send_whatsapp_callmebot(text: str) -> dict:
+    """Send a WhatsApp message via CallMeBot. Requires CALLMEBOT_PHONE and
+    CALLMEBOT_APIKEY env vars (set up once at callmebot.com/whatsapp/)."""
+    phone   = os.getenv("CALLMEBOT_PHONE", "")
+    api_key = os.getenv("CALLMEBOT_APIKEY", "")
+    if not phone or not api_key:
+        return {"ok": False, "error": "CALLMEBOT_PHONE / CALLMEBOT_APIKEY not configured on server"}
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            r = await client.get(
+                "https://api.callmebot.com/whatsapp.php",
+                params={"phone": phone, "text": text, "apikey": api_key},
+            )
+            ok = r.status_code == 200 and "queued" in r.text.lower()
+            return {"ok": ok, "response": r.text[:300]}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+@app.get("/api/admin/monthly-recap")
+async def monthly_recap(month: int = Query(..., ge=1, le=12), year: int = Query(...)):
+    result = await _generate_monthly_recap(month, year)
+    if result.get("ok"):
+        _save_recap(result)
+    return result
+
+@app.get("/api/admin/recaps")
+async def list_recaps():
+    db = load_db()
+    return list(reversed(db.get("recaps", [])))
+
+@app.post("/api/admin/recaps/{recap_id}/send")
+async def send_recap(recap_id: str):
+    db = load_db()
+    entry = next((r for r in db.get("recaps", []) if r["id"] == recap_id), None)
+    if not entry:
+        raise HTTPException(404, "Recap not found")
+    result = await _send_whatsapp_callmebot(entry["recap"])
+    if result.get("ok"):
+        entry["sent"] = True
+        entry["sent_at"] = datetime.now(timezone.utc).isoformat()
+        save_db(db)
+    return result
+
+async def monthly_recap_scheduler():
+    """Background task: on the 1st of each month, generate + send last month's recap."""
+    while True:
+        now = datetime.now(timezone.utc)
+        # Compute next run: 1st of next month at 08:00 UTC
+        if now.month == 12:
+            next_run = datetime(now.year + 1, 1, 1, 8, 0, tzinfo=timezone.utc)
+        else:
+            next_run = datetime(now.year, now.month + 1, 1, 8, 0, tzinfo=timezone.utc)
+        # If we're already past today's 08:00 on the 1st, this still works since next_run is always next month
+        wait_secs = (next_run - now).total_seconds()
+        print(f"[recap-scheduler] Next auto-recap at {next_run.isoformat()} (in {wait_secs/3600:.1f}h)")
+        await asyncio.sleep(wait_secs)
+
+        prev_month = next_run.month - 1 or 12
+        prev_year  = next_run.year if next_run.month != 1 else next_run.year - 1
+        print(f"[recap-scheduler] Generating recap for {prev_month}/{prev_year}")
+        try:
+            result = await _generate_monthly_recap(prev_month, prev_year)
+            if result.get("ok"):
+                entry = _save_recap(result)
+                send_result = await _send_whatsapp_callmebot(result["recap"])
+                if send_result.get("ok"):
+                    db = load_db()
+                    e = next((r for r in db.get("recaps", []) if r["id"] == entry["id"]), None)
+                    if e:
+                        e["sent"] = True
+                        e["sent_at"] = datetime.now(timezone.utc).isoformat()
+                        save_db(db)
+                    print(f"[recap-scheduler] Sent recap for {prev_month}/{prev_year}")
+                else:
+                    print(f"[recap-scheduler] Generated but send failed: {send_result.get('error')}")
+            else:
+                print(f"[recap-scheduler] Generation failed: {result.get('error')}")
+        except Exception as e:
+            print(f"[recap-scheduler] Error: {e}")
+
+
 
 
 async def debug_store():
