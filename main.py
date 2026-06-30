@@ -1997,23 +1997,51 @@ def _save_recap(recap_result: dict) -> dict:
     return entry
 
 
+CALLMEBOT_MAX_CHARS = 1000  # conservative split point — CallMeBot can silently truncate long URLs
+
 async def _send_whatsapp_callmebot(text: str) -> dict:
     """Send a WhatsApp message via CallMeBot. Requires CALLMEBOT_PHONE and
-    CALLMEBOT_APIKEY env vars (set up once at callmebot.com/whatsapp/)."""
+    CALLMEBOT_APIKEY env vars (set up once at callmebot.com/whatsapp/).
+    Splits long messages into multiple sequential sends since CallMeBot can
+    truncate or fail on very long URLs."""
     phone   = os.getenv("CALLMEBOT_PHONE", "")
     api_key = os.getenv("CALLMEBOT_APIKEY", "")
     if not phone or not api_key:
         return {"ok": False, "error": "CALLMEBOT_PHONE / CALLMEBOT_APIKEY not configured on server"}
+
+    # Split into chunks on paragraph/line boundaries where possible
+    chunks = []
+    remaining = text
+    while remaining:
+        if len(remaining) <= CALLMEBOT_MAX_CHARS:
+            chunks.append(remaining)
+            break
+        # Try to split at the last newline before the limit
+        split_at = remaining.rfind("\n", 0, CALLMEBOT_MAX_CHARS)
+        if split_at <= 0:
+            split_at = remaining.rfind(" ", 0, CALLMEBOT_MAX_CHARS)
+        if split_at <= 0:
+            split_at = CALLMEBOT_MAX_CHARS
+        chunks.append(remaining[:split_at])
+        remaining = remaining[split_at:].lstrip()
+
+    responses = []
     try:
         async with httpx.AsyncClient(timeout=20) as client:
-            r = await client.get(
-                "https://api.callmebot.com/whatsapp.php",
-                params={"phone": phone, "text": text, "apikey": api_key},
-            )
-            ok = r.status_code == 200 and "queued" in r.text.lower()
-            return {"ok": ok, "response": r.text[:300]}
+            for i, chunk in enumerate(chunks):
+                r = await client.get(
+                    "https://api.callmebot.com/whatsapp.php",
+                    params={"phone": phone, "text": chunk, "apikey": api_key},
+                )
+                ok = r.status_code == 200 and "queued" in r.text.lower()
+                responses.append({"ok": ok, "chunk": i+1, "of": len(chunks), "response": r.text[:200]})
+                if not ok:
+                    return {"ok": False, "error": f"Chunk {i+1}/{len(chunks)} failed", "responses": responses}
+                if i < len(chunks) - 1:
+                    await asyncio.sleep(2)  # CallMeBot rate limit — avoid back-to-back sends
+        return {"ok": True, "chunks_sent": len(chunks), "responses": responses}
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        return {"ok": False, "error": str(e), "responses": responses}
 
 
 @app.get("/api/admin/monthly-recap")
