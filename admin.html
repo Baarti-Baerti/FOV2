@@ -333,6 +333,35 @@
     </div>
 
     <!-- GLOBAL ACTIONS -->
+    <!-- MONTHLY RECAP -->
+    <div class="section">
+      <div class="section-title">🎙️ Monthly Recap Generator</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
+        <select id="recapMonth" class="member-select" style="flex:1">
+          <option value="1">January</option><option value="2">February</option>
+          <option value="3">March</option><option value="4">April</option>
+          <option value="5">May</option><option value="6">June</option>
+          <option value="7">July</option><option value="8">August</option>
+          <option value="9">September</option><option value="10">October</option>
+          <option value="11">November</option><option value="12">December</option>
+        </select>
+        <input type="number" id="recapYear" class="member-select" style="width:90px" value="2026">
+        <button class="action-btn post" onclick="generateRecap()" id="recapBtn" style="white-space:nowrap">
+          <span class="btn-method method-get">✨</span> Generate
+        </button>
+      </div>
+      <textarea id="recapOutput" readonly placeholder="Click Generate to create this month's WhatsApp recap…"
+        style="width:100%;min-height:220px;font-family:'Nunito',sans-serif;font-size:.88rem;line-height:1.5;
+               padding:14px;border-radius:10px;border:1px solid var(--border);resize:vertical;
+               background:var(--surface2);color:var(--text)"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="action-btn" onclick="copyRecap()" style="flex:1">
+          <span class="btn-method method-get">📋</span> Copy to clipboard
+        </button>
+      </div>
+    </div>
+
+    <!-- GLOBAL ACTIONS -->
     <div class="section">
       <div class="section-title">Global Actions</div>
       <div class="btn-grid">
@@ -698,6 +727,49 @@ function forceRefreshDashboard() {
   } catch(e) {}
   callApi('/api/admin/clear-cache', 'GET', 'Clear Backend Cache + Force Dashboard Refresh');
 }
+
+async function generateRecap() {
+  const month  = document.getElementById('recapMonth').value;
+  const year   = document.getElementById('recapYear').value;
+  const out    = document.getElementById('recapOutput');
+  const btn    = document.getElementById('recapBtn');
+  btn.disabled = true;
+  out.value    = 'Generating recap… this can take a few seconds ✨';
+  try {
+    const res  = await fetch(`${API_BASE}/api/admin/monthly-recap?month=${month}&year=${year}`);
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+      out.value = `⚠️ ${data.error || data.detail || 'Failed to generate recap'}`;
+      showToast(data.error || 'Recap generation failed', 'err');
+    } else {
+      out.value = data.recap;
+      showToast(`Recap for ${data.month} ${data.year} ready!`, 'ok');
+    }
+  } catch(e) {
+    out.value = `⚠️ Could not reach server: ${e.message}`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function copyRecap() {
+  const out = document.getElementById('recapOutput');
+  if (!out.value) { showToast('Nothing to copy yet', 'err'); return; }
+  out.select();
+  navigator.clipboard.writeText(out.value).then(() => {
+    showToast('Copied to clipboard!', 'ok');
+  }).catch(() => {
+    document.execCommand('copy');
+    showToast('Copied to clipboard!', 'ok');
+  });
+}
+
+// Pre-select current month/year for recap generator
+(function initRecapDefaults() {
+  const now = new Date();
+  document.getElementById('recapMonth').value = String(now.getMonth() + 1);
+  document.getElementById('recapYear').value  = String(now.getFullYear());
+})();
 
 // Auto-refresh health every 2 min
 refreshHealth();

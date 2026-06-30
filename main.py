@@ -1864,7 +1864,126 @@ async def debug_sync(mid: int):
     }
 
 # Debug — check stored activity files
-@app.get("/api/admin/debug-store")
+@app.get("/api/admin/monthly-recap")
+async def monthly_recap(month: int = Query(..., ge=1, le=12), year: int = Query(...)):
+    """Build a structured stats summary for the given month and generate a
+    fun WhatsApp-style 'World Cup moderator' recap text via the Anthropic API."""
+    db = load_db()
+    is_current_month = (year == datetime.now(timezone.utc).year and month == datetime.now(timezone.utc).month)
+
+    member_stats = []
+    for idx, m in enumerate(db["members"]):
+        stored    = load_acts(m["id"])
+        year_acts = [a for a in stored.get("activities", []) if _act_ts(a) >= int(datetime(year, 1, 1, tzinfo=timezone.utc).timestamp())]
+        monthly   = monthly_breakdown(year_acts, year, m)
+        mo        = next((x for x in monthly if x["month"] == month), None)
+        if not mo:
+            continue
+
+        # BMI change vs January (or first available month)
+        jan = next((x for x in monthly if x["month"] == 1), None)
+        bmi_start = jan.get("weightBmi") if jan else None
+        bmi_now   = mo.get("weightBmi")
+        bmi_pct   = None
+        if bmi_start and bmi_now and bmi_start > 0:
+            bmi_pct = round((bmi_now - bmi_start) / bmi_start * 100, 1)
+
+        # Step stats for the month
+        step_log    = m.get("step_log", [])
+        month_steps = [e for e in step_log if e.get("date","")[:7] == f"{year}-{month:02d}"]
+        total_steps = sum(e.get("steps", 0) for e in month_steps)
+        days_hit10k = sum(1 for e in month_steps if e.get("steps", 0) >= 10000)
+
+        member_stats.append({
+            "name":           m["name"],
+            "provider":       m.get("provider", "strava"),
+            "challengeKm":    round(mo.get("challengeKm", 0), 1),
+            "runKm":          round(mo.get("runKm", 0), 1),
+            "eligibleRunKm":  round(mo.get("eligibleRunKm", mo.get("runKm",0)), 1),
+            "cycleKm":        round(mo.get("cycleKm", 0), 1),
+            "virtualKm":      round(mo.get("virtualKm", 0), 1),
+            "swimKm":         round(mo.get("swimKm", 0), 1),
+            "walkKm":         round(mo.get("walkKm", 0), 1),
+            "elevTotal":      mo.get("elevTotal", 0),
+            "sessions":       mo.get("sess", 0),
+            "goalHit":        mo.get("challengeKm", 0) >= 66.67 - 0.005,
+            "bmiNow":         bmi_now,
+            "bmiPctChange":   bmi_pct,
+            "totalSteps":     total_steps,
+            "daysHit10k":     days_hit10k,
+            "ruleEPts":       mo.get("ruleEPts", 0),  # May triathlon
+        })
+
+    if not member_stats:
+        raise HTTPException(404, "No data found for that month")
+
+    # Rank by challenge km for context
+    member_stats.sort(key=lambda x: x["challengeKm"], reverse=True)
+
+    month_name = ["", "January","February","March","April","May","June",
+                  "July","August","September","October","November","December"][month]
+
+    stats_json = json.dumps(member_stats, indent=2)
+
+    api_key = os.getenv("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return {"ok": False, "error": "ANTHROPIC_API_KEY not configured on server", "stats": member_stats}
+
+    system_prompt = """You are the "World Cup style moderator" for a friend group's fitness challenge called Fette Otter.
+Write a fun, witty, slightly roasting WhatsApp recap message summarizing one month of performance.
+
+Style rules:
+- Sports commentator / World Cup announcer energy: dramatic, playful, a bit theatrical.
+- Light roasting is great and expected, but always affectionate — never mean-spirited or genuinely insulting. Everyone should find it funny, including the person being roasted.
+- Use emojis naturally (medals, sports emojis, etc.) but don't overdo it.
+- Structure: a punchy headline, then call out each person by name with their standout stat (use medals 🥇🥈🥉 for the leaders), then 1-2 lines for the rest, and a fun closer that hypes up next month.
+- Keep it under 200 words — this is for WhatsApp, not an essay.
+- Use the actual numbers provided. Highlight genuinely impressive things (big km totals, BMI improvements, perfect step streaks) and genuinely funny things (someone barely doing anything, missing goals by inches).
+- Never use someone's BMI value directly as a joke target body-shaming angle — if mentioning BMI, frame it as a positive achievement only (e.g. "down X%"), and skip it entirely for anyone whose number didn't improve.
+- Output ONLY the WhatsApp message text, nothing else — no preamble, no explanation."""
+
+    user_prompt = f"""Month: {month_name} {year}
+{"(This month is still in progress — frame it as a mid-month update, not a final recap.)" if is_current_month else "(This month is complete — write a final recap.)"}
+
+Stats per member (sorted by total equivalent km, highest first):
+{stats_json}
+
+Field meanings:
+- challengeKm: total equivalent km this month (the main scoring metric)
+- eligibleRunKm: km run at a qualifying pace (under 9 min/km from May 2026 onward)
+- goalHit: whether they hit the monthly goal of 66.67 eq.km
+- elevTotal: metres climbed (run + bike combined)
+- bmiPctChange: % change in BMI vs January (negative = improvement), null if no data
+- totalSteps / daysHit10k: step tracking for the month
+- ruleEPts: triathlon bonus points (May only, ignore if 0 or month isn't May)
+
+Write the WhatsApp recap now."""
+
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": api_key,
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json",
+                },
+                json={
+                    "model": "claude-sonnet-4-6",
+                    "max_tokens": 600,
+                    "system": system_prompt,
+                    "messages": [{"role": "user", "content": user_prompt}],
+                },
+            )
+            r.raise_for_status()
+            data = r.json()
+            text = "".join(block.get("text","") for block in data.get("content", []) if block.get("type") == "text")
+    except Exception as e:
+        return {"ok": False, "error": f"Claude API call failed: {e}", "stats": member_stats}
+
+    return {"ok": True, "month": month_name, "year": year, "recap": text, "stats": member_stats}
+
+
 async def debug_store():
     db = load_db()
     result = []
