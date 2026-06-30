@@ -1776,9 +1776,10 @@ async def debug_activities(mid: int, request: Request, limit: int = 5):
     m = next((x for x in db["members"] if x["id"] == mid), None)
     if not m: raise HTTPException(404, "Member not found")
     try:
-        m = await refresh(m)
+        if m.get("provider") != "garmin":
+            m = await refresh(m)
         # Read from stored file by default, fetch live from Strava if ?live=1
-        live = request.query_params.get('live', '0') == '1'
+        live = request.query_params.get('live', '0') == '1' and m.get("provider") != "garmin"
         if live:
             hdrs = {"Authorization": f"Bearer {m['strava_access_token']}"}
             async with httpx.AsyncClient(timeout=30) as c:
