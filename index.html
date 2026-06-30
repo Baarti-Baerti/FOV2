@@ -3121,7 +3121,7 @@ function renderPoints(){
     for (let m = 1; m <= currentMonth; m++) {
       const km = runMap[m] || 0;
       data[m] = km;
-      if (km >= GOAL) pts++;
+      if (km >= GOAL - 0.005) pts++;
     }
     ruleAPoints[u.id] = pts;
     ruleAData[u.id] = data;
@@ -3254,13 +3254,14 @@ function renderPoints(){
 
       if (isCurrent) {
         const val = km != null ? km.toFixed(2) : '…';
-        const col = km >= GOAL ? '#059669' : '#f59e0b';
-        return `<td title="${MONTH_NAMES[m-1]}: ${val} eq.km (in progress, goal ${GOAL}km)${breakdown}" style="font-size:1.02rem;font-weight:800;color:${col}">${val}${bmiLine}</td>`;
+        const hitNow = km != null && km >= GOAL - 0.005;
+        const col = hitNow ? '#059669' : '#f59e0b';
+        return `<td title="${MONTH_NAMES[m-1]}: ${val} eq.km (${hitNow?'goal reached! ✅':'in progress, goal '+GOAL+'km'})${breakdown}" style="font-size:1.02rem;font-weight:800;color:${col}">${val}${bmiLine}</td>`;
       }
       if (!isPast) {
         return `<td style="color:#e2e8f8;font-size:1.02rem">·<div style="font-size:.72rem;line-height:1.2;margin-top:2px;color:transparent">·</div><div style="font-size:.68rem;line-height:1.2;color:transparent">·</div></td>`;
       }
-      const hit = (km || 0) >= GOAL;
+      const hit = (km || 0) >= GOAL - 0.005;
       const val = km != null ? km.toFixed(2) : '0.00';
       return `<td title="${MONTH_NAMES[m-1]}: ${val} eq.km${hit?' ✅':' ❌ (need '+GOAL+'km)'}${breakdown}" style="font-size:1.02rem;font-weight:800;color:${hit?'#059669':'#ef4444'}">${val}${bmiLine}</td>`;
     }).join('');
