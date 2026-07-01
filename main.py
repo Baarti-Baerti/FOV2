@@ -2088,9 +2088,9 @@ async def monthly_recap_scheduler():
         now = datetime.now(timezone.utc)
         # Compute next run: 1st of next month at 08:00 UTC
         if now.month == 12:
-            next_run = datetime(now.year + 1, 1, 1, 8, 0, tzinfo=timezone.utc)
+            next_run = datetime(now.year + 1, 1, 1, 5, 0, tzinfo=timezone.utc)
         else:
-            next_run = datetime(now.year, now.month + 1, 1, 8, 0, tzinfo=timezone.utc)
+            next_run = datetime(now.year, now.month + 1, 1, 5, 0, tzinfo=timezone.utc)
         # If we're already past today's 08:00 on the 1st, this still works since next_run is always next month
         wait_secs = (next_run - now).total_seconds()
         print(f"[recap-scheduler] Next auto-recap at {next_run.isoformat()} (in {wait_secs/3600:.1f}h)")
