@@ -2059,6 +2059,16 @@ async def list_recaps():
     # Sort by year desc, then month desc (most recent month first)
     return sorted(recaps, key=lambda r: (r.get("year", 0), r.get("month", 0)), reverse=True)
 
+@app.delete("/api/admin/recaps/{recap_id}")
+async def delete_recap(recap_id: str):
+    db = load_db()
+    before = len(db.get("recaps", []))
+    db["recaps"] = [r for r in db.get("recaps", []) if r["id"] != recap_id]
+    if len(db["recaps"]) == before:
+        raise HTTPException(404, "Recap not found")
+    save_db(db)
+    return {"ok": True}
+
 @app.post("/api/admin/recaps/{recap_id}/send")
 async def send_recap(recap_id: str):
     db = load_db()
