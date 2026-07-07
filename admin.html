@@ -623,30 +623,35 @@ function clearResponse() {
 async function refreshHealth() {
   document.getElementById('healthSpinner').style.display = 'inline';
   try {
-    const [healthRes, statusRes, storeRes, stravaRes] = await Promise.all([
+    const [healthRes, statusRes, storeRes, stravaRes] = await Promise.allSettled([
       fetch(apiBase + '/api/health'),
       fetch(apiBase + '/api/status'),
       fetch(apiBase + '/api/admin/debug-store'),
       fetch(apiBase + '/api/admin/strava-status'),
     ]);
 
-    if (healthRes.ok) {
-      const h = await healthRes.json();
+    const ok = r => r.status === 'fulfilled' && r.value?.ok;
+
+    if (ok(healthRes)) {
+      const h = await healthRes.value.json();
       document.getElementById('hStatus').textContent = h.status === 'ok' ? 'ONLINE' : 'ERROR';
       document.getElementById('hStatus').className = 'stat-value ' + (h.status === 'ok' ? 'ok' : 'err');
       document.getElementById('hMembers').textContent = h.members + ' members registered';
     }
 
-    if (stravaRes.ok) {
-      const s = await stravaRes.json();
+    if (ok(stravaRes)) {
+      const s = await stravaRes.value.json();
       stravaPaused = s.paused;
       document.getElementById('hStrava').textContent = s.paused ? 'PAUSED' : 'ACTIVE';
       document.getElementById('hStrava').className = 'stat-value ' + (s.paused ? 'warn' : 'ok');
       document.getElementById('pauseLabel').textContent = s.paused ? 'Resume sync' : 'Pause sync';
+    } else {
+      document.getElementById('hStrava').textContent = 'ERROR';
+      document.getElementById('hStrava').className = 'stat-value err';
     }
 
-    if (statusRes.ok) {
-      const st = await statusRes.json();
+    if (ok(statusRes)) {
+      const st = await statusRes.value.json();
       const maxTs = Math.max(...Object.values(st.last_fetch).map(Number));
       const ageMin = Math.round((Date.now()/1000 - maxTs) / 60);
       document.getElementById('hLastSync').textContent = new Date(maxTs * 1000).toLocaleTimeString();
@@ -654,8 +659,8 @@ async function refreshHealth() {
       document.getElementById('hSyncAge').textContent = ageMin > 90 ? 'STALE' : 'FRESH';
     }
 
-    if (storeRes.ok) {
-      const store = await storeRes.json();
+    if (ok(storeRes)) {
+      const store = await storeRes.value.json();
       const total = store.reduce((s, m) => s + (m.stored_count || 0), 0);
       document.getElementById('hTotalActs').textContent = total.toLocaleString();
       renderMemberList(store);
