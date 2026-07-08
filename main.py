@@ -1560,9 +1560,22 @@ async def sync_member(mid: int):
     db = load_db()
     m = next((x for x in db["members"] if x["id"] == mid), None)
     if not m: raise HTTPException(404, "Member not found")
+    stored_before = len(load_acts(mid).get("activities", []))
     try:
         acts = await sync_activities(m)
-        return {"ok": True, "member": m["name"], "activities_synced": len(acts)}
+        new_acts = len(acts) - stored_before
+        stored_after = load_acts(mid)
+        last_fetch = stored_after.get("last_fetch", 0)
+        age_min = round((time.time() - last_fetch) / 60, 1) if last_fetch else None
+        return {
+            "ok": True,
+            "member": m["name"],
+            "new_activities": max(0, new_acts),
+            "total_stored": len(acts),
+            "last_fetch_age_min": age_min,
+            "note": "0 new activities means Marc is already up to date. Use Reset Sync to force a full re-fetch."
+            if max(0, new_acts) == 0 else None,
+        }
     except Exception as e:
         return {"ok": False, "member": m["name"], "error": str(e)}
 
