@@ -1573,14 +1573,14 @@ async def debug_strava_live(mid: int):
         async with httpx.AsyncClient(timeout=30) as client:
             r = await client.get(
                 "https://www.strava.com/api/v3/athlete/activities",
-                headers={"Authorization": f"Bearer {m['strava_token']}"},
+                headers={"Authorization": f"Bearer {m['strava_access_token']}"},
                 params={"after": yr_start, "before": now, "per_page": 5, "page": 1},
             )
             return {
-                "member":      m["name"],
-                "strava_id":   m.get("strava_id"),
-                "http_status": r.status_code,
-                "has_token":   bool(m.get("strava_token")),
+                "member":        m["name"],
+                "strava_id":     m.get("strava_id"),
+                "http_status":   r.status_code,
+                "has_token":     bool(m.get("strava_access_token")),
                 "token_expires": m.get("token_expires"),
                 "token_expired": m.get("token_expires", 0) < now,
                 "response_preview": r.text[:500],
