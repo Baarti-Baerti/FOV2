@@ -1554,6 +1554,18 @@ async def reset_sync():
     _cache.clear()
     return {"ok": True, "message": "Reset complete — run /api/admin/sync to fetch all data"}
 
+@app.get("/api/admin/sync-member/{mid}")
+async def sync_member(mid: int):
+    """Sync a single member without resetting their last_fetch."""
+    db = load_db()
+    m = next((x for x in db["members"] if x["id"] == mid), None)
+    if not m: raise HTTPException(404, "Member not found")
+    try:
+        acts = await sync_activities(m)
+        return {"ok": True, "member": m["name"], "activities_synced": len(acts)}
+    except Exception as e:
+        return {"ok": False, "member": m["name"], "error": str(e)}
+
 @app.get("/api/admin/reset-sync/{mid}")
 async def reset_sync_member(mid: int):
     """Reset last_fetch to 0 for a single member only."""

@@ -310,6 +310,11 @@
           <div class="stat-sub" id="hSyncAge">—</div>
         </div>
         <div class="stat-card">
+          <div class="stat-label">Garmin Sync</div>
+          <div class="stat-value ok" id="hGarmin">ACTIVE</div>
+          <div class="stat-sub" id="hGarminSub">always on</div>
+        </div>
+        <div class="stat-card">
           <div class="stat-label">Last Sync</div>
           <div class="stat-value info" id="hLastSync">—</div>
           <div class="stat-sub" id="hLastSyncAge">—</div>
@@ -334,66 +339,20 @@
     </div>
 
     <!-- GLOBAL ACTIONS -->
-    <!-- MONTHLY RECAP -->
+    <!-- MONTHLY RECAP — opens in right panel -->
     <div class="section">
-      <div class="section-title">🎙️ Monthly Recap Generator</div>
-      <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
-        <select id="recapMonth" style="flex:1;padding:6px 10px;border-radius:7px;border:1px solid var(--border2);font-family:var(--font-body);font-size:0.82rem;background:#1e2130;color:#e8eaf0;cursor:pointer">
-          <option value="1"  style="background:#1e2130;color:#e8eaf0">January</option>
-          <option value="2"  style="background:#1e2130;color:#e8eaf0">February</option>
-          <option value="3"  style="background:#1e2130;color:#e8eaf0">March</option>
-          <option value="4"  style="background:#1e2130;color:#e8eaf0">April</option>
-          <option value="5"  style="background:#1e2130;color:#e8eaf0">May</option>
-          <option value="6"  style="background:#1e2130;color:#e8eaf0">June</option>
-          <option value="7"  style="background:#1e2130;color:#e8eaf0">July</option>
-          <option value="8"  style="background:#1e2130;color:#e8eaf0">August</option>
-          <option value="9"  style="background:#1e2130;color:#e8eaf0">September</option>
-          <option value="10" style="background:#1e2130;color:#e8eaf0">October</option>
-          <option value="11" style="background:#1e2130;color:#e8eaf0">November</option>
-          <option value="12" style="background:#1e2130;color:#e8eaf0">December</option>
-        </select>
-        <input type="number" id="recapYear" style="width:90px;padding:6px 10px;border-radius:7px;border:1px solid var(--border2);font-family:var(--font-body);font-size:0.82rem;background:#1e2130;color:#e8eaf0" value="2026">
-        <button class="action-btn post" onclick="generateRecap()" id="recapBtn" style="white-space:nowrap">
-          <span class="btn-method method-get">✨</span> Generate
-        </button>
-      </div>
-      <textarea id="recapOutput" readonly placeholder="Click Generate to create this month's WhatsApp recap…"
-        style="width:100%;min-height:220px;font-family:'Nunito',sans-serif;font-size:.88rem;line-height:1.5;
-               padding:14px;border-radius:10px;border:1px solid var(--border);resize:vertical;
-               background:var(--surface2);color:var(--text)"></textarea>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <button class="action-btn" onclick="copyRecap()" style="flex:1">
-          <span class="btn-method method-get">📋</span> Copy to clipboard
-        </button>
-        <button class="action-btn" onclick="sendRecapToWhatsApp()" style="flex:1">
-          <span class="btn-method method-get">↗</span> Open in WhatsApp
-        </button>
-        <button class="action-btn post" onclick="sendRecapViaCallMeBot()" style="flex:1">
-          <span class="btn-method method-post">💬</span> Auto-send now
-        </button>
-      </div>
-      <div style="font-size:.7rem;color:var(--muted);margin-top:6px">
-        Auto-send uses CallMeBot — runs automatically on the 1st of each month at 08:00 UTC. Requires CALLMEBOT_PHONE + CALLMEBOT_APIKEY env vars.
-      </div>
-    </div>
-
-    <!-- RECAP HISTORY -->
-    <div class="section">
-      <div class="section-title">📜 Recap History <button class="action-btn" style="display:inline;padding:2px 8px;font-size:.65rem;margin-left:8px" onclick="loadRecapHistory()">↻ Refresh</button></div>
-      <div id="recapHistoryTable" style="max-height:320px;overflow-y:auto">
-        <div style="color:var(--muted);font-size:.78rem;padding:8px 0">Loading…</div>
-      </div>
+      <div class="section-title">🎙️ Monthly Recap</div>
+      <button class="action-btn post" style="width:100%;justify-content:center" onclick="switchTab('recap')">
+        <span class="btn-method method-post">✨</span> Open Recap Generator &amp; History
+      </button>
     </div>
 
     <!-- GLOBAL ACTIONS -->
     <div class="section">
-      <div class="section-title">Global Actions</div>
+      <div class="section-title">Global Actions — Strava</div>
       <div class="btn-grid">
         <button class="action-btn" onclick="callApi('/api/admin/sync','GET','Sync All Members')">
           <span class="btn-method method-get">GET</span> Sync all
-        </button>
-        <button class="action-btn" onclick="callApi('/api/admin/clear-cache','GET','Clear Cache')">
-          <span class="btn-method method-get">GET</span> Clear cache
         </button>
         <button class="action-btn danger" onclick="callApi('/api/admin/reset-sync','GET','Reset All Sync')">
           <span class="btn-method method-get">GET</span> Reset all sync
@@ -401,6 +360,27 @@
         <button class="action-btn post" onclick="toggleStravaPause()">
           <span class="btn-method method-post">POST</span> <span id="pauseLabel">Pause sync</span>
         </button>
+        <button class="action-btn" onclick="callApi('/api/admin/clear-cache','GET','Clear Cache')">
+          <span class="btn-method method-get">GET</span> Clear cache
+        </button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Global Actions — Garmin</div>
+      <div class="btn-grid">
+        <button class="action-btn" onclick="callApi('/api/admin/sync','GET','Sync All Garmin Members')">
+          <span class="btn-method method-get">GET</span> Sync all Garmin
+        </button>
+        <button class="action-btn danger" onclick="callApi('/api/admin/reset-sync','GET','Reset All Garmin Sync')">
+          <span class="btn-method method-get">GET</span> Reset all Garmin
+        </button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">System</div>
+      <div class="btn-grid">
         <button class="action-btn" onclick="forceRefreshDashboard()">
           <span class="btn-method method-get">↻</span> Refresh dashboard
         </button>
@@ -429,6 +409,9 @@
         <div class="member-btn-grid">
           <button class="action-btn" onclick="memberAction('activities')">
             <span class="btn-method method-get">GET</span> Activities
+          </button>
+          <button class="action-btn post" onclick="memberAction('sync')">
+            <span class="btn-method method-post">GET</span> Sync
           </button>
           <button class="action-btn" id="liveActsBtn" onclick="memberAction('activities-live')">
             <span class="btn-method method-get">GET</span> Live acts
@@ -461,6 +444,7 @@
     <div class="tab-bar">
       <div class="tab active" id="tab-response" onclick="switchTab('response')">response</div>
       <div class="tab" id="tab-history" onclick="switchTab('history')">history</div>
+      <div class="tab" id="tab-recap" onclick="switchTab('recap')">🎙️ recap</div>
     </div>
 
     <div id="panel-response" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
@@ -484,6 +468,58 @@
         <div class="section-title" style="margin-bottom:12px">Request History</div>
         <div id="historyList" style="display:flex;flex-direction:column;gap:6px">
           <div style="color:var(--muted);font-size:0.75rem">No requests yet</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="panel-recap" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+      <div style="flex:1;overflow-y:auto;padding:16px 20px">
+        <div class="section-title" style="margin-bottom:14px">🎙️ Monthly Recap Generator</div>
+        <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+          <select id="recapMonth" style="flex:1;padding:6px 10px;border-radius:7px;border:1px solid var(--border2);font-family:var(--font-body);font-size:0.82rem;background:#1e2130;color:#e8eaf0;cursor:pointer">
+            <option value="1"  style="background:#1e2130;color:#e8eaf0">January</option>
+            <option value="2"  style="background:#1e2130;color:#e8eaf0">February</option>
+            <option value="3"  style="background:#1e2130;color:#e8eaf0">March</option>
+            <option value="4"  style="background:#1e2130;color:#e8eaf0">April</option>
+            <option value="5"  style="background:#1e2130;color:#e8eaf0">May</option>
+            <option value="6"  style="background:#1e2130;color:#e8eaf0">June</option>
+            <option value="7"  style="background:#1e2130;color:#e8eaf0">July</option>
+            <option value="8"  style="background:#1e2130;color:#e8eaf0">August</option>
+            <option value="9"  style="background:#1e2130;color:#e8eaf0">September</option>
+            <option value="10" style="background:#1e2130;color:#e8eaf0">October</option>
+            <option value="11" style="background:#1e2130;color:#e8eaf0">November</option>
+            <option value="12" style="background:#1e2130;color:#e8eaf0">December</option>
+          </select>
+          <input type="number" id="recapYear" style="width:90px;padding:6px 10px;border-radius:7px;border:1px solid var(--border2);font-family:var(--font-body);font-size:0.82rem;background:#1e2130;color:#e8eaf0" value="2026">
+          <button class="action-btn post" onclick="generateRecap()" id="recapBtn" style="white-space:nowrap">
+            <span class="btn-method method-post">✨</span> Generate
+          </button>
+        </div>
+        <textarea id="recapOutput" readonly placeholder="Click Generate to create this month's WhatsApp recap…"
+          style="width:100%;min-height:160px;font-family:'Nunito',sans-serif;font-size:.88rem;line-height:1.5;
+                 padding:14px;border-radius:10px;border:1px solid var(--border);resize:vertical;
+                 background:var(--surface2);color:var(--text);box-sizing:border-box"></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="action-btn" onclick="copyRecap()" style="flex:1">
+            <span class="btn-method method-get">📋</span> Copy
+          </button>
+          <button class="action-btn" onclick="sendRecapToWhatsApp()" style="flex:1">
+            <span class="btn-method method-get">↗</span> WhatsApp
+          </button>
+          <button class="action-btn post" onclick="sendRecapViaCallMeBot()" style="flex:1">
+            <span class="btn-method method-post">💬</span> Auto-send
+          </button>
+        </div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:6px;margin-bottom:18px">
+          Auto-send uses CallMeBot · fires automatically on the 1st of each month at 06:00 CET
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div class="section-title" style="margin:0">📜 Recap History</div>
+          <button class="action-btn" style="padding:2px 8px;font-size:.65rem" onclick="loadRecapHistory()">↻ Refresh</button>
+        </div>
+        <div id="recapHistoryTable">
+          <div style="color:var(--muted);font-size:.78rem;padding:8px 0">Loading…</div>
         </div>
       </div>
     </div>
@@ -517,10 +553,13 @@ function showToast(msg, type='ok') {
 }
 
 function switchTab(tab) {
-  document.getElementById('panel-response').style.display = tab === 'response' ? 'flex' : 'none';
-  document.getElementById('panel-history').style.display  = tab === 'history'  ? 'flex' : 'none';
-  document.getElementById('tab-response').className = 'tab' + (tab === 'response' ? ' active' : '');
-  document.getElementById('tab-history').className  = 'tab' + (tab === 'history'  ? ' active' : '');
+  ['response','history','recap'].forEach(t => {
+    const panel = document.getElementById('panel-' + t);
+    const tabEl = document.getElementById('tab-' + t);
+    if (panel) panel.style.display = t === tab ? 'flex' : 'none';
+    if (tabEl) tabEl.className = 'tab' + (t === tab ? ' active' : '');
+  });
+  if (tab === 'recap') { loadRecapHistory(); initRecapDefaults(); }
 }
 
 function syntaxHighlight(json) {
@@ -746,6 +785,7 @@ function memberAction(action) {
       ? [`/api/admin/debug-garmin/${id}`, `Live Garmin Data — ${name}`]
       : [`/api/admin/debug-activities/${id}?limit=${limit}&live=1`, `Activities (live Strava) — ${name}`],
     'debug-garmin':    [`/api/admin/debug-garmin/${id}`, `Debug Garmin — ${name}`],
+    'sync':            [`/api/admin/sync-member/${id}`, `Sync — ${name}`],
     'reset-sync':      [`/api/admin/reset-sync/${id}`, `Reset Sync — ${name}`],
   };
   const entry = paths[action];
