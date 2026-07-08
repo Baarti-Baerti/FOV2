@@ -1554,6 +1554,41 @@ async def reset_sync():
     _cache.clear()
     return {"ok": True, "message": "Reset complete — run /api/admin/sync to fetch all data"}
 
+@app.get("/api/admin/debug-strava-live/{mid}")
+async def debug_strava_live(mid: int):
+    """Test live Strava API fetch for a member and return raw result or error."""
+    db = load_db()
+    m = next((x for x in db["members"] if x["id"] == mid), None)
+    if not m: raise HTTPException(404, "Member not found")
+    if m.get("provider") == "garmin":
+        return {"error": "Garmin member — use debug-garmin instead"}
+    try:
+        m = await refresh(m)
+    except Exception as e:
+        return {"error": f"Token refresh failed: {e}", "strava_id": m.get("strava_id")}
+
+    now = int(time.time())
+    yr_start = int(datetime(datetime.now(timezone.utc).year, 1, 1, tzinfo=timezone.utc).timestamp())
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.get(
+                "https://www.strava.com/api/v3/athlete/activities",
+                headers={"Authorization": f"Bearer {m['strava_token']}"},
+                params={"after": yr_start, "before": now, "per_page": 5, "page": 1},
+            )
+            return {
+                "member":      m["name"],
+                "strava_id":   m.get("strava_id"),
+                "http_status": r.status_code,
+                "has_token":   bool(m.get("strava_token")),
+                "token_expires": m.get("token_expires"),
+                "token_expired": m.get("token_expires", 0) < now,
+                "response_preview": r.text[:500],
+                "activity_count": len(r.json()) if r.status_code == 200 else None,
+            }
+    except Exception as e:
+        return {"error": str(e)}
+
 @app.get("/api/admin/sync-member/{mid}")
 async def sync_member(mid: int):
     """Sync a single member without resetting their last_fetch."""
