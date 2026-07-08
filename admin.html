@@ -664,6 +664,16 @@ async function refreshHealth() {
       const total = store.reduce((s, m) => s + (m.stored_count || 0), 0);
       document.getElementById('hTotalActs').textContent = total.toLocaleString();
       renderMemberList(store);
+    } else {
+      // Fallback: load members from /api/members (less detail but works)
+      try {
+        const fallback = await fetch(apiBase + '/api/members');
+        if (fallback.ok) {
+          const ms = await fallback.json();
+          const store = ms.map(m => ({ id: m.id, member: m.name, provider: m.provider || 'strava', stored_count: 0, last_fetch: 0, file_exists: true }));
+          renderMemberList(store);
+        }
+      } catch(e2) { /* silent */ }
     }
   } catch(e) {
     document.getElementById('hStatus').textContent = 'OFFLINE';

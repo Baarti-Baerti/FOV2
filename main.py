@@ -2122,6 +2122,7 @@ async def monthly_recap_scheduler():
 
 
 
+@app.get("/api/admin/debug-store")
 async def debug_store():
     db = load_db()
     result = []
