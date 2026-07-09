@@ -1624,6 +1624,7 @@ function normaliseUser(raw, idx) {
     strengthSessions:   raw.strengthSessions || 0,
     strengthMins:       raw.strengthMins     || 0,
     strengthKcal:       raw.strengthKcal     || 0,
+    strengthKg:         raw.strengthKg       || 0,
     runKcalFactor:  raw.runKcalFactor  ?? null,
     recentActs:     raw.recentActs     || [],
     otherKm:      raw.otherKm      || 0,
@@ -2313,10 +2314,13 @@ function renderLB(suffix=''){
         const sessions = u.strengthSessions || 0;
         if (sessions === 0) return '—';
         const mins = Math.round(u.strengthMins || 0);
-        const kcal = Math.round(u.strengthKcal || 0);
+        const kg   = Math.round(u.strengthKg   || 0);
         return `<span style="font-weight:800">${sessions}</span>` +
           `<span style="font-size:.7rem;color:var(--muted);font-weight:600;margin-left:3px">session${sessions>1?'s':''}</span>` +
-          `<div style="font-size:.65rem;color:var(--muted);margin-top:1px">${mins}min · ${kcal.toLocaleString()} kcal</div>`;
+          (kg > 0
+            ? `<div style="font-size:.65rem;font-weight:700;margin-top:1px;color:var(--violet)">${kg.toLocaleString()} kg lifted</div>`
+            : '') +
+          `<div style="font-size:.65rem;color:var(--muted);margin-top:1px">${mins}min · ${Math.round(u.strengthKcal||0).toLocaleString()} kcal</div>`;
       }, unit:'' },
     { key:'elevTotal',   label:'Elev',         icon:'⛰️', fmt: u => {
         const e = u.elevTotal || 0;

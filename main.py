@@ -358,6 +358,8 @@ async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last
             "zwift": "VirtualRide", "indoor_biking": "VirtualRide",
             "swimming": "Swim", "lap_swimming": "Swim", "open_water_swimming": "Swim",
             "walking": "Walk", "hiking": "Hike", "trail_hiking": "Hike",
+            "strength_training": "StrengthTraining", "weight_training": "StrengthTraining",
+            "fitness_equipment": "StrengthTraining",
         }
         sport_type = type_map.get(act_type, act_type.title().replace("_",""))
         start_str  = a.get("startTimeLocal", a.get("startTimeGMT", ""))
@@ -376,7 +378,35 @@ async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last
             "kilojoules":       None,
             "name":             a.get("activityName", sport_type),
             "total_elevation_gain": float(a.get("elevationGain") or a.get("totalElevationGain") or 0),
+            "strength_kg":      None,  # filled in below for strength activities
         })
+
+    # Fetch exercise sets (weight lifted) for strength training activities
+    strength_acts = [a for a in new_acts if classify(a.get("sport_type","")) == "strength"]
+    if strength_acts:
+        def _fetch_sets(activity_id: str) -> int:
+            """Return total kg lifted for one strength session."""
+            from garminconnect import Garmin
+            c = Garmin()
+            if isinstance(token_store, str): c.client.loads(token_store)
+            else:
+                import json as _j; c.client.loads(_j.dumps(token_store))
+            data = c.get_activity_exercise_sets(activity_id)
+            sets = data.get("exerciseSets") or []
+            total_g = sum(
+                (s.get("weight") or 0) * (s.get("repetitionCount") or 0)
+                for s in sets if s.get("setType") == "ACTIVE" and s.get("weight")
+            )
+            return round(total_g / 1000)  # grams → kg
+
+        loop_s = asyncio.get_event_loop()
+        for act in strength_acts:
+            try:
+                kg = await loop_s.run_in_executor(None, _fetch_sets, act["id"])
+                act["strength_kg"] = kg
+                print(f"[sync] {member['name']} strength {act['id']}: {kg}kg lifted")
+            except Exception as se:
+                print(f"[sync] Exercise sets fetch failed for {act['id']}: {se}")
 
     # Also sync daily steps from Garmin
     try:
@@ -560,6 +590,7 @@ def aggregate(acts: list) -> dict:
     strength_sessions = 0       # count of strength training sessions
     strength_mins     = 0.0     # total duration in minutes
     strength_kcal     = 0.0     # total calories burned
+    strength_kg       = 0.0     # total kg lifted (Garmin only)
     secs = 0      # only time from counted activity types
     types = set()
     for a in acts:
@@ -588,6 +619,7 @@ def aggregate(acts: list) -> dict:
             strength_sessions += 1
             strength_mins     += (a.get("moving_time", 0) or 0) / 60
             strength_kcal     += float(a.get("calories") or 0)
+            strength_kg       += float(a.get("strength_kg") or 0)
 
     def km(v): return round(v / 1000, 3)
     rk, ck_, vk, sk, wk = km(run), km(ride), km(vride), km(swim), km(walk)
@@ -602,6 +634,7 @@ def aggregate(acts: list) -> dict:
                 strengthSessions=strength_sessions,
                 strengthMins=round(strength_mins, 1),
                 strengthKcal=round(strength_kcal),
+                strengthKg=round(strength_kg),
                 km=round(rk+ck_+vk+sk+wk, 3), durationSec=secs,
                 workouts=counted_workouts, challengeKm=ckm,
                 types=sorted(types))
@@ -727,6 +760,7 @@ def monthly_breakdown(acts: list, year: int, member: dict = None) -> list:
             strengthSessions=s.get("strengthSessions", 0),
             strengthMins=s.get("strengthMins", 0),
             strengthKcal=s.get("strengthKcal", 0),
+            strengthKg=s.get("strengthKg", 0),
             goalDay=goal_day,
             runKcalPerKm=run_kcal_per_km,
             runCalKm=round(run_km_kcal, 3),   # km of runs that had energy data
@@ -818,7 +852,7 @@ def fmt_member(m: dict, idx: int, s: dict) -> dict:
         **{k: s.get(k,0) for k in ("km","runKm","cycleKm","virtualKm","swimKm","walkKm",
                                     "durationSec","workouts","challengeKm","eligibleWalkKm","eligibleRunKm",
                                     "elevRun","elevRide","elevTotal",
-                                    "strengthSessions","strengthMins","strengthKcal")},
+                                    "strengthSessions","strengthMins","strengthKcal","strengthKg")},
         runKcalFactor=run_kcal_factor,
         bmi=current_bmi,
         weightLog=weight_log,
