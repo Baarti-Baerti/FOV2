@@ -139,6 +139,8 @@ _TYPES = {
     "VirtualRide":"virtual_ride",
     "Swim":"swim",
     "Walk":"walk","Hike":"walk",
+    "WeightTraining":"strength","StrengthTraining":"strength",
+    "strength_training":"strength","weight_training":"strength",
 }
 def classify(t: str) -> str: return _TYPES.get(t, "other")
 
@@ -555,6 +557,9 @@ def aggregate(acts: list) -> dict:
     eligible_walk = 0.0   # walk km that pass the speed+duration filter
     eligible_run  = 0.0   # run km that meet the 9min/km pace threshold
     elev_run = elev_ride = 0.0  # elevation gain in metres per category
+    strength_sessions = 0       # count of strength training sessions
+    strength_mins     = 0.0     # total duration in minutes
+    strength_kcal     = 0.0     # total calories burned
     secs = 0      # only time from counted activity types
     types = set()
     for a in acts:
@@ -576,10 +581,13 @@ def aggregate(acts: list) -> dict:
         elif cat == "swim":         swim  += d
         elif cat == "walk":
             walk += d
-            # Check eligibility for points — duration only, no speed requirement
             moving_time = a.get("moving_time", 0) or 0
             if moving_time >= WALK_MIN_MOVING_S:
                 eligible_walk += d
+        elif cat == "strength":
+            strength_sessions += 1
+            strength_mins     += (a.get("moving_time", 0) or 0) / 60
+            strength_kcal     += float(a.get("calories") or 0)
 
     def km(v): return round(v / 1000, 3)
     rk, ck_, vk, sk, wk = km(run), km(ride), km(vride), km(swim), km(walk)
@@ -591,6 +599,9 @@ def aggregate(acts: list) -> dict:
                 eligibleRunKm=erk, eligibleWalkKm=ewk,
                 elevRun=round(elev_run), elevRide=round(elev_ride),
                 elevTotal=round(elev_run + elev_ride),
+                strengthSessions=strength_sessions,
+                strengthMins=round(strength_mins, 1),
+                strengthKcal=round(strength_kcal),
                 km=round(rk+ck_+vk+sk+wk, 3), durationSec=secs,
                 workouts=counted_workouts, challengeKm=ckm,
                 types=sorted(types))
@@ -713,6 +724,9 @@ def monthly_breakdown(acts: list, year: int, member: dict = None) -> list:
             eligibleRunKm=s["eligibleRunKm"], eligibleWalkKm=s["eligibleWalkKm"], actKcal=0,
             durationSec=s["durationSec"], challengeKm=round(s["challengeKm"], 3),
             elevRun=s.get("elevRun", 0), elevRide=s.get("elevRide", 0), elevTotal=s.get("elevTotal", 0),
+            strengthSessions=s.get("strengthSessions", 0),
+            strengthMins=s.get("strengthMins", 0),
+            strengthKcal=s.get("strengthKcal", 0),
             goalDay=goal_day,
             runKcalPerKm=run_kcal_per_km,
             runCalKm=round(run_km_kcal, 3),   # km of runs that had energy data
@@ -803,7 +817,8 @@ def fmt_member(m: dict, idx: int, s: dict) -> dict:
         picture=m.get("garmin_picture","") if m.get("provider") == "garmin" else m.get("strava_picture",""), height_m=height_m,
         **{k: s.get(k,0) for k in ("km","runKm","cycleKm","virtualKm","swimKm","walkKm",
                                     "durationSec","workouts","challengeKm","eligibleWalkKm","eligibleRunKm",
-                                    "elevRun","elevRide","elevTotal")},
+                                    "elevRun","elevRide","elevTotal",
+                                    "strengthSessions","strengthMins","strengthKcal")},
         runKcalFactor=run_kcal_factor,
         bmi=current_bmi,
         weightLog=weight_log,
@@ -1554,6 +1569,91 @@ async def reset_sync():
     _cache.clear()
     return {"ok": True, "message": "Reset complete — run /api/admin/sync to fetch all data"}
 
+@app.get("/api/admin/debug-exercise-sets/{mid}/{activity_id}")
+async def debug_exercise_sets(mid: int, activity_id: str):
+    """Fetch raw Garmin exercise sets for a specific strength training activity."""
+    db = load_db()
+    m = next((x for x in db["members"] if x["id"] == mid), None)
+    if not m: raise HTTPException(404, "Member not found")
+    if m.get("provider") != "garmin": return {"error": "Garmin members only"}
+    token_store = m.get("garmin_token_store")
+    if not token_store: return {"error": "No token stored"}
+
+    def do_fetch():
+        from garminconnect import Garmin
+        c = Garmin()
+        if isinstance(token_store, str): c.client.loads(token_store)
+        else:
+            import json as _j; c.client.loads(_j.dumps(token_store))
+        return c.get_activity_exercise_sets(activity_id)
+
+    try:
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, do_fetch)
+        return {"activity_id": activity_id, "member": m["name"], "raw": result}
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.get("/api/admin/debug-strava-live/{mid}")
+async def debug_strava_live(mid: int):
+    """Test live Strava API fetch for a member and return raw result or error."""
+    db = load_db()
+    m = next((x for x in db["members"] if x["id"] == mid), None)
+    if not m: raise HTTPException(404, "Member not found")
+    if m.get("provider") == "garmin":
+        return {"error": "Garmin member — use debug-garmin instead"}
+    try:
+        m = await refresh(m)
+    except Exception as e:
+        return {"error": f"Token refresh failed: {e}", "strava_id": m.get("strava_id")}
+
+    now = int(time.time())
+    yr_start = int(datetime(datetime.now(timezone.utc).year, 1, 1, tzinfo=timezone.utc).timestamp())
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.get(
+                "https://www.strava.com/api/v3/athlete/activities",
+                headers={"Authorization": f"Bearer {m['strava_access_token']}"},
+                params={"after": yr_start, "before": now, "per_page": 5, "page": 1},
+            )
+            return {
+                "member":        m["name"],
+                "strava_id":     m.get("strava_id"),
+                "http_status":   r.status_code,
+                "has_token":     bool(m.get("strava_access_token")),
+                "token_expires": m.get("token_expires"),
+                "token_expired": m.get("token_expires", 0) < now,
+                "response_preview": r.text[:500],
+                "activity_count": len(r.json()) if r.status_code == 200 else None,
+            }
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.get("/api/admin/sync-member/{mid}")
+async def sync_member(mid: int):
+    """Sync a single member without resetting their last_fetch."""
+    db = load_db()
+    m = next((x for x in db["members"] if x["id"] == mid), None)
+    if not m: raise HTTPException(404, "Member not found")
+    stored_before = len(load_acts(mid).get("activities", []))
+    try:
+        acts = await sync_activities(m)
+        new_acts = len(acts) - stored_before
+        stored_after = load_acts(mid)
+        last_fetch = stored_after.get("last_fetch", 0)
+        age_min = round((time.time() - last_fetch) / 60, 1) if last_fetch else None
+        return {
+            "ok": True,
+            "member": m["name"],
+            "new_activities": max(0, new_acts),
+            "total_stored": len(acts),
+            "last_fetch_age_min": age_min,
+            "note": "0 new activities means Marc is already up to date. Use Reset Sync to force a full re-fetch."
+            if max(0, new_acts) == 0 else None,
+        }
+    except Exception as e:
+        return {"ok": False, "member": m["name"], "error": str(e)}
+
 @app.get("/api/admin/reset-sync/{mid}")
 async def reset_sync_member(mid: int):
     """Reset last_fetch to 0 for a single member only."""
@@ -2122,6 +2222,7 @@ async def monthly_recap_scheduler():
 
 
 
+@app.get("/api/admin/debug-store")
 async def debug_store():
     db = load_db()
     result = []

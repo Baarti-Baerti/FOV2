@@ -1618,9 +1618,12 @@ function normaliseUser(raw, idx) {
     walkKm:       raw.walkKm       || 0,
     eligibleRunKm:  raw.eligibleRunKm  != null ? raw.eligibleRunKm  : null,
     eligibleWalkKm: raw.eligibleWalkKm || 0,
-    elevRun:        raw.elevRun   || 0,
-    elevRide:       raw.elevRide  || 0,
-    elevTotal:      raw.elevTotal || 0,
+    elevRun:            raw.elevRun   || 0,
+    elevRide:           raw.elevRide  || 0,
+    elevTotal:          raw.elevTotal || 0,
+    strengthSessions:   raw.strengthSessions || 0,
+    strengthMins:       raw.strengthMins     || 0,
+    strengthKcal:       raw.strengthKcal     || 0,
     runKcalFactor:  raw.runKcalFactor  ?? null,
     recentActs:     raw.recentActs     || [],
     otherKm:      raw.otherKm      || 0,
@@ -2306,6 +2309,15 @@ function renderLB(suffix=''){
         return `<span style="font-weight:800;color:${color}">${totalSteps.toLocaleString()}</span>` +
           `<div style="font-size:.65rem;font-weight:700;color:${color};margin-top:1px">${daysHit}/${totalDays} days ≥10k</div>`;
       }, unit:'' },
+    { key:'strengthSessions', label:'Strength', icon:'💪', fmt: u => {
+        const sessions = u.strengthSessions || 0;
+        if (sessions === 0) return '—';
+        const mins = Math.round(u.strengthMins || 0);
+        const kcal = Math.round(u.strengthKcal || 0);
+        return `<span style="font-weight:800">${sessions}</span>` +
+          `<span style="font-size:.7rem;color:var(--muted);font-weight:600;margin-left:3px">session${sessions>1?'s':''}</span>` +
+          `<div style="font-size:.65rem;color:var(--muted);margin-top:1px">${mins}min · ${kcal.toLocaleString()} kcal</div>`;
+      }, unit:'' },
     { key:'elevTotal',   label:'Elev',         icon:'⛰️', fmt: u => {
         const e = u.elevTotal || 0;
         if (e < 1) return '—';
@@ -2673,7 +2685,8 @@ function renderDetail(suffix=''){
                 const icon = cat==='Run'||cat==='TrailRun' ? '🏃'
                   : cat==='Ride'||cat==='GravelRide'||cat==='MountainBikeRide'||cat==='EBikeRide' ? '🚴'
                   : cat==='VirtualRide' ? '💻' : cat==='Swim' ? '🏊'
-                  : cat==='Walk'||cat==='Hike' ? '🚶' : '🏋️';
+                  : cat==='Walk'||cat==='Hike' ? '🚶'
+                  : cat==='WeightTraining'||cat==='StrengthTraining' ? '💪' : '🏋️';
                 const distStr = a.dist_km > 0 ? a.dist_km.toFixed(2)+'km' : '—';
                 const WALK_MIN_TIME  = 30*60 - 30;
                 const RUN_MIN_SPEED  = 1000/(9*60); // 9 min/km minimum pace (from May 2025)
