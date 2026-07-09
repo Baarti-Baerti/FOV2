@@ -139,6 +139,8 @@ _TYPES = {
     "VirtualRide":"virtual_ride",
     "Swim":"swim",
     "Walk":"walk","Hike":"walk",
+    "WeightTraining":"strength","StrengthTraining":"strength",
+    "strength_training":"strength","weight_training":"strength",
 }
 def classify(t: str) -> str: return _TYPES.get(t, "other")
 
@@ -555,6 +557,9 @@ def aggregate(acts: list) -> dict:
     eligible_walk = 0.0   # walk km that pass the speed+duration filter
     eligible_run  = 0.0   # run km that meet the 9min/km pace threshold
     elev_run = elev_ride = 0.0  # elevation gain in metres per category
+    strength_sessions = 0       # count of strength training sessions
+    strength_mins     = 0.0     # total duration in minutes
+    strength_kcal     = 0.0     # total calories burned
     secs = 0      # only time from counted activity types
     types = set()
     for a in acts:
@@ -576,10 +581,13 @@ def aggregate(acts: list) -> dict:
         elif cat == "swim":         swim  += d
         elif cat == "walk":
             walk += d
-            # Check eligibility for points — duration only, no speed requirement
             moving_time = a.get("moving_time", 0) or 0
             if moving_time >= WALK_MIN_MOVING_S:
                 eligible_walk += d
+        elif cat == "strength":
+            strength_sessions += 1
+            strength_mins     += (a.get("moving_time", 0) or 0) / 60
+            strength_kcal     += float(a.get("calories") or 0)
 
     def km(v): return round(v / 1000, 3)
     rk, ck_, vk, sk, wk = km(run), km(ride), km(vride), km(swim), km(walk)
@@ -591,6 +599,9 @@ def aggregate(acts: list) -> dict:
                 eligibleRunKm=erk, eligibleWalkKm=ewk,
                 elevRun=round(elev_run), elevRide=round(elev_ride),
                 elevTotal=round(elev_run + elev_ride),
+                strengthSessions=strength_sessions,
+                strengthMins=round(strength_mins, 1),
+                strengthKcal=round(strength_kcal),
                 km=round(rk+ck_+vk+sk+wk, 3), durationSec=secs,
                 workouts=counted_workouts, challengeKm=ckm,
                 types=sorted(types))
@@ -713,6 +724,9 @@ def monthly_breakdown(acts: list, year: int, member: dict = None) -> list:
             eligibleRunKm=s["eligibleRunKm"], eligibleWalkKm=s["eligibleWalkKm"], actKcal=0,
             durationSec=s["durationSec"], challengeKm=round(s["challengeKm"], 3),
             elevRun=s.get("elevRun", 0), elevRide=s.get("elevRide", 0), elevTotal=s.get("elevTotal", 0),
+            strengthSessions=s.get("strengthSessions", 0),
+            strengthMins=s.get("strengthMins", 0),
+            strengthKcal=s.get("strengthKcal", 0),
             goalDay=goal_day,
             runKcalPerKm=run_kcal_per_km,
             runCalKm=round(run_km_kcal, 3),   # km of runs that had energy data
@@ -803,7 +817,8 @@ def fmt_member(m: dict, idx: int, s: dict) -> dict:
         picture=m.get("garmin_picture","") if m.get("provider") == "garmin" else m.get("strava_picture",""), height_m=height_m,
         **{k: s.get(k,0) for k in ("km","runKm","cycleKm","virtualKm","swimKm","walkKm",
                                     "durationSec","workouts","challengeKm","eligibleWalkKm","eligibleRunKm",
-                                    "elevRun","elevRide","elevTotal")},
+                                    "elevRun","elevRide","elevTotal",
+                                    "strengthSessions","strengthMins","strengthKcal")},
         runKcalFactor=run_kcal_factor,
         bmi=current_bmi,
         weightLog=weight_log,
@@ -1553,6 +1568,31 @@ async def reset_sync():
         save_acts(mid, stored)
     _cache.clear()
     return {"ok": True, "message": "Reset complete — run /api/admin/sync to fetch all data"}
+
+@app.get("/api/admin/debug-exercise-sets/{mid}/{activity_id}")
+async def debug_exercise_sets(mid: int, activity_id: str):
+    """Fetch raw Garmin exercise sets for a specific strength training activity."""
+    db = load_db()
+    m = next((x for x in db["members"] if x["id"] == mid), None)
+    if not m: raise HTTPException(404, "Member not found")
+    if m.get("provider") != "garmin": return {"error": "Garmin members only"}
+    token_store = m.get("garmin_token_store")
+    if not token_store: return {"error": "No token stored"}
+
+    def do_fetch():
+        from garminconnect import Garmin
+        c = Garmin()
+        if isinstance(token_store, str): c.client.loads(token_store)
+        else:
+            import json as _j; c.client.loads(_j.dumps(token_store))
+        return c.get_activity_exercise_sets(activity_id)
+
+    try:
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, do_fetch)
+        return {"activity_id": activity_id, "member": m["name"], "raw": result}
+    except Exception as e:
+        return {"error": str(e)}
 
 @app.get("/api/admin/debug-strava-live/{mid}")
 async def debug_strava_live(mid: int):
