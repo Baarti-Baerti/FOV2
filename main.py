@@ -1898,6 +1898,7 @@ async def debug_activities(mid: int, request: Request, limit: int = 5):
             "activity_count": len(acts),
             "activities": [
                 {
+                    "id":            str(a.get("id") or ""),
                     "name":          a.get("name"),
                     "sport_type":    a.get("sport_type"),
                     "date":          a.get("start_date_local"),
