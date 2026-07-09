@@ -2313,14 +2313,11 @@ function renderLB(suffix=''){
     { key:'strengthSessions', label:'Strength', icon:'💪', fmt: u => {
         const sessions = u.strengthSessions || 0;
         if (sessions === 0) return '—';
-        const mins = Math.round(u.strengthMins || 0);
-        const kg   = Math.round(u.strengthKg   || 0);
-        return `<span style="font-weight:800">${sessions}</span>` +
-          `<span style="font-size:.7rem;color:var(--muted);font-weight:600;margin-left:3px">session${sessions>1?'s':''}</span>` +
-          (kg > 0
-            ? `<div style="font-size:.65rem;font-weight:700;margin-top:1px;color:var(--violet)">${kg.toLocaleString()} kg lifted</div>`
-            : '') +
-          `<div style="font-size:.65rem;color:var(--muted);margin-top:1px">${mins}min · ${Math.round(u.strengthKcal||0).toLocaleString()} kcal</div>`;
+        const kg = Math.round(u.strengthKg || 0);
+        return (kg > 0
+            ? `<span style="font-weight:800">${kg.toLocaleString()}</span><span style="font-size:.72rem;color:var(--muted);font-weight:600;margin-left:1px">kg</span>`
+            : `<span style="font-weight:800">${sessions}</span><span style="font-size:.72rem;color:var(--muted);font-weight:600;margin-left:1px">session${sessions>1?'s':''}</span>`) +
+          `<div style="font-size:.65rem;color:var(--muted);font-weight:700;margin-top:2px">${sessions} session${sessions>1?'s':''}</div>`;
       }, unit:'' },
     { key:'elevTotal',   label:'Elev',         icon:'⛰️', fmt: u => {
         const e = u.elevTotal || 0;
