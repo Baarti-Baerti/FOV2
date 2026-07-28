@@ -2211,7 +2211,6 @@ function renderLB(suffix=''){
   const COLS = [
     { key:'convKm',      label:'Points',       icon:'⭐', fmt: u => userPointsKm(u).toFixed(2),                                                          unit:'' },
     { key:'runKm',       label:'Run',          icon:'🏃', fmt: u => {
-        const total = fmtKm(u.runKm) + ((u.runKm||0) > 0.005 ? '<span style="font-size:0.72rem;color:var(--muted);font-weight:600;margin-left:1px">km</span>' : '');
         const today = new Date();
         const cy = today.getFullYear(), cm = today.getMonth() + 1;
         let mf;
@@ -2223,55 +2222,46 @@ function renderLB(suffix=''){
         else if (currentPeriod==='q3') mf=m=>m.year===cy&&m.month>=7&&m.month<=9;
         else if (currentPeriod==='q4') mf=m=>m.year===cy&&m.month>=10&&m.month<=12;
         else mf=m=>m.year===cy;
-        const elig  = (u.monthly||[]).filter(mf).reduce((s,m) => s + (m.eligibleRunKm != null ? m.eligibleRunKm : (m.runKm||0)), 0);
-        const score = elig; // ×1
-        if ((u.runKm||0) < 0.005) return '—';
+        const periodMonths = (u.monthly||[]).filter(mf);
+        const totalRun = periodMonths.reduce((s,m) => s + (m.runKm||0), 0);
+        const elig     = periodMonths.reduce((s,m) => s + (m.eligibleRunKm != null ? m.eligibleRunKm : (m.runKm||0)), 0);
+        const score    = elig;
+        if (totalRun < 0.005) return '—';
+        const total = fmtKm(totalRun) + '<span style="font-size:0.72rem;color:var(--muted);font-weight:600;margin-left:1px">km</span>';
         if (elig <= 0.005) return total;
-        // Only show eligible note if different from total
-        const showElig = Math.abs(elig - (u.runKm||0)) > 0.05;
+        const showElig = Math.abs(elig - totalRun) > 0.05;
         return total +
           `<div style="font-size:0.65rem;font-weight:700;margin-top:2px;line-height:1.5">` +
           (showElig ? `<span style="color:var(--mint)">✓ ${elig.toFixed(2)} elig.</span><span style="color:var(--violet);margin-left:5px">⭐ ${score.toFixed(2)} pts</span>` : `<span style="color:var(--violet)">⭐ ${score.toFixed(2)} pts</span>`) +
           `</div>`;
       }, unit:'' },
     { key:'cycleKm',     label:'Bike',         icon:'🚴', fmt: u => {
-        const km = u.cycleKm||0;
+        const km = periodSum(u, 'cycleKm');
         const pts = km / 5;
         if (km < 0.005) return '—';
         return fmtKm(km) + '<span style="font-size:0.72rem;color:var(--muted);font-weight:600;margin-left:1px">km</span>' +
           `<div style="font-size:0.65rem;font-weight:700;margin-top:2px;color:var(--violet)">⭐ ${pts.toFixed(2)} pts</div>`;
       }, unit:'' },
     { key:'virtualKm',   label:'Virtual',      icon:'💻', fmt: u => {
-        const km = u.virtualKm||0;
+        const km = periodSum(u, 'virtualKm');
         const pts = km / 4;
         if (km < 0.005) return '—';
         return fmtKm(km) + '<span style="font-size:0.72rem;color:var(--muted);font-weight:600;margin-left:1px">km</span>' +
           `<div style="font-size:0.65rem;font-weight:700;margin-top:2px;color:var(--violet)">⭐ ${pts.toFixed(2)} pts</div>`;
       }, unit:'' },
     { key:'swimKm',      label:'Swim',         icon:'🏊', fmt: u => {
-        const km = u.swimKm||0;
+        const km = periodSum(u, 'swimKm');
         const pts = km * 4;
         if (km < 0.005) return '—';
         return fmtKm(km) + '<span style="font-size:0.72rem;color:var(--muted);font-weight:600;margin-left:1px">km</span>' +
           `<div style="font-size:0.65rem;font-weight:700;margin-top:2px;color:var(--violet)">⭐ ${pts.toFixed(2)} pts</div>`;
       }, unit:'' },
     { key:'walkKm',      label:'Walk',         icon:'🚶', fmt: u => {
-        const total = fmtKm(u.walkKm) + (( u.walkKm||0) > 0.005 ? '<span style="font-size:0.72rem;color:var(--muted);font-weight:600;margin-left:1px">km</span>' : '');
-        // Use monthly data for eligible walk — same source as Points column
-        const today = new Date();
-        const cy = today.getFullYear(), cm = today.getMonth() + 1;
-        let mf;
-        if (currentPeriod === 'thismonth')      mf = m => m.year===cy && m.month===cm;
-        else if (currentPeriod === 'lastmonth') { const lm=cm===1?12:cm-1,ly=cm===1?cy-1:cy; mf=m=>m.year===ly&&m.month===lm; }
-        else if (currentPeriod.startsWith('month-')) { const mo=parseInt(currentPeriod.split('-')[1]); mf=m=>m.year===cy&&m.month===mo; }
-        else if (currentPeriod==='q1') mf=m=>m.year===cy&&m.month>=1&&m.month<=3;
-        else if (currentPeriod==='q2') mf=m=>m.year===cy&&m.month>=4&&m.month<=6;
-        else if (currentPeriod==='q3') mf=m=>m.year===cy&&m.month>=7&&m.month<=9;
-        else if (currentPeriod==='q4') mf=m=>m.year===cy&&m.month>=10&&m.month<=12;
-        else mf=m=>m.year===cy;
-        const elig  = (u.monthly||[]).filter(mf).reduce((s,m) => s + (m.eligibleWalkKm||0), 0);
-        const score = elig / 3;
-        if ((u.walkKm||0) < 0.005) return '—';
+        const totalWalk = periodSum(u, 'walkKm');
+        const elig      = periodSum(u, 'eligibleWalkKm');
+        const score     = elig / 3;
+        if (totalWalk < 0.005) return '—';
+        const total = fmtKm(totalWalk) + '<span style="font-size:0.72rem;color:var(--muted);font-weight:600;margin-left:1px">km</span>';
         if (elig <= 0.005) return total;
         return total +
           `<div style="font-size:0.65rem;font-weight:700;margin-top:2px;line-height:1.5">` +
@@ -2331,9 +2321,9 @@ function renderLB(suffix=''){
           `<div style="font-size:.65rem;font-weight:700;color:${color};margin-top:1px">${daysHit}/${totalDays} days ≥10k</div>`;
       }, unit:'' },
     { key:'strengthSessions', label:'Strength', icon:'💪', fmt: u => {
-        const sessions = u.strengthSessions || 0;
+        const sessions = periodSum(u, 'strengthSessions');
         if (sessions === 0) return '—';
-        const kg = Math.round(u.strengthKg || 0);
+        const kg = Math.round(periodSum(u, 'strengthKg'));
         return (kg > 0
             ? `<span style="font-weight:800">${kg.toLocaleString()}</span><span style="font-size:.72rem;color:var(--muted);font-weight:600;margin-left:1px">kg</span>`
             : `<span style="font-weight:800">${sessions}</span><span style="font-size:.72rem;color:var(--muted);font-weight:600;margin-left:1px">session${sessions>1?'s':''}</span>`) +
@@ -2348,11 +2338,27 @@ function renderLB(suffix=''){
         return `<span style="font-weight:800">${Math.round(elev.total).toLocaleString()}</span>` +
           `<div style="font-size:.65rem;color:var(--muted);margin-top:1px">${parts.join(' · ')}</div>`;
       }, unit:'m' },
-    { key:'km',          label:'Original',     icon:'📏', fmt: u => fmtKm((u.runKm||0)+(u.cycleKm||0)+(u.virtualKm||0)+(u.swimKm||0)+(u.walkKm||0)),    unit:'km' },
+    { key:'km',          label:'Original',     icon:'📏', fmt: u => fmtKm(periodSum(u,'runKm')+periodSum(u,'cycleKm')+periodSum(u,'virtualKm')+periodSum(u,'swimKm')+periodSum(u,'walkKm')),    unit:'km' },
     { key:'durationSec', label:'Time',         icon:'⏱',  fmt: u => fmtDuration(userDurationSec(u)),                                                      unit:''   },
     { key:'goalDay',     label:'Days to Goal', icon:'🎯', fmt: u => { const d=userDaysToGoal(u); return d!=null ? `${d}` : '—'; },                        unit:''   },
     { key:'workouts',    label:'Sessions',     icon:'#️⃣', fmt: u => u.workouts||0,                                                                         unit:''   },
   ];
+  function periodMonthFilter() {
+    const today = new Date();
+    const cy = today.getFullYear(), cm = today.getMonth() + 1;
+    if (currentPeriod === 'thismonth')      return m => m.year===cy && m.month===cm;
+    if (currentPeriod === 'lastmonth')      { const lm=cm===1?12:cm-1,ly=cm===1?cy-1:cy; return m=>m.year===ly&&m.month===lm; }
+    if (currentPeriod.startsWith('month-')) { const mo=parseInt(currentPeriod.split('-')[1]); return m=>m.year===cy&&m.month===mo; }
+    if (currentPeriod==='q1') return m=>m.year===cy&&m.month>=1&&m.month<=3;
+    if (currentPeriod==='q2') return m=>m.year===cy&&m.month>=4&&m.month<=6;
+    if (currentPeriod==='q3') return m=>m.year===cy&&m.month>=7&&m.month<=9;
+    if (currentPeriod==='q4') return m=>m.year===cy&&m.month>=10&&m.month<=12;
+    return m=>m.year===new Date().getFullYear(); // ytd
+  }
+  function periodSum(u, field) {
+    return (u.monthly||[]).filter(periodMonthFilter()).reduce((s,m)=>s+(m[field]||0),0);
+  }
+
   function fmtKm(v){ return (v||0) > 0 ? (v||0).toFixed(2) : '—'; }
   function fmtCal(v){ return (v||0) > 0 ? Math.round(v||0).toLocaleString() : '—'; } // used for kJ display
 
