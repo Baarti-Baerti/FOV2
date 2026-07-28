@@ -2640,7 +2640,7 @@ function renderDetail(suffix=''){
     <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div style="font-size:.76rem;color:var(--muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase">Activities & Weight Log <span style="color:var(--text2);font-weight:800">(${periodActs.length})</span></div>
-        ${periodActs.length > 15 ? `<button onclick="toggleActList(this)" data-expanded="false" style="font-size:.72rem;font-weight:700;background:none;border:1px solid var(--border);border-radius:20px;padding:3px 10px;cursor:pointer;color:var(--muted)">Show all ▾</button>` : ''}
+        ${periodActs.length > 30 ? `<button onclick="toggleActList(this)" data-expanded="false" style="font-size:.72rem;font-weight:700;background:none;border:1px solid var(--border);border-radius:20px;padding:3px 10px;cursor:pointer;color:var(--muted)">Show all ▾</button>` : ''}
       </div>
       <div style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;font-size:.82rem">
@@ -2737,7 +2737,7 @@ function renderDetail(suffix=''){
                 const kjStr   = a.kj > 0 ? Math.round(a.kj) : '—'; // already kcal
                 const elevStr = (a.elev||0) > 0 ? `⛰️ ${Math.round(a.elev)}m` : '—';
                 const delBtn = isAdmin ? `<button onclick="deleteActivity(${u.id},'${a.id}')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.9rem;padding:2px 4px;opacity:0.5;transition:opacity .15s" onmouseover="this.style.opacity=1;this.style.color='#ef4444'" onmouseout="this.style.opacity=0.5;this.style.color='var(--muted)'" title="Delete activity">🗑️</button>` : '';
-                const hidden = thisIdx >= 15 ? 'class="act-extra" style="display:none;border-bottom:1px solid var(--border)"' : 'style="border-bottom:1px solid var(--border)"';
+                const hidden = thisIdx >= 30 ? 'class="act-extra" style="display:none;border-bottom:1px solid var(--border)"' : 'style="border-bottom:1px solid var(--border)"';
                 return `<tr ${hidden} onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
                   <td style="padding:6px 10px 6px 0;white-space:nowrap;color:var(--text2)">
                     <span style="font-weight:700">${dateStr}</span>
