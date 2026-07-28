@@ -2702,7 +2702,8 @@ function renderDetail(suffix=''){
                 const timeStr = dt.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
                 const cat = a.sport_type || '';
                 const icon = cat==='Run'||cat==='TrailRun' ? '🏃'
-                  : cat==='Ride'||cat==='GravelRide'||cat==='MountainBikeRide'||cat==='EBikeRide' ? '🚴'
+                  : cat==='Ride'||cat==='GravelRide'||cat==='MountainBikeRide' ? '🚴'
+                  : cat==='EBikeRide'||cat==='EBikeMTBRide' ? '⚡🚴'
                   : cat==='VirtualRide' ? '💻' : cat==='Swim' ? '🏊'
                   : cat==='Walk'||cat==='Hike' ? '🚶'
                   : cat==='WeightTraining'||cat==='StrengthTraining' ? '💪' : '🏋️';
@@ -2714,7 +2715,7 @@ function renderDetail(suffix=''){
                   (actDate.getFullYear() === 2026 && actDate.getMonth() >= 4); // month 4 = May
                 let pts = 0;
                 if      (cat==='Run'||cat==='TrailRun')        { if (!paceRuleApplies || (a.average_speed||0) >= RUN_MIN_SPEED) pts = a.dist_km; }
-                else if (cat==='Ride'||cat==='GravelRide'||cat==='MountainBikeRide'||cat==='EBikeRide') pts = a.dist_km/5;
+                else if (cat==='Ride'||cat==='GravelRide'||cat==='MountainBikeRide') pts = a.dist_km/5;
                 else if (cat==='VirtualRide')                  pts = a.dist_km/4;
                 else if (cat==='Swim')                         pts = a.dist_km*4;
                 else if (cat==='Walk'||cat==='Hike') { const mt=a.moving_time||0; pts=(mt>=WALK_MIN_TIME)?a.dist_km/3:0; }
@@ -3361,7 +3362,7 @@ function renderPoints(){
       <div style="border-radius:10px;padding:12px 14px;background:rgba(129,140,248,0.08);border:1px solid rgba(129,140,248,0.2)">
         <div style="font-size:.72rem;font-weight:800;color:#818cf8;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">⭐ Rule A — Monthly Points</div>
         <div style="font-size:.8rem;color:var(--text2);font-weight:600;line-height:1.5">+1pt for each month you hit <span style="color:#818cf8;font-weight:800">${GOAL} eq.km</span></div>
-        <div style="font-size:.72rem;color:var(--muted);margin-top:4px;line-height:1.4">🏃 run ×1 · 🚴 bike ÷5 · 💻 virtual ÷4 · 🏊 swim ×4 · 🚶 walk ÷3 (≥30min) · run pace ≤9min/km from May 2026</div>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:4px;line-height:1.4">🏃 run ×1 · 🚴 bike ÷5 (no e-bike) · 💻 virtual ÷4 · 🏊 swim ×4 · 🚶 walk ÷3 (≥30min) · run pace ≤9min/km from May 2026</div>
       </div>
 
       <div style="border-radius:10px;padding:12px 14px;background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.2)">

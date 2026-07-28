@@ -135,7 +135,8 @@ def date_range(r: str) -> tuple:
 # ─────────────────────────────────────────────────────────────
 _TYPES = {
     "Run":"run","TrailRun":"run","VirtualRun":"run",
-    "Ride":"ride","GravelRide":"ride","MountainBikeRide":"ride","EBikeRide":"ride",
+    "Ride":"ride","GravelRide":"ride","MountainBikeRide":"ride",
+    "EBikeRide":"other","EBikeMTBRide":"other",
     "VirtualRide":"virtual_ride",
     "Swim":"swim",
     "Walk":"walk","Hike":"walk",
@@ -360,6 +361,8 @@ async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last
             "walking": "Walk", "hiking": "Hike", "trail_hiking": "Hike",
             "strength_training": "StrengthTraining", "weight_training": "StrengthTraining",
             "fitness_equipment": "StrengthTraining",
+            "e_bike_fitness": "EBikeRide", "e_bike_mountain": "EBikeRide",
+            "electric_bike": "EBikeRide", "e_biking": "EBikeRide",
         }
         sport_type = type_map.get(act_type, act_type.title().replace("_",""))
         start_str  = a.get("startTimeLocal", a.get("startTimeGMT", ""))
