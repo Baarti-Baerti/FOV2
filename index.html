@@ -2081,6 +2081,26 @@ function renderLB(suffix=''){
   }
 
   // Sum durationSec from monthly entries matching current period
+  function userElev(u) {
+    const today = new Date();
+    const cy = today.getFullYear(), cm = today.getMonth() + 1;
+    let mf;
+    if (currentPeriod === 'thismonth')      mf = m => m.year===cy && m.month===cm;
+    else if (currentPeriod === 'lastmonth') { const lm=cm===1?12:cm-1,ly=cm===1?cy-1:cy; mf=m=>m.year===ly&&m.month===lm; }
+    else if (currentPeriod.startsWith('month-')) { const mo=parseInt(currentPeriod.split('-')[1]); mf=m=>m.year===cy&&m.month===mo; }
+    else if (currentPeriod==='q1') mf=m=>m.year===cy&&m.month>=1&&m.month<=3;
+    else if (currentPeriod==='q2') mf=m=>m.year===cy&&m.month>=4&&m.month<=6;
+    else if (currentPeriod==='q3') mf=m=>m.year===cy&&m.month>=7&&m.month<=9;
+    else if (currentPeriod==='q4') mf=m=>m.year===cy&&m.month>=10&&m.month<=12;
+    else mf=m=>m.year===cy;
+    const months = (u.monthly||[]).filter(mf);
+    return {
+      total: months.reduce((s,m)=>s+(m.elevTotal||0),0),
+      run:   months.reduce((s,m)=>s+(m.elevRun||0),0),
+      ride:  months.reduce((s,m)=>s+(m.elevRide||0),0),
+    };
+  }
+
   function userDurationSec(u) {
     const today = new Date();
     const cy = today.getFullYear(), cm = today.getMonth() + 1;
@@ -2320,14 +2340,12 @@ function renderLB(suffix=''){
           `<div style="font-size:.65rem;color:var(--muted);font-weight:700;margin-top:2px">${sessions} session${sessions>1?'s':''}</div>`;
       }, unit:'' },
     { key:'elevTotal',   label:'Elev',         icon:'⛰️', fmt: u => {
-        const e = u.elevTotal || 0;
-        if (e < 1) return '—';
-        const runPart  = u.elevRun  || 0;
-        const ridePart = u.elevRide || 0;
+        const elev = userElev(u);
+        if (elev.total < 1) return '—';
         const parts = [];
-        if (runPart  > 0) parts.push(`🏃 ${runPart.toLocaleString()}m`);
-        if (ridePart > 0) parts.push(`🚴 ${ridePart.toLocaleString()}m`);
-        return `<span style="font-weight:800">${e.toLocaleString()}</span>` +
+        if (elev.run  > 0) parts.push(`🏃 ${Math.round(elev.run).toLocaleString()}m`);
+        if (elev.ride > 0) parts.push(`🚴 ${Math.round(elev.ride).toLocaleString()}m`);
+        return `<span style="font-weight:800">${Math.round(elev.total).toLocaleString()}</span>` +
           `<div style="font-size:.65rem;color:var(--muted);margin-top:1px">${parts.join(' · ')}</div>`;
       }, unit:'m' },
     { key:'km',          label:'Original',     icon:'📏', fmt: u => fmtKm((u.runKm||0)+(u.cycleKm||0)+(u.virtualKm||0)+(u.swimKm||0)+(u.walkKm||0)),    unit:'km' },
