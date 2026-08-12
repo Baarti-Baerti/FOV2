@@ -1618,7 +1618,7 @@ function normaliseUser(raw, idx) {
     walkKm:       raw.walkKm       || 0,
     eligibleRunKm:  raw.eligibleRunKm  != null ? raw.eligibleRunKm  : null,
     eligibleWalkKm: raw.eligibleWalkKm || 0,
-    elevRun:            raw.elevRun   || 0,
+    ebikeKm:        raw.ebikeKm      || 0,
     elevRide:           raw.elevRide  || 0,
     elevTotal:          raw.elevTotal || 0,
     strengthSessions:   raw.strengthSessions || 0,
@@ -2249,6 +2249,13 @@ function renderLB(suffix=''){
         return fmtKm(km) + '<span style="font-size:0.72rem;color:var(--muted);font-weight:600;margin-left:1px">km</span>' +
           `<div style="font-size:0.65rem;font-weight:700;margin-top:2px;color:var(--violet)">⭐ ${pts.toFixed(2)} pts</div>`;
       }, unit:'' },
+    { key:'ebikeKm',     label:'E-Bike',       icon:'⚡🚴', fmt: u => {
+        const km = periodSum(u, 'ebikeKm');
+        const pts = km / 10;
+        if (km < 0.005) return '—';
+        return fmtKm(km) + '<span style="font-size:0.72rem;color:var(--muted);font-weight:600;margin-left:1px">km</span>' +
+          `<div style="font-size:0.65rem;font-weight:700;margin-top:2px;color:var(--violet)">⭐ ${pts.toFixed(2)} pts</div>`;
+      }, unit:'' },
     { key:'swimKm',      label:'Swim',         icon:'🏊', fmt: u => {
         const km = periodSum(u, 'swimKm');
         const pts = km * 4;
@@ -2722,6 +2729,7 @@ function renderDetail(suffix=''){
                 let pts = 0;
                 if      (cat==='Run'||cat==='TrailRun')        { if (!paceRuleApplies || (a.average_speed||0) >= RUN_MIN_SPEED) pts = a.dist_km; }
                 else if (cat==='Ride'||cat==='GravelRide'||cat==='MountainBikeRide') pts = a.dist_km/5;
+                else if (cat==='EBikeRide'||cat==='EBikeMTBRide') pts = a.dist_km/10;
                 else if (cat==='VirtualRide')                  pts = a.dist_km/4;
                 else if (cat==='Swim')                         pts = a.dist_km*4;
                 else if (cat==='Walk'||cat==='Hike') { const mt=a.moving_time||0; pts=(mt>=WALK_MIN_TIME)?a.dist_km/3:0; }
@@ -3368,7 +3376,7 @@ function renderPoints(){
       <div style="border-radius:10px;padding:12px 14px;background:rgba(129,140,248,0.08);border:1px solid rgba(129,140,248,0.2)">
         <div style="font-size:.72rem;font-weight:800;color:#818cf8;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">⭐ Rule A — Monthly Points</div>
         <div style="font-size:.8rem;color:var(--text2);font-weight:600;line-height:1.5">+1pt for each month you hit <span style="color:#818cf8;font-weight:800">${GOAL} eq.km</span></div>
-        <div style="font-size:.72rem;color:var(--muted);margin-top:4px;line-height:1.4">🏃 run ×1 · 🚴 bike ÷5 (no e-bike) · 💻 virtual ÷4 · 🏊 swim ×4 · 🚶 walk ÷3 (≥30min) · run pace ≤9min/km from May 2026</div>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:4px;line-height:1.4">🏃 run ×1 · 🚴 bike ÷5 · ⚡🚴 e-bike ÷10 · 💻 virtual ÷4 · 🏊 swim ×4 · 🚶 walk ÷3 (≥30min) · run pace ≤9min/km from May 2026</div>
       </div>
 
       <div style="border-radius:10px;padding:12px 14px;background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.2)">

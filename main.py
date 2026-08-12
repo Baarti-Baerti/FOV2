@@ -136,7 +136,7 @@ def date_range(r: str) -> tuple:
 _TYPES = {
     "Run":"run","TrailRun":"run","VirtualRun":"run",
     "Ride":"ride","GravelRide":"ride","MountainBikeRide":"ride",
-    "EBikeRide":"other","EBikeMTBRide":"other",
+    "EBikeRide":"ebike","EBikeMTBRide":"ebike",
     "VirtualRide":"virtual_ride",
     "Swim":"swim",
     "Walk":"walk","Hike":"walk",
@@ -572,6 +572,7 @@ def challenge_km_for_activity(a: dict) -> float:
             return dist
         return 0.0
     elif cat == "ride":         return dist / 5
+    elif cat == "ebike":        return dist / 10
     elif cat == "virtual_ride": return dist / 4
     elif cat == "swim":         return dist * 4
     elif cat == "walk":
@@ -583,10 +584,10 @@ def challenge_km_for_activity(a: dict) -> float:
 
 
 # Categories that count toward durationSec (all others excluded)
-_COUNTED_CATS = {"run", "ride", "virtual_ride", "swim", "walk"}
+_COUNTED_CATS = {"run", "ride", "virtual_ride", "swim", "walk", "ebike"}
 
 def aggregate(acts: list) -> dict:
-    run = ride = vride = swim = walk = 0.0
+    run = ride = vride = swim = walk = ebike = 0.0
     eligible_walk = 0.0   # walk km that pass the speed+duration filter
     eligible_run  = 0.0   # run km that meet the 9min/km pace threshold
     elev_run = elev_ride = 0.0  # elevation gain in metres per category
@@ -611,6 +612,7 @@ def aggregate(acts: list) -> dict:
         elif cat == "ride":
             ride += d
             elev_ride += float(a.get("total_elevation_gain") or 0)
+        elif cat == "ebike":        ebike += d
         elif cat == "virtual_ride": vride += d
         elif cat == "swim":         swim  += d
         elif cat == "walk":
@@ -625,12 +627,12 @@ def aggregate(acts: list) -> dict:
             strength_kg       += float(a.get("strength_kg") or 0)
 
     def km(v): return round(v / 1000, 3)
-    rk, ck_, vk, sk, wk = km(run), km(ride), km(vride), km(swim), km(walk)
+    rk, ck_, vk, sk, wk, ek = km(run), km(ride), km(vride), km(swim), km(walk), km(ebike)
     erk = km(eligible_run)
     ewk = km(eligible_walk)
     ckm = round(sum(challenge_km_for_activity(a) for a in acts), 3)
     counted_workouts = sum(1 for a in acts if classify(a.get("sport_type") or a.get("type","")) in _COUNTED_CATS)
-    return dict(runKm=rk, cycleKm=ck_, virtualKm=vk, swimKm=sk, walkKm=wk,
+    return dict(runKm=rk, cycleKm=ck_, virtualKm=vk, swimKm=sk, walkKm=wk, ebikeKm=ek,
                 eligibleRunKm=erk, eligibleWalkKm=ewk,
                 elevRun=round(elev_run), elevRide=round(elev_ride),
                 elevTotal=round(elev_run + elev_ride),
@@ -756,7 +758,7 @@ def monthly_breakdown(acts: list, year: int, member: dict = None) -> list:
             year=year, month=m, label=names[m-1],
             cal=0, sess=s["workouts"], km=s["km"],
             runKm=s["runKm"], cycleKm=s["cycleKm"], virtualKm=s["virtualKm"],
-            swimKm=s["swimKm"], walkKm=s["walkKm"],
+            swimKm=s["swimKm"], walkKm=s["walkKm"], ebikeKm=s.get("ebikeKm", 0),
             eligibleRunKm=s["eligibleRunKm"], eligibleWalkKm=s["eligibleWalkKm"], actKcal=0,
             durationSec=s["durationSec"], challengeKm=round(s["challengeKm"], 3),
             elevRun=s.get("elevRun", 0), elevRide=s.get("elevRide", 0), elevTotal=s.get("elevTotal", 0),
@@ -852,7 +854,7 @@ def fmt_member(m: dict, idx: int, s: dict) -> dict:
         color=m.get("color") or _COLORS[idx%len(_COLORS)],
         bg=m.get("bg")       or _BG[idx%len(_BG)],
         picture=m.get("garmin_picture","") if m.get("provider") == "garmin" else m.get("strava_picture",""), height_m=height_m,
-        **{k: s.get(k,0) for k in ("km","runKm","cycleKm","virtualKm","swimKm","walkKm",
+        **{k: s.get(k,0) for k in ("km","runKm","cycleKm","virtualKm","swimKm","walkKm","ebikeKm",
                                     "durationSec","workouts","challengeKm","eligibleWalkKm","eligibleRunKm",
                                     "elevRun","elevRide","elevTotal",
                                     "strengthSessions","strengthMins","strengthKcal","strengthKg")},
