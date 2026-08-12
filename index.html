@@ -3166,7 +3166,7 @@ function renderPoints(){
     return map;
   }
 
-  // Rule A: +1pt for each month this year (including current) where challengeKm >= GOAL
+  // Rule A: +5pts for each month this year (including current) where challengeKm >= GOAL
   const ruleAPoints = {};
   const ruleAData = {}; // { userId: { month: challengeKm } } for all months up to current
 
@@ -3177,7 +3177,7 @@ function renderPoints(){
     for (let m = 1; m <= currentMonth; m++) {
       const km = runMap[m] || 0;
       data[m] = km;
-      if (km >= GOAL - 0.005) pts++;
+      if (km >= GOAL - 0.005) pts += 5;
     }
     ruleAPoints[u.id] = pts;
     ruleAData[u.id] = data;
@@ -3270,7 +3270,7 @@ function renderPoints(){
       return `<th style="${style}" title="${MONTH_NAMES[m-1]} ${currentYear}${isCurrent?' (in progress)':!isPast?' (upcoming)':''}">${MONTH_NAMES[m-1]}</th>`;
     }).join('')}
     <th style="border-left:2px solid var(--border);color:var(--text2)" title="Total equivalent km this year">Total</th>
-    <th style="color:#818cf8;border-left:2px solid var(--border)" title="Rule A: +1pt per month ≥${GOAL}km (including current month)">A</th>
+    <th style="color:#818cf8;border-left:2px solid var(--border)" title="Rule A: +5pts per month ≥${GOAL}km (including current month)">A</th>
     <th style="color:#34d399" title="Rule B: most YTD run km (+2pts)">B</th>
     <th style="color:#f472b6" title="Rule C: most Rule A points (+2pts)">C</th>
     <th style="color:#fb923c" title="Rule D: biggest BMI % drop vs January in current month (+1pt)">D</th>
@@ -3375,7 +3375,7 @@ function renderPoints(){
 
       <div style="border-radius:10px;padding:12px 14px;background:rgba(129,140,248,0.08);border:1px solid rgba(129,140,248,0.2)">
         <div style="font-size:.72rem;font-weight:800;color:#818cf8;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">⭐ Rule A — Monthly Points</div>
-        <div style="font-size:.8rem;color:var(--text2);font-weight:600;line-height:1.5">+1pt for each month you hit <span style="color:#818cf8;font-weight:800">${GOAL} eq.km</span></div>
+        <div style="font-size:.8rem;color:var(--text2);font-weight:600;line-height:1.5">+5pts for each month you hit <span style="color:#818cf8;font-weight:800">${GOAL} eq.km</span></div>
         <div style="font-size:.72rem;color:var(--muted);margin-top:4px;line-height:1.4">🏃 run ×1 · 🚴 bike ÷5 · ⚡🚴 e-bike ÷10 · 💻 virtual ÷4 · 🏊 swim ×4 · 🚶 walk ÷3 (≥30min) · run pace ≤9min/km from May 2026</div>
       </div>
 
