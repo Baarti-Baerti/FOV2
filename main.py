@@ -572,7 +572,18 @@ def challenge_km_for_activity(a: dict) -> float:
             return dist
         return 0.0
     elif cat == "ride":         return dist / 5
-    elif cat == "ebike":        return dist / 10
+    elif cat == "ebike":
+        # E-bike counts for points only from August 2026 onwards
+        ts = a.get("start_date_local") or a.get("start_date", "")
+        try:
+            ts = ts.strip().replace(" ", "T")
+            if not ts.endswith("Z") and "+" not in ts[10:]: ts += "Z"
+            dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+            if dt.year > 2026 or (dt.year == 2026 and dt.month >= 8):
+                return dist / 10
+        except (ValueError, TypeError):
+            pass
+        return 0.0
     elif cat == "virtual_ride": return dist / 4
     elif cat == "swim":         return dist * 4
     elif cat == "walk":
