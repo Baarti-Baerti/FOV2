@@ -2251,10 +2251,18 @@ function renderLB(suffix=''){
       }, unit:'' },
     { key:'ebikeKm',     label:'E-Bike',       icon:'⚡🚴', fmt: u => {
         const km = periodSum(u, 'ebikeKm');
-        const pts = km / 10;
         if (km < 0.005) return '—';
+        // Points only from August 2026 onwards
+        const eligMonths = (u.monthly||[]).filter(m => {
+          const mf = periodMonthFilter();
+          return mf(m) && (m.year > 2026 || (m.year === 2026 && m.month >= 8));
+        });
+        const eligKm = eligMonths.reduce((s,m) => s + (m.ebikeKm||0), 0);
+        const pts = eligKm / 10;
         return fmtKm(km) + '<span style="font-size:0.72rem;color:var(--muted);font-weight:600;margin-left:1px">km</span>' +
-          `<div style="font-size:0.65rem;font-weight:700;margin-top:2px;color:var(--violet)">⭐ ${pts.toFixed(2)} pts</div>`;
+          (pts > 0
+            ? `<div style="font-size:0.65rem;font-weight:700;margin-top:2px;color:var(--violet)">⭐ ${pts.toFixed(2)} pts</div>`
+            : `<div style="font-size:0.65rem;color:var(--muted);margin-top:2px">no pts before Aug</div>`);
       }, unit:'' },
     { key:'swimKm',      label:'Swim',         icon:'🏊', fmt: u => {
         const km = periodSum(u, 'swimKm');
@@ -3584,6 +3592,7 @@ const MP_METRICS = [
   { key: 'virtualKm',   label: '💻 Virtual Bike',       unit: 'km',   axFmt: v => v.toFixed(0),            valFmt: v => v.toFixed(2)+' km',        field: m => m.virtualKm  || 0,           skipZero: false },
   { key: 'swimKm',      label: '🏊 Swimming',           unit: 'km',   axFmt: v => v.toFixed(0),            valFmt: v => v.toFixed(2)+' km',        field: m => m.swimKm     || 0,           skipZero: false },
   { key: 'walkKm',      label: '🚶 Walking',            unit: 'km',   axFmt: v => v.toFixed(0),            valFmt: v => v.toFixed(2)+' km',        field: m => m.walkKm     || 0,           skipZero: false },
+  { key: 'ebikeKm',    label: '⚡🚴 E-Bike',          unit: 'km',   axFmt: v => v.toFixed(0),            valFmt: v => v.toFixed(2)+' km',        field: m => m.ebikeKm    || 0,           skipZero: true  },
   { key: 'sess',        label: '🎯 Sessions',           unit: '',     axFmt: v => v.toFixed(0),            valFmt: v => v.toFixed(0),              field: m => m.sess       || 0,           skipZero: false },
   { key: 'bmi',         label: '⚖️ BMI',                unit: '',     axFmt: v => v.toFixed(1),            valFmt: v => v.toFixed(1),              field: m => m.weightBmi  || null,        skipZero: true  },
 ];
