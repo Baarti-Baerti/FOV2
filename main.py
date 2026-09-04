@@ -499,14 +499,16 @@ async def _sync_garmin(member: dict, stored: dict, now: int, yr_start: int, last
 
 
 def _merge_and_save(mid: int, stored: dict, new_acts: list, now: int, yr_start: int) -> list:
-    """Merge new activities into stored, deduplicate, save and return full list."""
+    """Merge new activities into stored, deduplicate, save and return full list.
+    Activities in deleted_ids blocklist are never re-added."""
+    blocklist = set(stored.get("deleted_ids", []))
     existing = {a["id"]: a for a in stored.get("activities", []) if "id" in a}
     for a in new_acts:
-        if "id" in a:
+        if "id" in a and str(a["id"]) not in blocklist:
             existing[a["id"]] = a
     all_acts = [a for a in existing.values() if _act_ts(a) >= yr_start]
     all_acts.sort(key=_act_ts, reverse=True)
-    save_acts(mid, {"activities": all_acts, "last_fetch": now})
+    save_acts(mid, {"activities": all_acts, "last_fetch": now, "deleted_ids": list(blocklist)})
     return all_acts
 
 def _act_ts(a: dict) -> int:
@@ -1509,9 +1511,13 @@ async def delete_activity(mid: int, act_id: str):
     stored["activities"] = [a for a in acts if str(a.get("id", "")) != act_id]
     if len(stored["activities"]) == before:
         raise HTTPException(404, f"Activity {act_id} not found for member {mid}")
+    # Add to blocklist so it never re-syncs
+    blocklist = set(stored.get("deleted_ids", []))
+    blocklist.add(act_id)
+    stored["deleted_ids"] = list(blocklist)
     save_acts(mid, stored)
     cache_bust(mid)
-    return {"ok": True, "removed": before - len(stored["activities"])}
+    return {"ok": True, "removed": before - len(stored["activities"]), "blocklisted": act_id}
 
 # Delete a specific weight entry from a member
 @app.delete("/api/admin/members/{mid}/weight/{date}")
