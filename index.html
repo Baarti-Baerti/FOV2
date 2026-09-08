@@ -3390,33 +3390,81 @@ function renderPoints(){
     <div style="padding:16px 18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">
 
       <div style="border-radius:10px;padding:12px 14px;background:rgba(129,140,248,0.08);border:1px solid rgba(129,140,248,0.2)">
-        <div style="font-size:.72rem;font-weight:800;color:#818cf8;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">⭐ Rule A — Monthly Points</div>
-        <div style="font-size:.8rem;color:var(--text2);font-weight:600;line-height:1.5">+1pt for each month you hit <span style="color:#818cf8;font-weight:800">${GOAL} eq.km</span></div>
-        <div style="font-size:.72rem;color:var(--muted);margin-top:4px;line-height:1.4">🏃 run ×1 · 🚴 bike ÷5 · ⚡🚴 e-bike ÷10 (from Aug 2026) · 💻 virtual ÷4 · 🏊 swim ×4 · 🚶 walk ÷3 before Sep 8 2026 only · run pace ≤9min/km from May 2026</div>
+        <div style="font-size:.72rem;font-weight:800;color:#818cf8;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">⭐ Rule A — Monthly Points</div>
+        <div style="font-size:.78rem;color:var(--text2);font-weight:600;margin-bottom:6px">+1pt for each month you hit <span style="color:#818cf8;font-weight:800">${GOAL} eq.km</span></div>
+        <div style="display:flex;flex-direction:column;gap:5px;font-size:.72rem">
+          <div style="padding:5px 8px;background:rgba(129,140,248,0.08);border-radius:6px">
+            <span style="font-weight:800">🏃 Running</span> — ×1 (km counts as 1 eq.km)
+            <div style="color:var(--muted);margin-top:2px">⚠️ Pace limit: ≤9 min/km from May 2026. Slower runs are recorded but score 0.</div>
+          </div>
+          <div style="padding:5px 8px;background:rgba(129,140,248,0.08);border-radius:6px">
+            <span style="font-weight:800">🚴 Cycling</span> — ÷5 (5km = 1 eq.km)
+          </div>
+          <div style="padding:5px 8px;background:rgba(129,140,248,0.08);border-radius:6px">
+            <span style="font-weight:800">⚡🚴 E-Bike</span> — ÷10 (10km = 1 eq.km)
+            <div style="color:var(--muted);margin-top:2px">⚠️ Only from August 2026 onwards.</div>
+          </div>
+          <div style="padding:5px 8px;background:rgba(129,140,248,0.08);border-radius:6px">
+            <span style="font-weight:800">💻 Virtual Cycling</span> — ÷4 (4km = 1 eq.km)
+          </div>
+          <div style="padding:5px 8px;background:rgba(129,140,248,0.08);border-radius:6px">
+            <span style="font-weight:800">🏊 Swimming</span> — ×4 (1km = 4 eq.km)
+          </div>
+          <div style="padding:5px 8px;background:rgba(129,140,248,0.08);border-radius:6px">
+            <span style="font-weight:800">🚶 Walking</span> — ÷3 (3km = 1 eq.km)
+            <div style="color:var(--muted);margin-top:2px">⚠️ Only before Sep 8 2026. Minimum 30min duration. Walk km after Sep 8 are tracked but score 0.</div>
+          </div>
+        </div>
       </div>
 
       <div style="border-radius:10px;padding:12px 14px;background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.2)">
         <div style="font-size:.72rem;font-weight:800;color:#34d399;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">🏆 Rule B — Distance King</div>
         <div style="font-size:.8rem;color:var(--text2);font-weight:600;line-height:1.5">Most YTD equivalent km = <span style="color:#34d399;font-weight:800">+2pts</span></div>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:4px">Awarded at year end. In case of a tie, no bonus is awarded.</div>
       </div>
 
       <div style="border-radius:10px;padding:12px 14px;background:rgba(244,114,182,0.08);border:1px solid rgba(244,114,182,0.2)">
         <div style="font-size:.72rem;font-weight:800;color:#f472b6;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">👑 Rule C — Sole Leader</div>
         <div style="font-size:.8rem;color:var(--text2);font-weight:600;line-height:1.5">Sole leader in Rule A = <span style="color:#f472b6;font-weight:800">+2pts</span></div>
-        <div style="font-size:.72rem;color:var(--muted);margin-top:4px">No bonus if tied</div>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:4px">Must be the only person with the highest Rule A points. No bonus if tied.</div>
       </div>
 
       <div style="border-radius:10px;padding:12px 14px;background:rgba(251,146,60,0.08);border:1px solid rgba(251,146,60,0.2)">
         <div style="font-size:.72rem;font-weight:800;color:#fb923c;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">⚖️ Rule D — BMI Drop</div>
         <div style="font-size:.8rem;color:var(--text2);font-weight:600;line-height:1.5">Biggest BMI % drop vs January = <span style="color:#fb923c;font-weight:800">+1pt</span></div>
-        <div style="font-size:.72rem;color:var(--muted);margin-top:4px">No bonus if tied</div>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:4px">Measured monthly vs January baseline. No bonus if tied.</div>
       </div>
 
-      <div style="border-radius:10px;padding:12px 14px;background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.2)">
-        <div style="font-size:.72rem;font-weight:800;color:#06b6d4;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">🏊 Rule E — Triathlon (May)</div>
-        <div style="font-size:.8rem;color:var(--text2);font-weight:600;line-height:1.5">Sprint tri in one day = <span style="color:#06b6d4;font-weight:800">+1pt</span> · Olympic = <span style="color:#06b6d4;font-weight:800">+2pts</span></div>
-        <div style="font-size:.72rem;color:var(--muted);margin-top:4px;line-height:1.4">Sprint: 20km ride / 5km run / 0.75km swim · Olympic: 40km / 10km / 1.5km · no virtual biking · max 2pts</div>
+    </div>
+
+    <!-- Monthly Challenges -->
+    <div style="padding:14px 18px;background:var(--surface2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+      <span style="font-size:1.1rem">🗓️</span>
+      <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem;color:var(--text)">Monthly Challenges</span>
+      <span style="font-size:.7rem;color:var(--muted);margin-left:4px">Extra points for completing specific feats in a given month</span>
+    </div>
+    <div style="padding:16px 18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px">
+
+      ${['Jan','Feb','Mar','Apr'].map(mo => `
+        <div style="border-radius:8px;padding:9px 12px;background:var(--surface2);border:1px solid var(--border)">
+          <div style="font-size:.72rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">${mo}</div>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:3px">No challenge</div>
+        </div>`).join('')}
+
+      <div style="border-radius:8px;padding:9px 12px;background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.25)">
+        <div style="font-size:.72rem;font-weight:800;color:#06b6d4;text-transform:uppercase;letter-spacing:.06em">🏊 May — Rule E: Triathlon</div>
+        <div style="font-size:.72rem;color:var(--text2);margin-top:3px;line-height:1.5">
+          <strong>Sprint</strong>: 20km ride + 5km run + 0.75km swim in one day = +1pt<br>
+          <strong>Olympic</strong>: 40km ride + 10km run + 1.5km swim in one day = +2pts<br>
+          <span style="color:var(--muted)">No virtual biking · Max 2pts total</span>
+        </div>
       </div>
+
+      ${['Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map(mo => `
+        <div style="border-radius:8px;padding:9px 12px;background:var(--surface2);border:1px solid var(--border)">
+          <div style="font-size:.72rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">${mo}</div>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:3px">No challenge</div>
+        </div>`).join('')}
 
     </div>
   </div>`;
