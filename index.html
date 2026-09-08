@@ -2277,7 +2277,7 @@ function renderLB(suffix=''){
         const score     = elig / 3;
         if (totalWalk < 0.005) return '—';
         const total = fmtKm(totalWalk) + '<span style="font-size:0.72rem;color:var(--muted);font-weight:600;margin-left:1px">km</span>';
-        if (elig <= 0.005) return total;
+        if (score <= 0.005) return total + `<div style="font-size:.62rem;color:var(--muted);margin-top:1px">no pts from Sep 8</div>`;
         return total +
           `<div style="font-size:0.65rem;font-weight:700;margin-top:2px;line-height:1.5">` +
           `<span style="color:var(--mint)">✓ ${elig.toFixed(2)} elig.</span>` +
@@ -2743,7 +2743,12 @@ function renderDetail(suffix=''){
                 }
                 else if (cat==='VirtualRide')                  pts = a.dist_km/4;
                 else if (cat==='Swim')                         pts = a.dist_km*4;
-                else if (cat==='Walk'||cat==='Hike') { const mt=a.moving_time||0; pts=(mt>=WALK_MIN_TIME)?a.dist_km/3:0; }
+                else if (cat==='Walk'||cat==='Hike') {
+                  const mt=a.moving_time||0;
+                  const actDate = new Date(a.date);
+                  const cutoff  = new Date('2026-09-08T00:00:00Z');
+                  pts = (mt>=WALK_MIN_TIME && actDate < cutoff) ? a.dist_km/3 : 0;
+                }
                 const ptsStr = pts > 0 ? pts.toFixed(2) : '—';
                 const movSecs = a.moving_time || 0;
                 const durStr = movSecs > 0 ? (movSecs>=3600 ? Math.floor(movSecs/3600)+'h '+Math.floor((movSecs%3600)/60)+'m' : Math.floor(movSecs/60)+'m') : '—';
@@ -3387,7 +3392,7 @@ function renderPoints(){
       <div style="border-radius:10px;padding:12px 14px;background:rgba(129,140,248,0.08);border:1px solid rgba(129,140,248,0.2)">
         <div style="font-size:.72rem;font-weight:800;color:#818cf8;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">⭐ Rule A — Monthly Points</div>
         <div style="font-size:.8rem;color:var(--text2);font-weight:600;line-height:1.5">+1pt for each month you hit <span style="color:#818cf8;font-weight:800">${GOAL} eq.km</span></div>
-        <div style="font-size:.72rem;color:var(--muted);margin-top:4px;line-height:1.4">🏃 run ×1 · 🚴 bike ÷5 · ⚡🚴 e-bike ÷10 (from Aug 2026) · 💻 virtual ÷4 · 🏊 swim ×4 · 🚶 walk ÷3 (≥30min) · run pace ≤9min/km from May 2026</div>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:4px;line-height:1.4">🏃 run ×1 · 🚴 bike ÷5 · ⚡🚴 e-bike ÷10 (from Aug 2026) · 💻 virtual ÷4 · 🏊 swim ×4 · 🚶 walk ÷3 before Sep 8 2026 only · run pace ≤9min/km from May 2026</div>
       </div>
 
       <div style="border-radius:10px;padding:12px 14px;background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.2)">

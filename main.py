@@ -534,6 +534,21 @@ def _act_ts(a: dict) -> int:
 MONTHLY_GOAL_KM    = 66.67        # challenge goal per month
 WALK_MIN_SPEED_MS  = 6500 / 3600  # 6.5 km/h in m/s
 WALK_MIN_MOVING_S  = 30 * 60 - 30  # 30 min minus 30s tolerance (Strava rounding)
+WALK_POINTS_CUTOFF = datetime(2026, 9, 8, tzinfo=timezone.utc)  # walks no longer score after this date
+
+def _walk_eligible(a: dict) -> bool:
+    """Walk counts for points only if it occurred before Sep 8 2026 AND meets duration."""
+    moving_time = a.get("moving_time", 0) or 0
+    if moving_time < WALK_MIN_MOVING_S:
+        return False
+    ts = a.get("start_date_local") or a.get("start_date", "")
+    try:
+        ts = ts.strip().replace(" ", "T")
+        if not ts.endswith("Z") and "+" not in ts[10:]: ts += "Z"
+        dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        return dt < WALK_POINTS_CUTOFF
+    except (ValueError, TypeError):
+        return False
 
 RUN_MAX_PACE_SEC_PER_KM = 9 * 60   # 9 min/km — slower runs don't earn points
 RUN_MIN_SPEED_MS = 1000 / RUN_MAX_PACE_SEC_PER_KM  # = 1.852 m/s
@@ -589,8 +604,7 @@ def challenge_km_for_activity(a: dict) -> float:
     elif cat == "virtual_ride": return dist / 4
     elif cat == "swim":         return dist * 4
     elif cat == "walk":
-        moving_time = a.get("moving_time", 0) or 0
-        if moving_time >= WALK_MIN_MOVING_S:
+        if _walk_eligible(a):
             return dist / 3
         return 0.0
     return 0.0
@@ -630,8 +644,7 @@ def aggregate(acts: list) -> dict:
         elif cat == "swim":         swim  += d
         elif cat == "walk":
             walk += d
-            moving_time = a.get("moving_time", 0) or 0
-            if moving_time >= WALK_MIN_MOVING_S:
+            if _walk_eligible(a):
                 eligible_walk += d
         elif cat == "strength":
             strength_sessions += 1
