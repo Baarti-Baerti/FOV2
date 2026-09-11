@@ -1540,7 +1540,35 @@ async def delete_activity(mid: int, act_id: str):
     cache_bust(mid)
     return {"ok": True, "removed": before - len(stored["activities"]), "blocklisted": act_id}
 
-@app.get("/api/admin/members/{mid}/deleted-activities")
+@app.post("/api/admin/members/{mid}/clear-legacy-blocklist")
+async def clear_legacy_blocklist(mid: int):
+    """Remove deleted_ids entries that have no stored deleted_acts data (legacy deletions).
+    Then triggers a fresh sync so those activities come back."""
+    stored = load_acts(mid)
+    deleted_ids  = set(stored.get("deleted_ids", []))
+    deleted_acts = {a["id"] for a in stored.get("deleted_acts", [])}
+    # Legacy = in blocklist but no stored activity data
+    legacy_ids = deleted_ids - deleted_acts
+    if not legacy_ids:
+        return {"ok": True, "message": "No legacy deleted IDs found — all deletions have stored data", "cleared": 0}
+    # Remove legacy IDs from blocklist only
+    stored["deleted_ids"] = list(deleted_ids - legacy_ids)
+    save_acts(mid, stored)
+    cache_bust(mid)
+    # Trigger a fresh sync so the activities come back
+    db = load_db()
+    m  = next((x for x in db["members"] if x["id"] == mid), None)
+    if not m:
+        raise HTTPException(404, "Member not found")
+    try:
+        acts = await sync_activities(m)
+        return {"ok": True, "cleared": len(legacy_ids), "legacy_ids": list(legacy_ids),
+                "activities_synced": len(acts), "message": f"Cleared {len(legacy_ids)} legacy blocked IDs and re-synced"}
+    except Exception as e:
+        return {"ok": True, "cleared": len(legacy_ids), "legacy_ids": list(legacy_ids),
+                "sync_error": str(e), "message": f"Cleared {len(legacy_ids)} legacy blocked IDs — sync failed: {e}"}
+
+
 async def list_deleted_activities(mid: int):
     """Return all deleted activities for a member."""
     db = load_db()

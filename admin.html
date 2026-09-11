@@ -422,6 +422,9 @@
           <button class="action-btn" onclick="memberAction('deleted')">
             <span class="btn-method method-get">GET</span> 🗑️ Deleted
           </button>
+          <button class="action-btn post" onclick="clearLegacyBlocklist()" id="clearLegacyBtn">
+            <span class="btn-method method-post">POST</span> ↩ Clear legacy
+          </button>
           <button class="action-btn danger" onclick="memberAction('reset-sync')">
             <span class="btn-method method-get">GET</span> Reset sync
           </button>
@@ -815,6 +818,31 @@ function forceRefreshDashboard() {
     showToast('Cache cleared — refresh the dashboard tab', 'ok');
   } catch(e) {}
   callApi('/api/admin/clear-cache', 'GET', 'Clear Backend Cache + Force Dashboard Refresh');
+}
+
+async function clearLegacyBlocklist() {
+  const sel = document.getElementById('memberSelect');
+  const id  = sel.value;
+  if (!id) { showToast('Select a member first', 'err'); return; }
+  const name = sel.options[sel.selectedIndex].text.split(' (#')[0];
+  if (!confirm(`Clear legacy deleted activity IDs for ${name}?\n\nThis removes activities that were deleted before the reinstatement feature was added. They will re-appear after the next sync.`)) return;
+  const btn = document.getElementById('clearLegacyBtn');
+  btn.disabled = true;
+  try {
+    const res  = await fetch(`${apiBase}/api/admin/members/${id}/clear-legacy-blocklist`, { method: 'POST' });
+    const data = await res.json();
+    if (data.ok) {
+      showToast(`✅ Cleared ${data.cleared} legacy ID(s) — ${data.activities_synced ?? '?'} activities synced`, 'ok');
+      // Refresh deleted activities view
+      loadDeletedActivities(parseInt(id), name);
+    } else {
+      showToast(data.detail || 'Failed', 'err');
+    }
+  } catch(e) {
+    showToast(`Error: ${e.message}`, 'err');
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 async function loadDeletedActivities(mid, memberName) {
