@@ -379,6 +379,13 @@
     </div>
 
     <div class="section">
+      <div class="section-title">🔍 Activity Integrity</div>
+      <button class="action-btn" style="width:100%;justify-content:center" onclick="scanSuspectActivities()">
+        <span class="btn-method method-get">⚽</span> Scan for wrong-sport activities
+      </button>
+    </div>
+
+    <div class="section">
       <div class="section-title">System</div>
       <div class="btn-grid">
         <button class="action-btn" onclick="forceRefreshDashboard()">
@@ -818,6 +825,94 @@ function forceRefreshDashboard() {
     showToast('Cache cleared — refresh the dashboard tab', 'ok');
   } catch(e) {}
   callApi('/api/admin/clear-cache', 'GET', 'Clear Backend Cache + Force Dashboard Refresh');
+}
+
+async function scanSuspectActivities() {
+  switchTab('response');
+  document.getElementById('responseUrl').textContent = 'GET /api/admin/suspect-activities';
+  document.getElementById('responseUrl').className = 'response-url active';
+  document.getElementById('responseStatus').innerHTML = '<span class="response-status status-200">scanning…</span>';
+  document.getElementById('responseBody').innerHTML = '<div style="padding:24px;color:var(--muted);font-size:.85rem;text-align:center">Scanning all activities…</div>';
+  document.getElementById('copyBtn').style.display = 'none';
+
+  try {
+    const res  = await fetch(`${apiBase}/api/admin/suspect-activities`);
+    const data = await res.json();
+    document.getElementById('responseStatus').innerHTML =
+      `<span class="response-status ${data.total_suspects > 0 ? 'status-err' : 'status-200'}">${data.total_suspects} suspect activities found</span>`;
+
+    if (data.total_suspects === 0) {
+      document.getElementById('responseBody').innerHTML =
+        '<div style="padding:24px;color:#34d399;font-size:.85rem;text-align:center">✅ No suspect activities found — all activities look correctly classified.</div>';
+      return;
+    }
+
+    const sections = data.members.map(m => {
+      const rows = m.suspects.map(a => `
+        <tr style="border-bottom:1px solid #2a2d3a">
+          <td style="padding:6px 10px;color:#e8eaf0;font-size:.78rem;white-space:nowrap">${a.date}</td>
+          <td style="padding:6px 10px;color:#f87171;font-size:.78rem">${a.sport_type}</td>
+          <td style="padding:6px 10px;color:#e8eaf0;font-size:.78rem">${a.name}</td>
+          <td style="padding:6px 10px;color:#e8eaf0;font-size:.78rem;text-align:right">${a.dist_km}km</td>
+          <td style="padding:6px 10px;color:#e8eaf0;font-size:.78rem;text-align:right">${a.moving_min}min</td>
+          <td style="padding:6px 10px;color:#fbbf24;font-size:.72rem">${a.reasons.join(' · ')}</td>
+          <td style="padding:6px 10px;text-align:center;white-space:nowrap">
+            <button onclick="reclassifyActivity(${m.member_id},'${a.id}','Other','${a.name.replace(/'/g,'')}')"
+              style="font-size:.7rem;font-weight:700;padding:3px 8px;border-radius:6px;border:1px solid #f87171;background:rgba(248,113,113,0.1);color:#f87171;cursor:pointer;margin-right:4px"
+              onmouseover="this.style.background='rgba(248,113,113,0.25)'"
+              onmouseout="this.style.background='rgba(248,113,113,0.1)'">🚫 Exclude</button>
+            <button onclick="reclassifyActivity(${m.member_id},'${a.id}','WrongSport','${a.name.replace(/'/g,'')}')"
+              style="font-size:.7rem;font-weight:700;padding:3px 8px;border-radius:6px;border:1px solid #818cf8;background:rgba(129,140,248,0.1);color:#818cf8;cursor:pointer"
+              onmouseover="this.style.background='rgba(129,140,248,0.25)'"
+              onmouseout="this.style.background='rgba(129,140,248,0.1)'">⚽ Mark wrong</button>
+          </td>
+        </tr>`).join('');
+
+      return `<div style="margin-bottom:18px">
+        <div style="font-weight:800;font-size:.82rem;color:#e8eaf0;margin-bottom:6px">
+          ${m.member_name} <span style="color:#f87171;font-size:.72rem">(${m.suspects.length} suspect)</span>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-family:var(--font-body)">
+          <thead><tr style="border-bottom:2px solid #3a3d4a">
+            <th style="padding:5px 10px;text-align:left;font-size:.7rem;color:#818cf8;font-weight:700">Date</th>
+            <th style="padding:5px 10px;text-align:left;font-size:.7rem;color:#818cf8;font-weight:700">Type</th>
+            <th style="padding:5px 10px;text-align:left;font-size:.7rem;color:#818cf8;font-weight:700">Name</th>
+            <th style="padding:5px 10px;text-align:right;font-size:.7rem;color:#818cf8;font-weight:700">Dist</th>
+            <th style="padding:5px 10px;text-align:right;font-size:.7rem;color:#818cf8;font-weight:700">Duration</th>
+            <th style="padding:5px 10px;text-align:left;font-size:.7rem;color:#818cf8;font-weight:700">Why flagged</th>
+            <th style="padding:5px 10px;text-align:center;font-size:.7rem;color:#818cf8;font-weight:700">Action</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+    }).join('');
+
+    document.getElementById('responseBody').innerHTML = `<div style="padding:14px 16px">${sections}</div>`;
+  } catch(e) {
+    document.getElementById('responseStatus').innerHTML = '<span class="response-status status-err">Error</span>';
+    document.getElementById('responseBody').innerHTML = `<div style="padding:16px;color:#f87171">${e.message}</div>`;
+  }
+}
+
+async function reclassifyActivity(mid, actId, newType, actName) {
+  const label = newType === 'Other' ? 'exclude from scoring (mark as Other)' : 'mark as wrong sport (WrongSport)';
+  if (!confirm(`${label}?\n\n"${actName}"\n\nThis will remove its points contribution. You can reinstate it later.`)) return;
+  try {
+    const res  = await fetch(`${apiBase}/api/admin/members/${mid}/reclassify-activity/${actId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sport_type: newType }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showToast(`✅ Reclassified "${actName}" → ${newType}`, 'ok');
+      scanSuspectActivities(); // refresh
+    } else {
+      showToast(data.detail || 'Reclassify failed', 'err');
+    }
+  } catch(e) {
+    showToast(`Error: ${e.message}`, 'err');
+  }
 }
 
 async function clearLegacyBlocklist() {

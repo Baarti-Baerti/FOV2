@@ -142,6 +142,7 @@ _TYPES = {
     "Walk":"walk","Hike":"walk",
     "WeightTraining":"strength","StrengthTraining":"strength",
     "strength_training":"strength","weight_training":"strength",
+    "WrongSport":"other","Other":"other",
 }
 def classify(t: str) -> str: return _TYPES.get(t, "other")
 
@@ -2363,7 +2364,97 @@ async def monthly_recap_scheduler():
 
 
 
-@app.get("/api/admin/debug-store")
+SOCCER_KEYWORDS = {
+    "fußball", "fussball", "soccer", "football", "kicken", "kick",
+    "tischtennis", "table tennis", "tabletennis", "ping pong", "pingpong",
+    "tennis", "golf", "segeln", "sailing", "basketball", "volleyball",
+    "handball", "badminton",
+}
+
+def _detect_wrong_sport(a: dict) -> dict | None:
+    """Return a flag dict if activity looks like a wrongly-classified sport, else None."""
+    sport_type = a.get("sport_type") or a.get("type", "")
+    cat = classify(sport_type)
+    if cat not in ("run", "walk"):
+        return None
+
+    name       = (a.get("name") or "").lower()
+    moving_s   = a.get("moving_time", 0) or 0
+    avg_speed  = _run_speed(a)  # m/s
+
+    # Signal 5: keyword in activity name
+    name_match = next((kw for kw in SOCCER_KEYWORDS if kw in name), None)
+
+    # Signals 1+2+4: duration 55-100min AND very slow speed for a run
+    speed_duration_match = (
+        55 * 60 <= moving_s <= 100 * 60 and
+        cat == "run" and
+        1.2 <= avg_speed <= 2.5
+    )
+
+    if not name_match and not speed_duration_match:
+        return None
+
+    reasons = []
+    if name_match:       reasons.append(f'name contains "{name_match}"')
+    if speed_duration_match:
+        reasons.append(f"slow run ({avg_speed:.2f} m/s) for {round(moving_s/60)}min")
+
+    return {
+        "id":          str(a.get("id", "")),
+        "name":        a.get("name", ""),
+        "sport_type":  sport_type,
+        "date":        (a.get("start_date_local") or a.get("start_date",""))[:10],
+        "dist_km":     round((a.get("distance",0) or 0)/1000, 2),
+        "moving_min":  round(moving_s/60, 1),
+        "avg_speed_ms":round(avg_speed, 2),
+        "reasons":     reasons,
+    }
+
+
+@app.get("/api/admin/suspect-activities")
+async def suspect_activities():
+    """Scan all members' stored activities for possible wrong-sport classifications."""
+    db = load_db()
+    results = []
+    for m in db["members"]:
+        stored    = load_acts(m["id"])
+        acts      = stored.get("activities", [])
+        blocklist = set(stored.get("deleted_ids", []))
+        suspects  = []
+        for a in acts:
+            if str(a.get("id","")) in blocklist:
+                continue
+            flag = _detect_wrong_sport(a)
+            if flag:
+                suspects.append(flag)
+        if suspects:
+            results.append({
+                "member_id":   m["id"],
+                "member_name": m["name"],
+                "provider":    m.get("provider","strava"),
+                "suspects":    sorted(suspects, key=lambda x: x["date"], reverse=True),
+            })
+    return {"total_suspects": sum(len(r["suspects"]) for r in results), "members": results}
+
+
+@app.post("/api/admin/members/{mid}/reclassify-activity/{act_id}")
+async def reclassify_activity(mid: int, act_id: str, body: dict = None):
+    """Reclassify a suspect activity to 'other' (no points) or a specific sport type."""
+    new_type = (body or {}).get("sport_type", "Other")
+    stored = load_acts(mid)
+    act = next((a for a in stored.get("activities", []) if str(a.get("id","")) == act_id), None)
+    if not act:
+        raise HTTPException(404, "Activity not found")
+    old_type = act.get("sport_type","")
+    act["sport_type"] = new_type
+    act["reclassified_from"] = old_type
+    act["reclassified_at"]   = datetime.now(timezone.utc).isoformat()
+    save_acts(mid, stored)
+    cache_bust(mid)
+    return {"ok": True, "id": act_id, "old_type": old_type, "new_type": new_type}
+
+
 async def debug_store():
     db = load_db()
     result = []
