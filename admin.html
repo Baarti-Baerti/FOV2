@@ -347,6 +347,14 @@
       </button>
     </div>
 
+    <!-- ACTIVITY INTEGRITY -->
+    <div class="section">
+      <div class="section-title">🔍 Activity Integrity</div>
+      <button class="action-btn" style="width:100%;justify-content:center" onclick="scanSuspectActivities()">
+        <span class="btn-method method-get">⚽</span> Scan for wrong-sport activities
+      </button>
+    </div>
+
     <!-- GLOBAL ACTIONS -->
     <div class="section">
       <div class="section-title">Global Actions — Strava</div>
@@ -376,13 +384,6 @@
           <span class="btn-method method-get">GET</span> Reset all Garmin
         </button>
       </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">🔍 Activity Integrity</div>
-      <button class="action-btn" style="width:100%;justify-content:center" onclick="scanSuspectActivities()">
-        <span class="btn-method method-get">⚽</span> Scan for wrong-sport activities
-      </button>
     </div>
 
     <div class="section">
@@ -855,7 +856,15 @@ async function scanSuspectActivities() {
           <td style="padding:6px 10px;color:#e8eaf0;font-size:.78rem">${a.name}</td>
           <td style="padding:6px 10px;color:#e8eaf0;font-size:.78rem;text-align:right">${a.dist_km}km</td>
           <td style="padding:6px 10px;color:#e8eaf0;font-size:.78rem;text-align:right">${a.moving_min}min</td>
-          <td style="padding:6px 10px;color:#fbbf24;font-size:.72rem">${a.reasons.join(' · ')}</td>
+          <td style="padding:6px 10px;color:#fbbf24;font-size:.72rem">${a.reasons.map(r => {
+            // Replace m/s values with min/km
+            return r.replace(/(\d+\.\d+) m\/s/, (_, ms) => {
+              const pace = 1000 / (parseFloat(ms) * 60);
+              const pMin = Math.floor(pace);
+              const pSec = Math.round((pace - pMin) * 60);
+              return pMin + ':' + String(pSec).padStart(2,'0') + ' min/km';
+            });
+          }).join(' · ')}</td>
           <td style="padding:6px 10px;text-align:center;white-space:nowrap">
             <button onclick="reclassifyActivity(${m.member_id},'${a.id}','Other','${a.name.replace(/'/g,'')}')"
               style="font-size:.7rem;font-weight:700;padding:3px 8px;border-radius:6px;border:1px solid #f87171;background:rgba(248,113,113,0.1);color:#f87171;cursor:pointer;margin-right:4px"
