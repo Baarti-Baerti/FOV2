@@ -1521,16 +1521,59 @@ async def delete_activity(mid: int, act_id: str):
     stored = load_acts(mid)
     acts = stored.get("activities", [])
     before = len(acts)
+    # Find the activity before removing it so we can store it
+    deleted_act = next((a for a in acts if str(a.get("id", "")) == act_id), None)
     stored["activities"] = [a for a in acts if str(a.get("id", "")) != act_id]
     if len(stored["activities"]) == before:
         raise HTTPException(404, f"Activity {act_id} not found for member {mid}")
-    # Add to blocklist so it never re-syncs
+    # Add to blocklist
     blocklist = set(stored.get("deleted_ids", []))
     blocklist.add(act_id)
     stored["deleted_ids"] = list(blocklist)
+    # Store full activity object in deleted_acts for potential reinstatement
+    deleted_acts = {a["id"]: a for a in stored.get("deleted_acts", [])}
+    if deleted_act:
+        deleted_act["deleted_at"] = datetime.now(timezone.utc).isoformat()
+        deleted_acts[act_id] = deleted_act
+    stored["deleted_acts"] = list(deleted_acts.values())
     save_acts(mid, stored)
     cache_bust(mid)
     return {"ok": True, "removed": before - len(stored["activities"]), "blocklisted": act_id}
+
+@app.get("/api/admin/members/{mid}/deleted-activities")
+async def list_deleted_activities(mid: int):
+    """Return all deleted activities for a member."""
+    db = load_db()
+    m = next((x for x in db["members"] if x["id"] == mid), None)
+    if not m: raise HTTPException(404, "Member not found")
+    stored = load_acts(mid)
+    deleted = stored.get("deleted_acts", [])
+    return {
+        "member": m["name"],
+        "count":  len(deleted),
+        "activities": sorted(deleted, key=lambda a: a.get("deleted_at",""), reverse=True),
+    }
+
+@app.post("/api/admin/members/{mid}/reinstate-activity/{act_id}")
+async def reinstate_activity(mid: int, act_id: str):
+    """Remove an activity from the blocklist and restore it to the activity list."""
+    stored = load_acts(mid)
+    deleted_acts = {a["id"]: a for a in stored.get("deleted_acts", [])}
+    if act_id not in deleted_acts:
+        raise HTTPException(404, f"Deleted activity {act_id} not found — may predate this feature")
+    # Remove from blocklist
+    blocklist = set(stored.get("deleted_ids", []))
+    blocklist.discard(act_id)
+    stored["deleted_ids"] = list(blocklist)
+    # Restore to activity list
+    act = deleted_acts.pop(act_id)
+    act.pop("deleted_at", None)
+    stored["activities"].append(act)
+    stored["activities"].sort(key=lambda a: _act_ts(a), reverse=True)
+    stored["deleted_acts"] = list(deleted_acts.values())
+    save_acts(mid, stored)
+    cache_bust(mid)
+    return {"ok": True, "reinstated": act_id, "name": act.get("name","")}
 
 # Delete a specific weight entry from a member
 @app.delete("/api/admin/members/{mid}/weight/{date}")

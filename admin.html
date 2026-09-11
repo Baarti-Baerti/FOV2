@@ -419,6 +419,9 @@
           <button class="action-btn" id="garminDebugBtn" onclick="memberAction('debug-garmin')" style="display:none">
             <span class="btn-method method-get">GET</span> Debug Garmin
           </button>
+          <button class="action-btn" onclick="memberAction('deleted')">
+            <span class="btn-method method-get">GET</span> 🗑️ Deleted
+          </button>
           <button class="action-btn danger" onclick="memberAction('reset-sync')">
             <span class="btn-method method-get">GET</span> Reset sync
           </button>
@@ -787,9 +790,16 @@ function memberAction(action) {
     'debug-garmin':    [`/api/admin/debug-garmin/${id}`, `Debug Garmin — ${name}`],
     'sync':            [`/api/admin/sync-member/${id}`, `Sync — ${name}`],
     'reset-sync':      [`/api/admin/reset-sync/${id}`, `Reset Sync — ${name}`],
+    'deleted':         [`/api/admin/members/${id}/deleted-activities`, `Deleted Activities — ${name}`],
   };
   const entry = paths[action];
   if (!entry) { showToast('Unknown action', 'err'); return; }
+
+  // For deleted activities, show a rich interactive view instead of raw JSON
+  if (action === 'deleted') {
+    loadDeletedActivities(id, name);
+    return;
+  }
   callApi(entry[0], 'GET', entry[1]);
 }
 
@@ -805,6 +815,87 @@ function forceRefreshDashboard() {
     showToast('Cache cleared — refresh the dashboard tab', 'ok');
   } catch(e) {}
   callApi('/api/admin/clear-cache', 'GET', 'Clear Backend Cache + Force Dashboard Refresh');
+}
+
+async function loadDeletedActivities(mid, memberName) {
+  switchTab('response');
+  document.getElementById('responseUrl').textContent = `GET /api/admin/members/${mid}/deleted-activities`;
+  document.getElementById('responseUrl').className = 'response-url active';
+  document.getElementById('responseStatus').innerHTML = '<span class="response-status status-200">loading…</span>';
+  document.getElementById('copyBtn').style.display = 'none';
+
+  try {
+    const res  = await fetch(`${apiBase}/api/admin/members/${mid}/deleted-activities`);
+    const data = await res.json();
+    document.getElementById('responseStatus').innerHTML = `<span class="response-status status-200">200 · ${data.count || 0} deleted</span>`;
+
+    if (!data.activities || data.activities.length === 0) {
+      document.getElementById('responseBody').innerHTML = '<div style="padding:24px;color:var(--muted);font-size:.85rem;text-align:center">No deleted activities found for this member.</div>';
+      return;
+    }
+
+    const rows = data.activities.map(a => {
+      const date     = (a.start_date_local||'').slice(0,10) || '—';
+      const deletedAt= a.deleted_at ? new Date(a.deleted_at).toLocaleDateString() : 'legacy';
+      const dist     = a.distance ? (a.distance/1000).toFixed(2)+'km' : '—';
+      const safeName = (a.name||'').replace(/['"]/g,'');
+      return `<tr style="border-bottom:1px solid #2a2d3a">
+        <td style="padding:6px 10px;color:#e8eaf0;font-size:.78rem">${date}</td>
+        <td style="padding:6px 10px;color:#e8eaf0;font-size:.78rem">${a.sport_type||'—'}</td>
+        <td style="padding:6px 10px;color:#e8eaf0;font-size:.78rem">${a.name||'—'}</td>
+        <td style="padding:6px 10px;color:#e8eaf0;font-size:.78rem;text-align:right">${dist}</td>
+        <td style="padding:6px 10px;color:#818cf8;font-size:.72rem">${deletedAt}</td>
+        <td style="padding:6px 10px;text-align:center">
+          <button onclick="reinstateActivity(${mid},'${a.id}','${safeName}','${memberName}')"
+            style="font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:6px;border:1px solid #34d399;background:rgba(52,211,153,0.1);color:#34d399;cursor:pointer"
+            onmouseover="this.style.background='rgba(52,211,153,0.25)'"
+            onmouseout="this.style.background='rgba(52,211,153,0.1)'">↩ Reinstate</button>
+        </td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('responseBody').innerHTML = `
+      <div style="padding:14px 16px">
+        <div style="font-weight:800;font-size:.85rem;margin-bottom:12px;color:#e8eaf0">
+          🗑️ Deleted Activities — ${memberName} (${data.count})
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-family:var(--font-body)">
+          <thead>
+            <tr style="border-bottom:2px solid #3a3d4a">
+              <th style="padding:5px 10px;text-align:left;font-size:.7rem;color:#818cf8;font-weight:700">Date</th>
+              <th style="padding:5px 10px;text-align:left;font-size:.7rem;color:#818cf8;font-weight:700">Type</th>
+              <th style="padding:5px 10px;text-align:left;font-size:.7rem;color:#818cf8;font-weight:700">Name</th>
+              <th style="padding:5px 10px;text-align:right;font-size:.7rem;color:#818cf8;font-weight:700">Dist</th>
+              <th style="padding:5px 10px;text-align:left;font-size:.7rem;color:#818cf8;font-weight:700">Deleted on</th>
+              <th style="padding:5px 10px;text-align:center;font-size:.7rem;color:#818cf8;font-weight:700">Action</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  } catch(e) {
+    document.getElementById('responseStatus').innerHTML = '<span class="response-status status-err">Error</span>';
+    document.getElementById('responseBody').innerHTML = `<div style="padding:16px;color:#f87171;font-size:.82rem">${e.message}</div>`;
+  }
+}
+
+async function reinstateActivity(mid, actId, actName) {
+  if (!confirm(`Reinstate "${actName || actId}"? It will reappear in the dashboard on next sync.`)) return;
+  try {
+    const res  = await fetch(`${apiBase}/api/admin/members/${mid}/reinstate-activity/${actId}`, { method: 'POST' });
+    const data = await res.json();
+    if (data.ok) {
+      showToast(`✅ Reinstated: ${data.name || actId}`, 'ok');
+      // Refresh the deleted activities view
+      const sel = document.getElementById('memberSelect');
+      const name = sel.options[sel.selectedIndex]?.text || '';
+      loadDeletedActivities(mid, name.split(' (#')[0]);
+    } else {
+      showToast(data.detail || 'Reinstate failed', 'err');
+    }
+  } catch(e) {
+    showToast(`Error: ${e.message}`, 'err');
+  }
 }
 
 async function generateRecap() {
